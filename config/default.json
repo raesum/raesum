@@ -1,0 +1,41 @@
+{
+  "server": {
+    "port": 3000,
+    "protocol": "http",
+    "host": "localhost",
+    "proxyInUse": "false",
+    "proxyPort": 443
+  },
+  "cors": {
+    "allowedOrigins": []
+  },
+  "connections": {
+    "primaryDatabase": {
+      "host": null,
+      "port": null,
+      "databaseName": null,
+      "credentials": {
+        "username": null,
+        "password": null
+      },
+      "useSSL": null
+    },
+    "redisCache": {
+      "enableCaching": true,
+      "host": null,
+      "port": 6379,
+      "secret": null,
+      "connectTimeout": 10000,
+      "databaseNumber": 0
+    }
+  },
+  "logging": {
+      "level": "debug",
+      "logsEnabled": {
+        "file": true,
+        "console": true
+      },
+      "filePath": "logs",
+      "filename": "app.log"
+  }
+}
