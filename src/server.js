@@ -4,15 +4,15 @@ import express from 'express';
 import helmet from 'helmet';
 import http from 'http';
 import config from "config";
-import {raesirLogger, raesirLoggerRequestFinishMiddleware} from "./modules/raesirLogger.js"
+import {raesumLogger, raesumLoggerRequestFinishMiddleware} from "./modules/raesumLogger.js"
 import { fileURLToPath } from 'url';
 import { unless } from "express-unless";
 const __filename = fileURLToPath(import.meta.url);
-const logger = raesirLogger(__filename, "module");
+const logger = raesumLogger(__filename, "module");
 
 export async function createApp() {
     const start = Date.now();
-    logger.info("Starting Raesir", Date.now()-start);
+    logger.info("Starting raesum", Date.now()-start);
 
     // Initialize Express
     const app = express();
@@ -38,11 +38,11 @@ export async function createApp() {
 
 
     // Add unless to the logger middleware
-    raesirLoggerRequestFinishMiddleware.unless = unless;
+    raesumLoggerRequestFinishMiddleware.unless = unless;
 
     // Log all requests except health
     app.use(
-        raesirLoggerRequestFinishMiddleware.unless({
+        raesumLoggerRequestFinishMiddleware.unless({
             path: [
                 "/health"
                 ],

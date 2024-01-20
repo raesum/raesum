@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// The logger is the only module that should directly call config and not the async raesirConfig module (due to the latter requiring the logger as a dependency)
+// The logger is the only module that should directly call config and not the async raesumConfig module (due to the latter requiring the logger as a dependency)
 
 const consoleLogEnabled = config.get('logging.logsEnabled.console');
 const fileLogEnabled = config.get('logging.logsEnabled.file');
@@ -134,7 +134,7 @@ const logger = winston.createLogger({
 });
 
 // Middleware to log all responses
-export const raesirLoggerRequestFinishMiddleware = function(req,res,next){
+export const raesumLoggerRequestFinishMiddleware = function(req,res,next){
     const start = Date.now();
 
     res.on("finish", () => {
@@ -170,7 +170,7 @@ export const raesirLoggerRequestFinishMiddleware = function(req,res,next){
 }
 
 // Standard intra-module and intra-function logger
-export const raesirLogger = function(fileName){
+export const raesumLogger = function(fileName){
     const originFile = path.basename(fileName);
 
     function log ( level, message, duration, type, statusCode,
