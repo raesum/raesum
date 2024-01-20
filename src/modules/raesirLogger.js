@@ -27,7 +27,7 @@ const colorSet = {
 winston.addColors(colorSet);
 
 const levelSet ={
-    critical: 0,
+        critical: 0,
         error: 1,
         warning: 2,
         info: 3,
@@ -43,7 +43,8 @@ if(consoleLogEnabled){
             format: winston.format.combine(
                 winston.format.colorize({
                     all: true
-                })
+                }),
+                winston.format.simple()
             )
         }));
 }
@@ -68,7 +69,8 @@ if(fileLogEnabled){
         loggerTransports.push(
             new winston.transports.File({
                 filename: fullFilePath,
-                level: logLevel
+                level: logLevel,
+                format: winston.format.json(),
             })
         );
 
@@ -127,13 +129,146 @@ const logger = winston.createLogger({
 
     format: winston.format.combine(
         winston.format.timestamp(),
-        winston.format.json(),
-        winston.format.colorize(),
-    ),
+        ),
     transports: loggerTransports,
 });
 
+// Middleware to log all responses
+export const raesirLoggerRequestFinishMiddleware = function(req,res,next){
+    const start = Date.now();
+
+    res.on("finish", () => {
+        const end = new Date();
+        const duration = end - start;
+
+        let message = '';
+        if (res.hasOwnProperty('message')) {
+            message = res.message;
+        }
+
+        // Set a default user
+        let userId = 0;
+
+        // If req is set and there is a userID, log that user ID
+        if (typeof req != 'undefined') {
+            if (req.hasOwnProperty('user') && req.user.hasOwnProperty('id')) {
+                userId = req.user.id;
+            }
+        }
+
+        logger.info({
+            userId: userId,
+            duration: `${duration}`,
+            statusCode: res.statusCode,
+            message: message,
+            urlPath: req.originalUrl
+        });
+
+    });
+
+    next();
+}
+
 // Standard intra-module and intra-function logger
-export const raesirLogger = function(fileName, type = "module"){
+export const raesirLogger = function(fileName){
+    const originFile = path.basename(fileName);
+
+    function log ( level, message, duration, type, statusCode,
+    ) {
+        // Set a default user
+        let userId = 0;
+
+        // If req is set and there is a userID, log that user ID
+        if (typeof req != 'undefined') {
+            if (req.hasOwnProperty('user') && req.user.hasOwnProperty('id')) {
+                userId = req.user.id;
+            }
+        }
+
+        const logEntry = {
+            level: level,
+            message: message,
+            duration: duration,
+            userId: userId,
+            originFile: originFile,
+            statusCode: statusCode,
+        };
+        logger.log(logEntry);
+    };
+
+    return {
+        critical: (
+            message = '',
+            duration = 0,
+            statusCode = 0
+        ) => {
+            log(
+                'critical',
+                message,
+                duration,
+                statusCode
+            );
+        },
+        error: (
+            message = '',
+            duration = 0,
+            statusCode = 0
+        ) => {
+            log(
+                'error',
+                message,
+                duration,
+                statusCode
+            );
+        },
+        warning: (
+            message = '',
+            duration = 0,
+            statusCode = 0
+        ) => {
+            log(
+                'warning',
+                message,
+                duration,
+                statusCode
+            );
+        },
+        info: (
+            message = '',
+            duration = 0,
+            statusCode = 0
+        ) => {
+            log(
+                'info',
+                message,
+                duration,
+                statusCode
+            );
+        },
+        debug: (
+            message = '',
+            duration = 0,
+            statusCode = 0
+        ) => {
+            log(
+                'debug',
+                message,
+                duration,
+                statusCode
+            );
+        },
+        verbose: (
+            message = '',
+            duration = 0,
+            statusCode = 0
+        ) => {
+            log(
+                'verbose',
+                message,
+                duration,
+                statusCode
+            );
+        },
+    }
 
 }

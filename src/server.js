@@ -4,14 +4,15 @@ import express from 'express';
 import helmet from 'helmet';
 import http from 'http';
 import config from "config";
-import {raesirLogger} from "./modules/raesirLogger.js"
+import {raesirLogger, raesirLoggerRequestFinishMiddleware} from "./modules/raesirLogger.js"
 import { fileURLToPath } from 'url';
-
+import { unless } from "express-unless";
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesirLogger(__filename, "module");
 
 export async function createApp() {
     const start = Date.now();
+    logger.info("Starting Raesir", Date.now()-start);
 
     // Initialize Express
     const app = express();
@@ -27,6 +28,27 @@ export async function createApp() {
         next();
     });
 
+
+    // Initialized Security
+
+
+
+
+    //
+
+
+    // Add unless to the logger middleware
+    raesirLoggerRequestFinishMiddleware.unless = unless;
+
+    // Log all requests except health
+    app.use(
+        raesirLoggerRequestFinishMiddleware.unless({
+            path: [
+                "/health"
+                ],
+        })
+    );
+
     return app;
 }
 
@@ -36,7 +58,7 @@ let start = Date.now();
 
 const app = createApp().then((app) => {
     app.listen(port, () => {
-        //logger.notice(`Server listening at ${port}!`, Date.now() - start);
+        logger.info(`Server listening at ${port}!`, Date.now() - start);
     });
 });
 

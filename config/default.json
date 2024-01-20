@@ -30,7 +30,7 @@
     }
   },
   "logging": {
-      "level": "debug",
+      "level": "verbose",
       "logsEnabled": {
         "file": true,
         "console": true
