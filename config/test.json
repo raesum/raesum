@@ -1,0 +1,7 @@
+{
+  "logging": {
+    "logsEnabled": {
+      "file": false
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import winston, { addColors, createLogger, format, transports } from 'winston';
+import winston from 'winston';
 import fs from 'fs';
 import path from 'path';
 import config from 'config';
