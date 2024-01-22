@@ -4,15 +4,18 @@ import express from 'express';
 import helmet from 'helmet';
 import http from 'http';
 import config from "config";
-import {raesumLogger, raesumLoggerRequestFinishMiddleware} from "./modules/raesumLogger.js"
 import { fileURLToPath } from 'url';
 import { unless } from "express-unless";
+import raesumDB from "./modules/raesumDB.js";
+
+// Logger
+import {raesumLogger, raesumLoggerRequestFinishMiddleware} from "./modules/raesumLogger.js";
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename, "module");
 
 export async function createApp() {
     const start = Date.now();
-    logger.info("Starting raesum", Date.now()-start);
+    logger.info("Starting Raesum", Date.now()-start);
 
     // Initialize Express
     const app = express();
@@ -29,12 +32,9 @@ export async function createApp() {
     });
 
 
-    // Initialized Security
+    // Initialize Security
 
 
-
-
-    //
 
 
     // Add unless to the logger middleware
@@ -49,6 +49,14 @@ export async function createApp() {
         })
     );
 
+    // Routes
+
+
+
+
+
+
+    logger.info("Finished Initializing Raesum", Date.now()-start);
     return app;
 }
 

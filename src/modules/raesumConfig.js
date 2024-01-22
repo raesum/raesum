@@ -1,9 +1,9 @@
 import config from 'config';
-import {raesumLogger} from "./raesumLogger.js";
 import {fileURLToPath} from "url";
 import {setNestedObjectValue} from "../utils/jsonUtils.js"
 import jp from "jsonpath"
 
+import {raesumLogger} from "./raesumLogger.js";
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename, "module");
 
@@ -165,7 +165,7 @@ class raesumConfig {
                 // Else only child keys
                 logger.debug(`CloudKey children found for key ${key}`);
                 // Get the key from the files
-                outputObj = config.get(key);
+                outputObj = JSON.parse(JSON.stringify(config.get(key)))
 
                 // For each cloud key
                 for (let i = 0; i < cloudKeys.length; i++) {
@@ -188,8 +188,10 @@ class raesumConfig {
             }
         }
 
+        // Turn object into mutable object
+        outputObj = JSON.parse(JSON.stringify(outputObj))
         // Cache the value
-            this.#setCache(key,outputObj);
+        this.#setCache(key,outputObj);
     }
         return outputObj;
 

@@ -12,13 +12,20 @@
   "connections": {
     "primaryDatabase": {
       "host": null,
-      "port": null,
-      "databaseName": null,
+      "port": 5432,
+      "databaseName": "raesum",
       "credentials": {
         "username": null,
         "password": null
       },
-      "useSSL": null
+      "ssl": false,
+      "maxPoolSize": 20,
+      "timeouts": {
+        "clientForceTimeout": 15000,
+        "idleTimeout": 1000,
+        "connectionTimeout": 1000,
+        "maxUses": 7500
+      }
     },
     "redisCache": {
       "enableCaching": true,
