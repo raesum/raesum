@@ -27,13 +27,33 @@
         "maxUses": 7500
       }
     },
-    "redisCache": {
-      "enableCaching": true,
-      "host": null,
-      "port": 6379,
-      "secret": null,
-      "connectTimeout": 10000,
-      "databaseNumber": 0
+    "cache": {
+      "type": "memory",
+      "psql": {
+        "host": null,
+        "port": 5432,
+        "databaseName": "raesum",
+        "credentials": {
+          "username": null,
+          "password": null
+        },
+        "ssl": false,
+        "maxPoolSize": 20,
+        "timeouts": {
+          "clientForceTimeout": 15000,
+          "idleTimeout": 1000,
+          "connectionTimeout": 1000,
+          "maxUses": 7500
+        }
+      },
+      "redis": {
+        "host": null,
+        "port": 6379,
+        "secret": null,
+        "connectTimeout": 10000,
+        "databaseNumber": 0
+      },
+      "memory": {}
     }
   },
   "logging": {

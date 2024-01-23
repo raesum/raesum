@@ -26,10 +26,12 @@ export default async function raesumHealthController(req,res,next){
     }
 
 
-    // If Redis Cache, Check Cache Connection
-    const redisInUse = raesumConfig.get("connections.redisCache.enableCaching");
-    if(redisInUse){
+    // If Redis or PSQL Cache, Check Cache Connection
+    const redisOrPSQL = raesumConfig.get("connections.cache.type");
+    if(redisOrPSQL == "redis"){
         // TO-DO: Add cache client health test
+    }else if( redisOrPSQL == "psql"){
+
     }
 
     if(healthy){

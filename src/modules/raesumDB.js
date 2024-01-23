@@ -11,6 +11,20 @@ class dbPool {
 
     #dbPoolInstance
     #config
+    #allowedDatabaseConfigIDs = ['primaryDatabase','cacheDB']
+    #databaseConfigSettingLocations = ['connections.primaryDatabase','connections.cache.psql']
+
+    constructor(dbConfig="primaryDatabase"){
+        // If dbConfig is a valid entry, get the setting location and set it
+        const key = this.#allowedDatabaseConfigIDs.indexOf(dbConfig);
+        if(key > -1){
+            this.#databaseConfigSettingLocations =this.#databaseConfigSettingLocations[key]
+        }else{
+            this.#databaseConfigSettingLocations = this.#databaseConfigSettingLocations[0]
+        }
+    }
+
+
 
     async #initConfig() {
         const start = Date.now();
@@ -19,7 +33,9 @@ class dbPool {
         // Create the new config object
         let newConfig = {};
 
-        const settingsObject = raesumConfig.get("connections.primaryDatabase")
+
+
+        const settingsObject = raesumConfig.get()
 
         // Add all non-nested settings
         const singleDepthSettings = ['host', 'port', 'databaseName', 'ssl', 'maxPoolSize'];
