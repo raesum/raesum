@@ -7,19 +7,19 @@ import {fileURLToPath} from "url";
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename, "module");
 
-class dbPool {
+class cacheDBPool {
 
     #dbPoolInstance
     #config
 
     async #initConfig() {
         const start = Date.now();
-        logger.info('Building Primary Database Configuration', Date.now() - start);
+        logger.info('Building Cache Database Configuration', Date.now() - start);
 
         // Create the new config object
         let newConfig = {};
 
-        const settingsObject = raesumConfig.get("connections.primaryDatabase")
+        const settingsObject = raesumConfig.get("connections.cache.psql")
 
         // Add all non-nested settings
         const singleDepthSettings = ['host', 'port', 'databaseName', 'ssl', 'maxPoolSize'];
@@ -68,7 +68,7 @@ class dbPool {
     async #initPool() {
         const start = Date.now();
         if (typeof this.#dbPoolInstance != "object") {
-            logger.info('Initializing Primary Database Pool', Date.now() - start);
+            logger.info('Initializing Cache Database Pool', Date.now() - start);
 
             // Build config if it hasn't been built yet
             if (typeof this.#config != "object") {
@@ -77,7 +77,7 @@ class dbPool {
 
             this.#dbPoolInstance = new Pool(this.#config);
         } else {
-            logger.verbose('Primary Database Already Initialized', Date.now() - start);
+            logger.verbose('Cache Database Already Initialized', Date.now() - start);
         }
     }
 
@@ -91,44 +91,9 @@ class dbPool {
         return res
     }
 
-    // Most of this is slightly modified reference code from https://node-postgres.com/guides/project-structure
-    async dbClient() {
-        const start = Date.now();
-        logger.verbose(`Primary Database Manual Client Opened`, Date.now() - start);
-
-        await this.#initPool();
-
-        const client = await this.#dbPoolInstance.connect()
-        const query = client.query;
-        const release = client.release;
-        const clientTimeoutMS = await raesumConfig.get("connections.primaryDatabase.timeouts.clientForceTimeout");
-        const clientTimeoutS = Math.round(clientTimeoutMS / 1000)
-        // set a timeout of 5 seconds, after which we will log this client's last query
-        const timeout = setTimeout(() => {
-            logger.warning(`A client has been checked out for more than ${clientTimeoutS} seconds!`, Date.now() - start);
-            logger.warning(`The last executed query on this client was: ${client.lastQuery}`, Date.now() - start)
-        }, clientTimeoutMS);
-
-        // monkey patch the query method to keep track of the last query executed
-        client.query = (...args) => {
-            client.lastQuery = args
-            return query.apply(client, args)
-        }
-        client.release = () => {
-            // clear our timeout
-            clearTimeout(timeout)
-            // set the methods back to their old un-monkey-patched version
-            client.query = query
-            client.release = release
-            logger.verbose(`Primary Database Manual Client Released`, Date.now() - start);
-            return release.apply(client)
-        }
-
-        return client
-    }
 }
 
 
-const raesumDB = new dbPool();
+const raesumDBCache = new cacheDBPool();
 
-export default raesumDB;
+export default raesumDBCache;
