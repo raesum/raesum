@@ -15,6 +15,10 @@ export default async function raesumHealthController(req,res,next){
     // Check Database Connection
     try{
         let dbResponse = await raesumDB.query("SELECT 1 as Healthy;");
+        if(!dbResponse.hasOwnProperty('rows') || dbResponse.rows.length < 1){
+            healthy = false;
+            logger.critical(`Health Check Fail: Database connected but not returning data.`,Date.now()-start);
+        }
     }catch(e){
         // Something is wrong, record error and indicate not healthy
         healthy = false;

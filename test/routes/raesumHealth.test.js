@@ -3,62 +3,53 @@ import raesumDB from "../../src/modules/raesumDB.js"
 import * as express from "express";
 import config from "config";
 import {jest} from '@jest/globals'
+import { getMockReq, getMockRes } from '@jest-mock/express'
+
 jest.mock('../../src/controllers/raesumHealth.js')
 
-const mockRequest = () => {
-    return {}
-}
-const mockResponse = () => {
-    const res = {};
-    res.status = jest.fn().mockReturnValue(200);
-    res.json = jest.fn().mockReturnValue({});
-    return res;
-}
+const req = getMockReq()
+const { res, next, mockClear } = getMockRes()
+
 
 describe("Testing Health Check", ()=>{
     afterEach(() => {
         jest.resetModules();
         jest.restoreAllMocks();
     });
+    beforeEach(() => {
+        mockClear() // can also use clearMockRes()
+    })
 
     test('System is Healthy', async () => {
 
-        const configMock = jest.spyOn(raesumDB,"query").mockImplementation((key)=>{
-            let returnVal;
-            if(key=="cloudBasedSecrets"){
-                returnVal= {
-                    "rows": [
-                        {
-                            "Healthy": 1
-                        }
-                    ]
-                }
+        const configMock = jest.spyOn(raesumDB,"query").mockImplementation(()=>{
+            return {
+                "rows": [
+                    {
+                        "Healthy": 1
+                    }
+                ]
             }
-            return returnVal
         });
 
-        const mReq = mockRequest();
-        const mRes = mockResponse();
-        const mNext = jest.fn();
-        await raesumHealthController(mReq, mRes, mNext);
+
+        await raesumHealthController(req, res, next);
         expect(res.status).toHaveBeenCalledWith(200);
     });
-    test('System is Unealthy', async () => {
-        const configMock = jest.spyOn(raesumDB,"query").mockImplementation((key)=>{
-            let returnVal;
-            if(key=="cloudBasedSecrets"){
-                returnVal= {
-
-                }
-            }
-            return returnVal
+    test('System is Connected to DB but Unhealthy', async () => {
+        const configMock = jest.spyOn(raesumDB,"query").mockImplementation(()=>{
+            return {}
         });
 
-        const mReq = mockRequest();
-        const mRes = mockResponse();
-        const mNext = jest.fn();
-        await raesumHealthController(mReq, mRes, mNext);
+        await raesumHealthController(req, res, next);
         expect(res.status).toHaveBeenCalledWith(500);
     });
+    test('System is Connected to DB but Unhealthy', async () => {
+        const configMock = jest.spyOn(raesumDB,"query").mockImplementation(()=>{
+            throw new Error("Simulating DB Fail")
+        });
 
+        await raesumHealthController(req, res, next);
+        expect(res.status).toHaveBeenCalledWith(500);
+    });
 })
