@@ -77,9 +77,8 @@ if(fileLogEnabled){
         // Test to see if log folder and file is writable
     try {
         // Does folder exist?
-        console.log(`Testing ${filePath}`)
+
         if (!fs.existsSync(filePath)) {
-            console.log(`Making ${filePath}`)
             // Create folder
             fs.mkdirSync(filePath, {
                 recursive: true,

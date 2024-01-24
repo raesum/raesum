@@ -9,6 +9,10 @@
   "cors": {
     "allowedOrigins": []
   },
+  "cache": {
+    "type": "memory",
+    "ttl": 500
+  },
   "connections": {
     "primaryDatabase": {
       "host": null,
@@ -28,7 +32,6 @@
       }
     },
     "cache": {
-      "type": "memory",
       "psql": {
         "host": null,
         "port": 5432,
@@ -51,7 +54,11 @@
         "port": 6379,
         "secret": null,
         "connectTimeout": 10000,
-        "databaseNumber": 0
+        "databaseNumber": 0,
+        "credentials": {
+          "username": null,
+          "password": null
+        }
       },
       "memory": {}
     }

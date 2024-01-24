@@ -1,6 +1,6 @@
 {
   "logging": {
-    "level": "warning",
+    "level": "info",
     "logsEnabled": {
       "file": false
     }

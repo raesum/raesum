@@ -130,5 +130,4 @@ class dbPool {
 
 
 const raesumDB = new dbPool();
-
 export default raesumDB;

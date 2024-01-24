@@ -1,7 +1,9 @@
 import config from 'config';
 import {fileURLToPath} from "url";
-import {setNestedObjectValue} from "../utils/jsonUtils.js"
+import {setNestedObjectValue} from "../utils/jsonUtils.js";
+import {cloneRecursively} from "../utils/objectUtils.js";
 import jp from "jsonpath"
+
 
 import {raesumLogger} from "./raesumLogger.js";
 const __filename = fileURLToPath(import.meta.url);
@@ -60,12 +62,13 @@ class raesumConfig {
     async getCloudSecretKey(key){
 
         // Get the cloud based secrets config
-        let cloudSecrets = config.get("cloudBasedSecrets");
-        logger.debug(`Cloud Secrets Setting: ${cloudSecrets}`);
+        const cloudSecretsStatic = config.get("cloudBasedSecrets");
+        logger.debug(`Cloud Secrets Setting: ${cloudSecretsStatic}`);
 
-        // Sort by depth of setting descending
+        // Turn cloudSecrets into a sortable (mutable) array
+        let cloudSecrets = JSON.parse(JSON.stringify(cloudSecretsStatic));
+
         cloudSecrets.sort((a, b) => (b.split(".").length - 1) - (a.split(".").length - 1))
-
         // Build array of matching keys
         let outputArray = [];
 
