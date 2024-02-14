@@ -1,0 +1,23 @@
+{
+  "success": {
+    "title": "Success",
+    "message": "OK",
+    "description": "The request was successful.",
+    "code": 200,
+    "keycode": 1
+  },
+  "error": {
+    "title": "Error",
+    "message": "Error",
+    "description": "The request was not successful.",
+    "code": 400,
+    "keycode": 2
+  },
+  "requestMissingFields": {
+    "title": "Request Missing Fields",
+    "message": "The request is missing fields: {0}",
+    "description": "The request was not successful.",
+    "code": 400,
+    "keycode": 3
+  }
+}

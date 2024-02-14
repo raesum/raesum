@@ -2,7 +2,8 @@ import raesumConfig from '../../src/modules/raesumConfig';
 import config from "config";
 import {jest} from '@jest/globals';
 import raesumMigrate from '../../src/modules/raesumMigrate.js';
-import raesumDB from "./modules/raesumDB.js";
+import raesumDB from "../../src/modules/raesumDB.js";
+
 
 describe("Raesum Migrate Schema File Validation", () => {
     test('Valid SQL Filenames Set',async ()=>{
@@ -10,13 +11,13 @@ describe("Raesum Migrate Schema File Validation", () => {
         const configMock = jest.spyOn(migrator,"getMigrationsFileList").mockImplementation((key)=>{
             let returnVal;
                 returnVal=[
-                    "0.sql",
-                    "1.sql"
+                    "1.sql",
+                    "2.sql"
                 ]
             return returnVal
         });
 
-        expect(migrator.getValidMigrationsAvailableList()).toEqual(["0.sql","1.sql"]);
+        expect(migrator.getValidMigrationsAvailableList()).toEqual(["1.sql","2.sql"]);
 
     });
 
@@ -26,15 +27,15 @@ describe("Raesum Migrate Schema File Validation", () => {
         const configMock = jest.spyOn(migrator,"getMigrationsFileList").mockImplementation((key)=>{
             let returnVal;
             returnVal=[
-                "0.initial.sql",
-                "1.sql"
+                "1.initial.sql",
+                "2.sql"
             ]
             return returnVal
         });
 
         expect(()=>{
             migrator.getValidMigrationsAvailableList()
-        }).toThrow('0.initial.sql is not a valid filename');
+        }).toThrow('1.initial.sql is not a valid filename');
 
     });
 
@@ -44,7 +45,6 @@ describe("Raesum Migrate Schema File Validation", () => {
         const configMock = jest.spyOn(migrator,"getMigrationsFileList").mockImplementation((key)=>{
             let returnVal;
             returnVal=[
-                "0.sql",
                 "1.sql",
                 "3.sql"
             ]
