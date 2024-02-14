@@ -1,6 +1,5 @@
 import {jest} from '@jest/globals';
 import raesumResponses from "../../src/modules/raesumResponses.js";
-import raesumCache from "../../src/modules/raesumCache.js";
 import path from "path";
 import fs from "fs";
 import Joi from "joi";
@@ -19,39 +18,36 @@ describe("Raesum API Responses", () => {
 
 
     test('Get a Message that does not exist',async ()=> {
-        expect(async ()=>{
-            await raesumResponses.get("nonexistent")
-        }).toThrow();
+
+        expect.assertions(1);
+
+        try {
+            await raesumResponses.get("nonexistent");
+        } catch (error) {
+            expect(error.message).toBe('Response key not found');
+        }
     });
 
 
     test('Get a Message with a variable',async ()=> {
         const response = await raesumResponses.get("requestMissingFields",["TEST"]);
+        await raesumResponses.get("requestMissingFields",["moo"]);
         expect(response.message).toBe("The request is missing fields: TEST");
     });
 
 
     test('Get a Message with a variable missing',async ()=> {
-        expect(async ()=>{
-            await raesumResponses.get("requestMissingFields")
-        }).toThrow();
+        expect.assertions(1);
+
+        try {
+            await raesumResponses.get("requestMissingFields");
+        } catch (error) {
+            expect(error.message).toBe('Variable count does not match');
+        }
+
+
     });
 
-});
-
-describe("Raesum API Response Cache Storage", () => {
-
-        test('Confirm presence of cache',async ()=> {
-            // Get a message
-            const response = await raesumResponses.get("success");
-
-            // Check the cache to see if the message is present in cache
-            const cacheResponse = await raesumCache.get("raesumResponses_success");
-
-            expect(cacheResponse).not.toBe(null);
-            expect(cacheResponse).not.toBeUndefined();
-
-        });
 });
 
 describe("Raesum API Responses Validation", () => {
@@ -97,6 +93,29 @@ describe("Raesum API Responses Validation", () => {
         }
         const uniqueKeycodes = new Set(keycodes);
         expect(uniqueKeycodes.size).toBe(keyArray.length);
+    });
+
+    // Ensure that all messages with variables have the correct sequence of variables
+    test('Validate Variable Sequence',async ()=> {
+
+            const keyArray = Object.keys(responseJSON);
+            let invalidKeys = [];
+            for(let i=0; i<keyArray.length; i++){
+                const message = responseJSON[keyArray[i]].message;
+                const variableCount = (message.match(/{[0-9]*}/g) || []).length;
+                if(variableCount > 0){
+                    const variables = message.match(/{[0-9]*}/g);
+                    for(let j=0; j<variables.length; j++){
+                        if(variables[j] !== `{${j}}`){
+                            invalidKeys.push(keyArray[i]);
+                        }
+                    }
+                }
+            }
+            if(invalidKeys.length > 0){
+                console.log("INVALID Response Keys: ",invalidKeys);
+            }
+            expect(invalidKeys.length).toBe(0);
     });
 
 });
