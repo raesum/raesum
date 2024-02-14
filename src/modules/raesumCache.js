@@ -32,7 +32,7 @@ class raesumCachePool{
             logger.info('Building Cache Configuration', Date.now() - start);
 
             // Get the type of cache to use
-            const candidateType = raesumConfig.get("connections.cache.type");
+            const candidateType = raesumConfig.get("cache.type");
 
             // If the cache type is in the allowed types, set the type
             if(this.#allowedCacheTypes.includes(candidateType)) {
@@ -129,7 +129,7 @@ class raesumeCacheMemory{
 
     async init(){
         // Get the cache default TTL
-        const cacheTTL = raesumConfig.get("connections.cache.ttl");
+        const cacheTTL = raesumConfig.get("cache.ttl");
         logger.info(`Initializing Memory Cache with default TTL: ${cacheTTL}`);
         if(parseInt(cacheTTL) > -1){
             this.#nodeCacheConfig.stdTTL = parseInt(cacheTTL);

@@ -1,6 +1,6 @@
 import {jest} from '@jest/globals';
 import raesumResponses from "../../src/modules/raesumResponses.js";
-
+import raesumCache from "../../src/modules/raesumCache.js";
 import path from "path";
 import fs from "fs";
 import Joi from "joi";
@@ -37,6 +37,21 @@ describe("Raesum API Responses", () => {
         }).toThrow();
     });
 
+});
+
+describe("Raesum API Response Cache Storage", () => {
+
+        test('Confirm presence of cache',async ()=> {
+            // Get a message
+            const response = await raesumResponses.get("success");
+
+            // Check the cache to see if the message is present in cache
+            const cacheResponse = await raesumCache.get("raesumResponses_success");
+
+            expect(cacheResponse).not.toBe(null);
+            expect(cacheResponse).not.toBeUndefined();
+
+        });
 });
 
 describe("Raesum API Responses Validation", () => {
