@@ -12,7 +12,7 @@ class raesumCachePool{
     #cachePoolInstance
     #config
     #cacheType = "memory"
-    #allowedCacheTypes = ["memory","redis","psql"];
+    #allowedCacheTypes = ["memory","redis"];
 
     // Primarily used for testing - this destroys the cache pool instance and forces a re-init
     async reset(){
@@ -43,9 +43,6 @@ class raesumCachePool{
             // If type is redis, create new instance of redis cache object
             if(this.#cacheType == "redis"){
                 this.#cachePoolInstance = await new raesumeCacheRedis();
-            }else if(this.#cacheType == "psql"){
-                // else if type is psql, create new instance of psql cache object
-                this.#cachePoolInstance = await new raesumeCachePSQL();
             }else{
                 // else if type is memory, create new instance of memory cache object
                 this.#cachePoolInstance = await new raesumeCacheMemory();
@@ -170,20 +167,6 @@ class raesumeCacheMemory{
 
 class raesumeCacheRedis{
     async init(){}
-
-    async reset(){}
-
-    async get(key){}
-
-    async set(key,value,ttl){}
-
-    async delete(key){}
-}
-
-class raesumeCachePSQL{
-    async init(){
-        return false;
-    }
 
     async reset(){}
 
