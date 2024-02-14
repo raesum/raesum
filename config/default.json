@@ -17,7 +17,7 @@
     "primaryDatabase": {
       "host": null,
       "port": 5432,
-      "databaseName": "raesum",
+      "database": "raesum",
       "credentials": {
         "username": null,
         "password": null
@@ -35,7 +35,7 @@
       "psql": {
         "host": null,
         "port": 5432,
-        "databaseName": "raesum",
+        "database": "raesum",
         "credentials": {
           "username": null,
           "password": null
@@ -64,7 +64,7 @@
     }
   },
   "logging": {
-      "level": "verbose",
+      "level": "debug",
       "logsEnabled": {
         "file": true,
         "console": true

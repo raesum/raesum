@@ -22,7 +22,7 @@ class cacheDBPool {
         const settingsObject = raesumConfig.get("connections.cache.psql")
 
         // Add all non-nested settings
-        const singleDepthSettings = ['host', 'port', 'databaseName', 'ssl', 'maxPoolSize'];
+        const singleDepthSettings = ['host', 'port', 'database', 'ssl', 'maxPoolSize'];
 
         for (let i = 0; i < singleDepthSettings.length; i++) {
             // If the value of the setting is present and not null add it to config

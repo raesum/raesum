@@ -19,15 +19,16 @@ class dbPool {
         // Create the new config object
         let newConfig = {};
 
-        const settingsObject = raesumConfig.get("connections.primaryDatabase")
+        const settingsObject = await raesumConfig.get("connections.primaryDatabase")
 
         // Add all non-nested settings
-        const singleDepthSettings = ['host', 'port', 'databaseName', 'ssl', 'maxPoolSize'];
+        const singleDepthSettings = ['host', 'port', 'database', 'ssl', 'maxPoolSize'];
 
         for (let i = 0; i < singleDepthSettings.length; i++) {
             // If the value of the setting is present and not null add it to config
             if (settingsObject.hasOwnProperty(singleDepthSettings[i]) && settingsObject[singleDepthSettings[i]] != null) {
-                this.#config[singleDepthSettings[i]] = settingsObject[singleDepthSettings[i]];
+                logger.verbose(`Adding ${singleDepthSettings[i]} to db config`);
+                newConfig[singleDepthSettings[i]] = settingsObject[singleDepthSettings[i]];
             }
         }
 
@@ -45,30 +46,34 @@ class dbPool {
         // Add timeouts
         if (settingsObject.hasOwnProperty('timeouts')) {
             if (settingsObject.timeouts.hasOwnProperty('idleTimeout') && settingsObject.timeouts.idleTimeout != null) {
-                this.#config.idleTimeoutMillis = settingsObject.timeouts.idleTimeout;
+                newConfig.idleTimeoutMillis = settingsObject.timeouts.idleTimeout;
             }else{
-                this.#config.idleTimeoutMillis = 1000;
+                newConfig.idleTimeoutMillis = 1000;
             }
 
             if (settingsObject.timeouts.hasOwnProperty('connectionTimeout') && settingsObject.timeouts.connectionTimeout != null) {
-                this.#config.connectionTimeoutMillis = settingsObject.timeouts.connectionTimeout;
+                newConfig.connectionTimeoutMillis = settingsObject.timeouts.connectionTimeout;
             }else{
-                this.#config.connectionTimeoutMillis = 1000;
+                newConfig.connectionTimeoutMillis = 1000;
             }
 
             if (settingsObject.timeouts.hasOwnProperty('maxUses') && settingsObject.timeouts.maxUses != null) {
-                this.#config.max = settingsObject.timeouts.maxUses;
+                newConfig.max = settingsObject.timeouts.maxUses;
             }else{
-                this.#config.max = 7500;
+                newConfig.max = 7500;
             }
-
         }
+
+        this.#config = newConfig;
+        logger.verbose('Primary Database Configuration Built', Date.now() - start);
+
     }
 
     async #initPool() {
         const start = Date.now();
         if (typeof this.#dbPoolInstance != "object") {
             logger.info('Initializing Primary Database Pool', Date.now() - start);
+
 
             // Build config if it hasn't been built yet
             if (typeof this.#config != "object") {

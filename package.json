@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
+    "migrate": "node src/migrate.js",
     "dev": "nodemon --exec npm run babel-node -- src/server.js",
     "test": "node --experimental-vm-modules ./node_modules/.bin/jest",
     "babel-node": "babel-node --presets='@babel/preset-env'"
