@@ -2,8 +2,10 @@ import config from 'config';
 import {fileURLToPath} from "url";
 import {setNestedObjectValue} from "../utils/jsonUtils.js";
 import {cloneRecursively} from "../utils/objectUtils.js";
+import {SecretsManagerClient, GetSecretValueCommand} from "@aws-sdk/client-secrets-manager";
 import jp from "jsonpath"
-
+import {conditionallyParseJSON} from "../utils/stringUtils.js";
+import {buildAWSConfig} from "../utils/awsUtils.js";
 
 import {raesumLogger} from "./raesumLogger.js";
 const __filename = fileURLToPath(import.meta.url);
@@ -99,15 +101,46 @@ class raesumConfig {
     }
 
     async getCloudSecret(key){
+        let start = Date.now();
         let cacheValue = this.#getCache(key)
         // This is a stub function. Replace with the code to extract keys from AWS
         // TO-DO: Replace with AWS function
         if(cacheValue){
+            logger.verbose(`Cloud Secret ${key} fetched from internal cache`, Date.now() - start);
+
             return cacheValue.value;
         }else{
-            const newValue = config.get(key);
-            this.#setCache(key,newValue);
-            return newValue;
+            // Get the secret value/ID from the config
+            const secret = config.get(key);
+
+            try{
+                logger.verbose(`Fetching cloud secret ${key} fetched from AWS: ${secretValue}`, Date.now() - start);
+
+                // Create the AWS client
+                const clientConfig = buildAWSConfig();
+                const client = new SecretsManagerClient(clientConfig);
+
+                // Create the request command to AWS
+                const command = new GetSecretValueCommand({SecretId: secret});
+
+
+                // Await the response from AWS
+                const response = await client.send(command);
+
+                // Parse the response from AWS
+                const secretValue = conditionallyParseJSON(response.SecretString);
+
+                this.#setCache(key,secretValue);
+                logger.debug(`Cloud secret ${key} fetched from AWS: ${secretValue}`, Date.now() - start);
+                return secretValue;
+
+            }catch(e){
+                logger.error(`Error fetching cloud secret ${key} from AWS: ${e}. Falling back on value in configuration file`, Date.now() - start);
+
+                // If it fails fall back on the config file's value
+                this.#setCache(key,secret);
+                return secret;
+            }
         }
     }
 

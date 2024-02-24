@@ -14,7 +14,7 @@
   "author": "Tor N. Johnson",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.491.0",
+    "@aws-sdk/client-secrets-manager": "^3.521.0",
     "aws-sdk": "^2.1538.0",
     "config": "^3.3.10",
     "cors": "^2.8.5",

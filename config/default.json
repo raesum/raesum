@@ -55,10 +55,16 @@
       "filePath": "logs",
       "filename": "app.log"
   },
+  "aws": {
+    "region": "us-east-1",
+    "accessKeyId": null,
+    "secretAccessKey": null
+  },
   "cloudBasedSecrets": [
     "connections.primaryDatabase.credentials"
   ],
   "integrationTestEnabled": {
-    "redis": false
+    "redis": false,
+    "aws": false
   }
 }

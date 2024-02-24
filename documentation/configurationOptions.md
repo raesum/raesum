@@ -18,6 +18,7 @@ The Raesum Config system has two key differences from the stock config package t
 When in production sensitive keys should NOT be stored in physical files on the server. Instead they should be stored in the AWS secrets manager. To have Raesum use the secrets manager, the following steps should be taken:
 1. Create a secret in the AWS secrets manager.
 2. Add the secret name to the `cloudBasedSecrets` array in the configuration files. Use the full dot notation of the secret.
+3. Store the secret key id as the value of the secret in the configuration file. This is the key that Raesum will use to retrieve the secret from the AWS secrets manager.
 
 Note: for local testing, you can override the `cloudBasedSecrets` array in the `local.json` file to force loading of the secrets from the local file.
 
@@ -105,3 +106,11 @@ The logging system supports multiple outputs (transports): file, console, and AW
 The automated tests may require external resources for certain tests (such as the redis-based cache). This section controls whether these tests are run.
 
 - `redis` (boolean) - Whether to run tests that require a Redis server. The tests will use the appropriate settings in `connections` Default: `true`
+
+### AWS
+
+This section contains the settings for AWS services. 
+
+- `region` (string) - The region to use for AWS services. Default: `us-east-1`
+- `accessKeyId` (string) - The access key to use for AWS services. For production systems it is *STRONGLY* recommended to use IAM roles assigned to the application server instead of keys. Default: `null`
+- `secretAccessKey` (string) - The secret access key to use for AWS services. Default: `null`
