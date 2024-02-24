@@ -51,7 +51,7 @@ Note - certain sensitive pieces of data, such as AWS secrets do NOT use the cent
 
 This section controls the connections to the database and other external services.
 
-#### primaryDatabase
+#### PrimaryDatabase
 
 This is the configuration to a PostgreSQL database. Any setting with a value of null, will NOT be sent to the PostgreSQL client. This is to allow the client to use its default settings - see [PG-Pool](https://www.npmjs.com/package/pg-pool) for details.
 
