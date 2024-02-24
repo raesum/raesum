@@ -1,4 +1,4 @@
-# raesum
+# Raesum
 
 This is a starting point to build an API sever. It is the result of the recurring problem of needing to build key foundational components yet still have a heavily customizable system.
 
