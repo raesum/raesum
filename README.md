@@ -10,7 +10,7 @@ This is a starting point to build an API sever. It is the result of the recurrin
 
 # How to Use
 
-
+- [Configuration Options](/documentation/configurationOptions.md)
 
 # Principles
 
