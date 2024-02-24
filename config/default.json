@@ -11,7 +11,8 @@
   },
   "cache": {
     "type": "memory",
-    "ttl": 500
+    "ttl": 500,
+    "prefix": "raesum_cache_"
   },
   "connections": {
     "primaryDatabase": {
@@ -32,27 +33,9 @@
       }
     },
     "cache": {
-      "psql": {
-        "host": null,
-        "port": 5432,
-        "database": "raesum",
-        "credentials": {
-          "username": null,
-          "password": null
-        },
-        "ssl": false,
-        "maxPoolSize": 20,
-        "timeouts": {
-          "clientForceTimeout": 15000,
-          "idleTimeout": 1000,
-          "connectionTimeout": 1000,
-          "maxUses": 7500
-        }
-      },
       "redis": {
         "host": null,
         "port": 6379,
-        "secret": null,
         "connectTimeout": 10000,
         "databaseNumber": 0,
         "credentials": {
@@ -74,5 +57,8 @@
   },
   "cloudBasedSecrets": [
     "connections.primaryDatabase.credentials"
-  ]
+  ],
+  "integrationTestEnabled": {
+    "redis": false
+  }
 }
