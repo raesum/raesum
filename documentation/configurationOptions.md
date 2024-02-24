@@ -10,7 +10,7 @@ Note: The `default.json` contains the default value and an example of EVERY sett
 
 The Raesum Config system has two key differences from the stock config package that it sits on top of:
 
-* The get() method must ALWAYS be called asynchronously. It does not support synchronous calls.
+* The `get()` method must ALWAYS be called asynchronously. It does not support synchronous calls.
 * The AWS secrets manager is supported for storage of secrets either individually or in multi-key json objects.
 
 ## AWS Secrets Manager
