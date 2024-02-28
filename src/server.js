@@ -7,7 +7,7 @@ import config from "config";
 import { fileURLToPath } from 'url';
 import { unless } from "express-unless";
 import raesumDB from "./modules/raesumDB.js";
-
+import {raesumCognitoAuthRequired} from "./middleware/cognitoAuthentication.js";
 // Logger
 import {raesumLogger, raesumLoggerRequestFinishMiddleware} from "./modules/raesumLogger.js";
 const __filename = fileURLToPath(import.meta.url);
@@ -45,9 +45,19 @@ export async function createApp() {
         raesumLoggerRequestFinishMiddleware.unless({
             path: [
                 "/health"
-                ],
+                ]
         })
     );
+
+    // Add Authentication Required Middleware
+    app.use(
+        raesumCognitoAuthRequired.unless({
+            path: [
+                "/health",
+                "/login"
+            ]
+        })
+    )
 
     // Routes
 

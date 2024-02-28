@@ -19,5 +19,19 @@
     "description": "The request was not successful.",
     "code": 400,
     "keycode": 3
+  },
+  "": {
+    "title": "Not Logged In",
+    "message": "You are not logged in",
+    "description": "Login is required to access this route. Access token may be missing from headers.",
+    "code": 401,
+    "keycode": 4
+  },
+  "notLoggedInError": {
+    "title": "Not Logged In",
+    "message": "You are not logged in",
+    "description": "Login is required to access this route. Error: {0}",
+    "code": 401,
+    "keycode": 5
   }
 }

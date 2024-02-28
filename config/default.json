@@ -58,7 +58,12 @@
   "aws": {
     "region": "us-east-1",
     "accessKeyId": null,
-    "secretAccessKey": null
+    "secretAccessKey": null,
+    "cognito": {
+      "cognitoClientId": null,
+      "userPoolId": null,
+      "tokenExpiration": 3600000
+    }
   },
   "cloudBasedSecrets": [
     "connections.primaryDatabase.credentials"
