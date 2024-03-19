@@ -50,6 +50,8 @@ export async function createApp() {
     );
 
     // Add Authentication Required Middleware
+    raesumCognitoAuthRequired.unless = unless;
+
     app.use(
         raesumCognitoAuthRequired.unless({
             path: [

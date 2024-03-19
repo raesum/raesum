@@ -35,11 +35,11 @@ class dbPool {
         // Add credentials
         if (settingsObject.hasOwnProperty('credentials')){
             if (settingsObject.credentials.hasOwnProperty('username') && settingsObject.credentials.username != null) {
-                this.#config.user = settingsObject.credentials.username;
+                newConfig.user = settingsObject.credentials.username;
             }
 
             if (settingsObject.credentials.hasOwnProperty('password') && settingsObject.credentials.password != null) {
-                this.#config.password = settingsObject.credentials.password;
+                newConfig.password = settingsObject.credentials.password;
             }
         }
 
