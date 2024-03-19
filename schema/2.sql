@@ -27,7 +27,8 @@ create table raesum_audit_log
     user_id     bigint,
     action_id   integer not null,
     object_type_id integer not null,
-    event_at    timestamp default now()
+    event_at    timestamp default now(),
+    metadata    text
 );
 
 create index raesum_audit_log__index_at
