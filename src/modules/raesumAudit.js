@@ -79,7 +79,7 @@ class raesumeAuditObject{
         }
 
         // Add audit log entry to db
-        const query = "INSERT INTO raesum_audit_log (action_type_id, object_type_id, object_id, user_id) VALUES ($1, $2, $3, $4);";
+        const query = "INSERT INTO raesum_audit_log (action_id, object_type_id, object_id, user_id) VALUES ($1, $2, $3, $4);";
 
         try{
             await raesumDB.query(query, [actionType, objectType, objectID, userID]);
