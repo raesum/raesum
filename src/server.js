@@ -49,9 +49,10 @@ export async function createApp() {
         })
     );
 
-    // Add Authentication Required Middleware
+    // Add unless to the Cognito required middleware
     raesumCognitoAuthRequired.unless = unless;
 
+    // Add Authentication Required Middleware
     app.use(
         raesumCognitoAuthRequired.unless({
             path: [

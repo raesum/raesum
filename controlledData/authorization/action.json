@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "name": "Log In",
+    "string_key": "log_in",
+    "description": "User has logged in"
+  },
+  {
+    "id": 2,
+    "name": "Create",
+    "string_key": "create",
+    "description": "User has created a new object"
+  },
+  {
+    "id": 3,
+    "name": "Update",
+    "string_key": "update",
+    "description": "User has updated an object"
+  },
+  {
+    "id": 4,
+    "name": "Delete",
+    "string_key": "delete",
+    "description": "User has deleted an object"
+  },
+    {
+        "id": 5,
+        "name": "View",
+        "string_key": "view",
+        "description": "User has viewed an object"
+    }
+]

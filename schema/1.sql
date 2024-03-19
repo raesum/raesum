@@ -12,4 +12,4 @@ INSERT INTO public.raesum_metadata (datakey,datavalue) VALUES ('schemaVersion',0
 --     duration integer,
 --     createdAt timestamp with time zone NOT NULL DEFAULT now()
 -- );
--- COMMIT;
+COMMIT;

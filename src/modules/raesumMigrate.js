@@ -86,6 +86,48 @@ class raesumMigrate {
         return currentSchemaVersion;
     }
 
+    async loadUpdateStaticContent(filename,targetTable){
+        const start = Date.now();
+
+        logger.info("Loading static content from " + filename + " into " + targetTable, Date.now() - start);
+
+        // Load the json file into memory from the controlledData folder
+        const dirPath = path.join(__dirname, '..','..', 'controlledData');
+        const jsonFile = fs.readFileSync(path.join(dirPath, filename), 'utf8');
+        const jsonData = JSON.parse(jsonFile);
+
+
+        // For each entry in the JSON file
+        for (let i = 0; i < jsonData.length; i++) {
+            // If there is at least one field
+            if (Object.keys(jsonData[i]).length > 0) {
+                // Get a list of the fields
+                const fields = Object.keys(jsonData[i]);
+                let placeholders = [];
+                for (let j = 0; j < fields.length; j++) {
+                    placeholders.push("$" + (j + 1));
+                }
+
+                // create an insert statement with on conflict update
+                const insertStatement = "INSERT INTO " + targetTable + " (" + fields.join(',') + ") VALUES (" + placeholders.join(',') + ") ON CONFLICT (id) DO UPDATE SET " + fields.map((el) => el + " = EXCLUDED." + el).join(',');
+
+                // Run the query
+                const params = fields.map((el) => jsonData[i][el]);
+                try {
+                    await raesumDB.query(insertStatement, params);
+                }catch(e){
+                    // Halt on errors
+                    logger.critical("Error loading static content into " + targetTable + " with error: " + e, Date.now() - start);
+                    return false;
+                }
+            }
+
+        }
+
+        logger.info("Static content load " + filename + " into " + targetTable + " complete ", Date.now() - start);
+        return true;
+    }
+
     async doMigration(){
         const start = Date.now();
 
@@ -134,8 +176,28 @@ class raesumMigrate {
             await raesumDB.query(query,params);
         }
 
-        // Migration complete
-        logger.info("Migration complete", Date.now() - start);
+        logger.info("Database schema migrations complete", Date.now() - start);
+
+        // Load/Update Static Content
+        logger.info("Loading/Updating static content", Date.now() - start);
+        const staticContent = [
+            {filename: 'authorization/action.json', targetTable: 'raesum_action_types'},
+            {filename: 'authorization/object.json', targetTable: 'raesum_object_types'}
+        ]
+
+        // Lop through static content list
+        for(let i=0; i<staticContent.length; i++) {
+
+            // Run load function
+            let loadReturn = await this.loadUpdateStaticContent(staticContent[i].filename, staticContent[i].targetTable);
+            // Return 1 if error else continue
+            if(loadReturn != true){
+                return 1;
+            }
+        }
+
+        logger.info("Static content load/update complete", Date.now() - start);
+
         return 0;
     }
 
