@@ -1,8 +1,16 @@
 {
+  "cache": {
+    "type": "memory"
+  },
   "logging": {
     "level": "critical",
     "logsEnabled": {
       "file": false
+    }
+  },
+  "connections": {
+    "primaryDatabase": {
+      "database": "raesum_qa"
     }
   }
 }

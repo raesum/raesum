@@ -128,6 +128,30 @@ class raesumMigrate {
         return true;
     }
 
+    async loadAllStaticContent(){
+        const start = Date.now();
+        // Load/Update Static Content
+        logger.info("Loading/Updating static content", Date.now() - start);
+        const staticContent = [
+            {filename: 'authorization/action.json', targetTable: 'raesum_action_types'},
+            {filename: 'authorization/object.json', targetTable: 'raesum_object_types'}
+        ]
+
+        // Lop through static content list
+        for(let i=0; i<staticContent.length; i++) {
+
+            // Run load function
+            let loadReturn = await this.loadUpdateStaticContent(staticContent[i].filename, staticContent[i].targetTable);
+            // Return 1 if error else continue
+            if(loadReturn != true){
+                return false;
+            }
+        }
+
+        logger.info("Static content load/update complete", Date.now() - start);
+        return true;
+    }
+
     async doMigration(){
         const start = Date.now();
 
@@ -178,25 +202,11 @@ class raesumMigrate {
 
         logger.info("Database schema migrations complete", Date.now() - start);
 
-        // Load/Update Static Content
-        logger.info("Loading/Updating static content", Date.now() - start);
-        const staticContent = [
-            {filename: 'authorization/action.json', targetTable: 'raesum_action_types'},
-            {filename: 'authorization/object.json', targetTable: 'raesum_object_types'}
-        ]
-
-        // Lop through static content list
-        for(let i=0; i<staticContent.length; i++) {
-
-            // Run load function
-            let loadReturn = await this.loadUpdateStaticContent(staticContent[i].filename, staticContent[i].targetTable);
-            // Return 1 if error else continue
-            if(loadReturn != true){
-                return 1;
-            }
+        // Load static content
+        const loadStaticContentReturn = await this.loadAllStaticContent();
+        if(loadStaticContentReturn != 0){
+            return 1;
         }
-
-        logger.info("Static content load/update complete", Date.now() - start);
 
         return 0;
     }

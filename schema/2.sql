@@ -78,4 +78,13 @@ alter table raesum_audit_log
 alter table raesum_audit_log
     add constraint raesum_audit_log_raesum_object_types_id_fk
         foreign key (object_type_id) references raesum_object_types;
+
+alter table raesum_users
+    add constraint raesum_users_pk_2
+        unique (username);
+
+alter table raesum_users
+    add constraint raesum_users_pk_3
+        unique (external_id);
+
 COMMIT;
