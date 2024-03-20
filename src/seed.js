@@ -17,23 +17,14 @@ logger.info("Starting Seeding", Date.now() - start);
 
 async function runSeeding(){
     const start = Date.now();
+    const seeder = new raesumSeed();
 
-    // Check to see if migrations are current
-    const migrator = new raesumMigrate();
-    const schemaVersion = await migrator.getCurrentSchemaVesion();
-    const migrationSet = await migrator.getValidMigrationsAvailableList();
-    const mostRecentMigration = migrationSet[migrationSet.length-1];
-    const numberElement = parseInt(mostRecentMigration.replace(/\D/g, ''));
-    logger.debug("Current Schema Version: " + schemaVersion, Date.now() - start);
-    logger.debug("Most Recent Migration Version: " + numberElement, Date.now() - start);
-    if (numberElement > schemaVersion) {
-        logger.error("Database is not current. Please run the migration script before seeding the database.", Date.now() - start);
+    const canSeed = await seeder.canSeed();
+    if (!canSeed) {
         process.exit(1);
     }
 
     // Run seed
-    const seeder = new raesumSeed();
-
     const seederResult = await seeder.seedDB()
     if(!seederResult){
         logger.error("Seeding Failed", Date.now() - start);

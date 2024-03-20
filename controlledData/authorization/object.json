@@ -2,7 +2,7 @@
   {
     "id": 1,
     "name": "Users",
-    "string_key": "raesum_users",
+    "string_key": "raesum_user",
     "description": ""
   }
 ]

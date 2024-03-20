@@ -87,4 +87,9 @@ alter table raesum_users
     add constraint raesum_users_pk_3
         unique (external_id);
 
+alter table raesum_audit_log
+    add constraint raesum_audit_log_raesum_user_id_fk
+        foreign key (user_id) references raesum_users;
+
+
 COMMIT;

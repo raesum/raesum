@@ -15,6 +15,26 @@ const migrator = new raesumMigrate();
 
 class raesumSeed {
 
+    async canSeed(){
+        const start = Date.now();
+        logger.info("Checking to see if database can be seeded", Date.now() - start);
+        // Check to see if migrations are current
+        const migrator = new raesumMigrate();
+        const schemaVersion = await migrator.getCurrentSchemaVesion();
+        const migrationSet = await migrator.getValidMigrationsAvailableList();
+        const mostRecentMigration = migrationSet[migrationSet.length-1];
+        const numberElement = parseInt(mostRecentMigration.replace(/\D/g, ''));
+        logger.debug("Current Schema Version: " + schemaVersion, Date.now() - start);
+        logger.debug("Most Recent Migration Version: " + numberElement, Date.now() - start);
+
+        if (numberElement > schemaVersion) {
+            logger.error("Database is not current. Please run the migration script before seeding the database.", Date.now() - start);
+            return false;
+        }
+
+        logger.info("Database can be seeded", Date.now() - start);
+        return true;
+    }
     async seedDB(){
         const start = Date.now();
         logger.info("Starting Seeding", Date.now() - start);

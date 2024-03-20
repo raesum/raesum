@@ -2,6 +2,7 @@
   "presets": ["@babel/preset-env"],
   "plugins": [
     "@babel/transform-runtime",
-    "dynamic-import-node"
+    "dynamic-import-node",
+    "transform-decorators-legacy"
   ]
 }

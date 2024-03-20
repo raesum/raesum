@@ -7,10 +7,8 @@ const logger = raesumLogger(__filename, "module");
 
 class raesumeAuditObject{
 
-    #actions;
-    #actionsByStringKey;
-    #objectTypes;
-    #objectTypesByStringKey;
+    #actionsByStringKey = {};
+    #objectTypesByStringKey = {};
 
     async #init(){
         const start = Date.now();
@@ -22,11 +20,10 @@ class raesumeAuditObject{
         let actions = await raesumDB.query(query);
 
         // Save to memory
-        actions.forEach((action)=>{
-            this.#actions.push(action);
-            this.#actionsByStringKey[action.action_string] = action.id;
+        actions['rows'].forEach((action)=>{
+            this.#actionsByStringKey[action.string_key.toLowerCase()] = action.id;
         });
-        logger.info(#actions.length + " actions loaded", Date.now() - start);
+        logger.info(Object.keys(this.#actionsByStringKey).length + " actions loaded", Date.now() - start);
 
 
 
@@ -35,11 +32,10 @@ class raesumeAuditObject{
         let objectTypes = await raesumDB.query(query);
 
         // Save to memory
-        objectTypes.forEach((objectType)=>{
-            this.#objectTypes.push(objectType);
-            this.#objectTypesByStringKey[objectType.object_type_string] = objectType.id;
+        objectTypes['rows'].forEach((objectType)=>{
+            this.#objectTypesByStringKey[objectType.string_key.toLowerCase()] = objectType.id;
         });
-        logger.info(#objectTypes.length + " object types loaded", Date.now() - start);
+        logger.info(Object.keys(this.#objectTypesByStringKey).length + " object types loaded", Date.now() - start);
 
         logger.info("Audit Module Initialized", Date.now() - start);
     }
@@ -48,28 +44,30 @@ class raesumeAuditObject{
         const start = Date.now();
 
         // If #actions or #objectTypes are empty, run init
-        if(this.#actions.length == 0 || this.#objectTypes.length == 0){
+        if(Object.keys(this.#actionsByStringKey).length == 0 || Object.keys(this.#objectTypesByStringKey).length == 0){
             await this.#init();
         }
+
 
         // If any of the inputs are missing log error and return false
         if(!actionType || !objectType || !objectID || !userID){
             logger.error("Missing input for logEvent", Date.now() - start);
-            return false;
+            throw new Error("Missing input for logEvent");
         }
 
         // If objectID or userID are not numbers, log error and return false
         if(isNaN(objectID) || isNaN(userID)){
             logger.error("Non-numeric input for logEvent", Date.now() - start);
-            return false;
+            throw new Error("Invalid format for objectID or userID");
         }
+
         // if actionType is a string, convert to ID
-        if(typeof actionType === "string"){
-            actionType = this.#convertActionStringToID(actionType);
+        if(typeof actionType == "string"){
+            actionType = await this.convertActionStringToID(actionType);
         }
         // if objectType is a string, convert to ID
-        if(typeof objectType === "string"){
-            objectType = this.#convertObjectTypeStringToID(objectType);
+        if(typeof objectType == "string"){
+            objectType = await this.convertObjectTypeStringToID(objectType);
         }
 
         // If either actionType or objectType are not valid, log error and return false
@@ -80,20 +78,36 @@ class raesumeAuditObject{
 
         // Add audit log entry to db
         const query = "INSERT INTO raesum_audit_log (action_id, object_type_id, object_id, user_id) VALUES ($1, $2, $3, $4);";
+        const curvalQuery = "SELECT currval(pg_get_serial_sequence('raesum_audit_log','id'));"
 
         try{
             await raesumDB.query(query, [actionType, objectType, objectID, userID]);
-            logger.info("Audit log entry added", Date.now() - start);
-            return true;
+            const insertedResult = await raesumDB.query(curvalQuery);
+
+            logger.debug(`Audit log entry added: ${insertedResult['rows'][0].currval}`, Date.now() - start);
+            return parseInt(insertedResult['rows'][0].currval);
         }catch(e){
             logger.error("Error adding audit log entry with error: " + e, Date.now() - start);
-            return false;
+            throw new Error("Error adding audit log entry");
         }
+
 
     }
 
-    async #convertActionStringToID(actionString){
+    async convertActionStringToID(actionString){
         const start = Date.now();
+        if(Object.keys(this.#actionsByStringKey).length == 0){
+            await this.#init();
+        }
+
+
+        if(typeof actionString != "string"){
+            logger.error("Invalid input for convertActionStringToID. Must be a string.", Date.now() - start);
+            throw new Error("Invalid input for convertActionStringToID. Must be a string.")
+        }
+
+        actionString = actionString.toLowerCase();
+
         if(this.#actionsByStringKey[actionString]){
             return this.#actionsByStringKey[actionString];
         }else{
@@ -102,34 +116,27 @@ class raesumeAuditObject{
         }
     }
 
-    async #convertObjectTypeStringToID(objectTypeString){
+    async convertObjectTypeStringToID(objectTypeString){
         const start = Date.now();
+        if(Object.keys(this.#actionsByStringKey).length == 0){
+            await this.#init();
+        }
+
+        if(typeof objectTypeString != "string"){
+            console.log("\n|||: OBJECT TYPE STRING: ", objectTypeString, typeof objectTypeString, "\n\n");
+
+            logger.error("Invalid input for convertObjectTypeStringToID. Must be a string.", Date.now() - start);
+            throw new Error("Invalid input for convertObjectTypeStringToID. Must be a string.")
+        }
+
+        objectTypeString = objectTypeString.toLowerCase();
+
         if(this.#objectTypesByStringKey[objectTypeString]){
             return this.#objectTypesByStringKey[objectTypeString];
         }else{
             logger.warning("Unable to find object type with string: " + objectTypeString, Date.now() - start)
             return false;
         }
-    }
-
-    async getAllActions(){
-        // If actions are not loaded, load them with init()
-        // If #actions or #objectTypes are empty, run init
-        if(this.#actions.length == 0){
-            await this.#init();
-        }
-
-        return this.#actions;
-    }
-
-    async getAllObjectTypes(){
-        // If objectTypes are not loaded, load them with init()
-        // If #actions or #objectTypes are empty, run init
-        if(this.#objectTypes.length == 0){
-            await this.#init();
-        }
-
-        return this.#objectTypes;
     }
 
 }

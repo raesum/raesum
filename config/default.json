@@ -70,6 +70,7 @@
   ],
   "integrationTestEnabled": {
     "redis": false,
-    "aws": false
+    "aws": false,
+    "primaryDatabase": false
   }
 }
