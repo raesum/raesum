@@ -5,15 +5,15 @@ import fs from "fs";
 import {fileURLToPath} from "url";
 import raesumDB from "./raesumDB.js";
 import raesumMigrate from "./raesumMigrate.js";
-import raesumOrganization from "../models/raesumOrganization.js";
-import raesumUser from "../models/raesumUser.js";
+import raesumStartup from "../modules/raesumStartup.js";
+import raesumMetadata from "../models/raesumMetadata.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const logger = raesumLogger(__filename, "module");
 
 const migrator = new raesumMigrate();
-
+const metadata = new raesumMetadata();
 
 class raesumSeed {
 
@@ -59,8 +59,8 @@ class raesumSeed {
 
         // Run Raesum Initialize
         logger.info("Running Raesum Initialize", Date.now() - start);
-        const org = new raesumOrganization();
-        await org.initRaesum();
+        const startup = new raesumStartup();
+        await startup.initialize();
 
 
         // Create Users
@@ -88,11 +88,12 @@ class raesumSeed {
             'raesum_audit_log',
             'raesum_users',
             'raesum_action_types',
-            'raesum_object_types'
+            'raesum_object_types',
+            'raesum_organizations'
         ];
 
         for(let i=0; i<tableList.length; i++){
-            const query = "TRUNCATE TABLE " + tableList[i] + " CASCADE";
+            const query = "TRUNCATE TABLE " + tableList[i] + " RESTART IDENTITY CASCADE;";
             try{
                 await raesumDB.query(query);
             }catch(e){
@@ -100,6 +101,9 @@ class raesumSeed {
                 return false;
             }
         }
+
+        // Set initialized to false as user data has been erased
+        await metadata.set("initialized", false);
 
         logger.info("Tables Truncated", Date.now() - start);
 

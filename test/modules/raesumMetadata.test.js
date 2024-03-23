@@ -1,4 +1,3 @@
-import metadata from "../../src/models/raesumMetadata.js";
 import config from 'config';
 import raesumDB from "../../src/modules/raesumDB.js";
 import {jest} from '@jest/globals';
@@ -14,11 +13,11 @@ describe("Raesum Metadata System", () => {
 
     const iftest = (dbTestsEnabled) ? test : test.skip;
 
-    // afterEach(() => {
-    //     // Remove the test values
-    //     const query = "DELETE FROM raesum_metadata WHERE datakey = $1";
-    //     raesumDB.query(query, ["testKey"]);
-    // });
+    afterEach(() => {
+        // Remove the test values
+        const query = "DELETE FROM raesum_metadata WHERE datakey = $1";
+        raesumDB.query(query, ["testKey"]);
+    });
 
     iftest('Set Metadata', async () => {
         const metadata = new raesumMetadata();
