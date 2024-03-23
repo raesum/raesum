@@ -5,6 +5,8 @@ import fs from "fs";
 import {fileURLToPath} from "url";
 import raesumDB from "./raesumDB.js";
 import raesumMigrate from "./raesumMigrate.js";
+import raesumOrganization from "../models/raesumOrganization.js";
+import raesumUser from "../models/raesumUser.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,6 +56,13 @@ class raesumSeed {
             logger.error("Loading Static Content Failed.", Date.now() - start);
             return false;
         }
+
+        // Run Raesum Initialize
+        logger.info("Running Raesum Initialize", Date.now() - start);
+        const org = new raesumOrganization();
+        await org.initRaesum();
+
+
         // Create Users
         const loadUsers = await this.#loadSQLSeed('raesum_users.sql');
         if(!loadUsers){

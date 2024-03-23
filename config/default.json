@@ -68,6 +68,10 @@
   "cloudBasedSecrets": [
     "connections.primaryDatabase.credentials"
   ],
+  "initialization": {
+    "firstUserExternalId": "cognitoIdentityId",
+    "firstUserUsername": "odin"
+  },
   "integrationTestEnabled": {
     "redis": false,
     "aws": false,

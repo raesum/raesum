@@ -1,12 +1,11 @@
-import {raesumLogger} from "./raesumLogger.js";
+import {raesumLogger} from "../modules/raesumLogger.js";
 import {fileURLToPath} from "url";
-import raesumDB from "./raesumDB.js";
+import raesumDB from "../modules/raesumDB.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename, "module");
 
-class raesumeAuditObject{
-
+class raesumAuditObject{
     #actionsByStringKey = {};
     #objectTypesByStringKey = {};
 
@@ -39,8 +38,7 @@ class raesumeAuditObject{
 
         logger.info("Audit Module Initialized", Date.now() - start);
     }
-
-    async logEvent(actionType, objectType, objectID, userID){
+    async create(actionType, objectType, objectID, userID){
         const start = Date.now();
 
         // If #actions or #objectTypes are empty, run init
@@ -91,8 +89,8 @@ class raesumeAuditObject{
             throw new Error("Error adding audit log entry");
         }
 
-
     }
+
 
     async convertActionStringToID(actionString){
         const start = Date.now();
@@ -123,8 +121,6 @@ class raesumeAuditObject{
         }
 
         if(typeof objectTypeString != "string"){
-            console.log("\n|||: OBJECT TYPE STRING: ", objectTypeString, typeof objectTypeString, "\n\n");
-
             logger.error("Invalid input for convertObjectTypeStringToID. Must be a string.", Date.now() - start);
             throw new Error("Invalid input for convertObjectTypeStringToID. Must be a string.")
         }
@@ -141,5 +137,6 @@ class raesumeAuditObject{
 
 }
 
-const raesumeAudit = new raesumeAuditObject();
-export default raesumeAudit;
+
+const raesumAudit = new raesumAuditObject();
+export default raesumAudit;
