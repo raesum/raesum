@@ -1,9 +1,11 @@
 import {raesumLogger} from "../modules/raesumLogger.js";
 import {fileURLToPath} from "url";
 import raesumDB from "../modules/raesumDB.js";
+import raesumUser from "./raesumUser.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename, "module");
+const user = new raesumUser();
 
 class raesumOrganization {
 
@@ -35,9 +37,15 @@ class raesumOrganization {
         if(activeStatus !== false){
             activeStatus = true;
         }
-        const query = "INSERT INTO raesum_organizations (name, active_status) VALUES ($1, $2) RETURNING id";
-        const result = await raesumDB.query(query, [name, activeStatus]);
-        return result.rows[0].id;
+
+        try{
+            const query = "INSERT INTO raesum_organization (name, active_status) VALUES ($1, $2) RETURNING id";
+            const result = await raesumDB.query(query, [name, activeStatus]);
+            return result.rows[0].id;
+        }catch(e){
+            logger.error("Error creating organization: " + e, Date.now() - start);
+            throw new Error("Error creating organization");
+        }
     }
 
 
@@ -64,7 +72,7 @@ class raesumOrganization {
             throw new Error("Organization ID must be greater than 0");
         }
 
-        const query = "SELECT * FROM raesum_organizations WHERE id = $1";
+        const query = "SELECT * FROM raesum_organization WHERE id = $1";
         const result = await raesumDB.query(query, [id]);
 
         if (result.rows.length === 0) {
@@ -74,7 +82,152 @@ class raesumOrganization {
     }
 
 
+    /**
+     * Activates or deactivates an organization. Any users that are currently part of the organization will be moved to a different org that they are part of that is still active OR if this is their last org, they will be deactivated.
+     * @param  {Number} id The ID of the org
+     * @param  {Boolean} activeStatus The activation status of the org
+     * @return {Boolean} The activation status
+     */
+    async setActivationStatus(id, activeStatus) {}
 
+
+    /**
+     * Adds a user to an organization.
+     * @param  {Number} userID The ID of the user
+     * @param  {Number} orgID The ID of the org
+     * @return {Boolean} Success or fail
+     * @throws {Error} If the user ID is not a positive int
+     * @throws {Error} If the org ID is not a positive int
+     * @throws {Error} If the user is not found
+     * @throws {Error} If the org is not found
+     * @throws {Error} If the org is not active
+     */
+    async addUserToOrganization(userID, orgID) {
+        const start = Date.now();
+
+        logger.info(`Adding user: ${userID} to org: ${orgID}`, Date.now() - start);
+
+        // Parse inputs as INT
+        orgID = parseInt(orgID);
+        userID = parseInt(userID);
+
+        // Validate input
+        if(isNaN(userID) || isNaN(orgID) || userID < 1 || orgID < 1){
+            throw new Error("userID and orgID must be positive integers");
+        }
+
+        // Check if user exists
+        try{
+            const userResult = await user.getUserByID(userID);
+            if(userResult.length === 0){
+                logger.warning(`Cannot add user: ${userID} to org: ${orgID}. User not found`, Date.now() - start);
+                throw new Error("User not found");
+            }
+        }catch(e){
+            logger.warning(`Cannot add user: ${userID} to org: ${orgID}. User not found`, Date.now() - start);
+            throw new Error("User not found");
+        }
+
+
+        // Check if org exists and is active
+        try{
+            const orgResult = await this.getById(orgID);
+            if(orgResult.active_status === false){
+                logger.warning(`Cannot add user: ${userID} to org: ${orgID}. Org not active or doesn't exist`, Date.now() - start);
+                throw new Error("Org is not active or does not exist");
+            }
+        }catch(e){
+            logger.warning(`Cannot add user: ${userID} to org: ${orgID}. Org not active or doesn't exist`, Date.now() - start);
+            throw new Error("Org not found or does not exist");
+        }
+
+        // Check if user is already part of the org
+        const checkQuery = "SELECT * FROM raesum_organization_x_user WHERE user_id = $1 AND org_id = $2";
+        const checkResult = await raesumDB.query(checkQuery, [userID, orgID]);
+        if(checkResult.rows.length > 0){
+            logger.debug(`Cannot add user: ${userID} to org: ${orgID}. User is already part of the org`, Date.now() - start);
+            return true;
+        }
+
+        // Add user to org
+        const query = "INSERT INTO raesum_organization_x_user (user_id, org_id) VALUES ($1, $2)";
+        try{
+            await raesumDB.query(query, [userID, orgID]);
+            logger.debug(`User: ${userID} added to org: ${orgID}`, Date.now() - start);
+            return true;
+        }catch(e){
+            logger.error(`Error adding user: ${userID} to org: ${orgID} with error: ${e}`, Date.now() - start);
+            throw new Error("Error adding user to org");
+        }
+    }
+
+
+    /**
+     * Removes a user from organization. It will also remove any role entries for the user in the organization.
+     * @param  {Number} userID The ID of the user
+     * @param  {Number} orgID The ID of the org
+     * @return {Boolean} Success or fail
+     * @throws {Error} If the user ID is not a positive int
+     * @throws {Error} If the org ID is not a positive int
+     * @throws {Error} If the user is not found
+     * @throws {Error} If the org is not found
+     */
+    async removeUserFromOrganization(userID, orgID){
+        const start = Date.now();
+
+        logger.info(`Removing user: ${userID} from org: ${orgID}`, Date.now() - start);
+
+        // Parse inputs as INT
+        orgID = parseInt(orgID);
+        userID = parseInt(userID);
+
+        // Validate input
+        if(isNaN(userID) || isNaN(orgID) || userID < 1 || orgID < 1){
+            throw new Error("userID and orgID must be positive integers");
+        }
+
+        // Check if user exists
+        try{
+            const userResult = await user.getUserByID(userID);
+            if(userResult.length === 0){
+                logger.warning(`Cannot remove user: ${userID} from org: ${orgID}. User not found`, Date.now() - start);
+                throw new Error("User not found");
+            }
+        }catch(e){
+            logger.warning(`Cannot remove user: ${userID} from org: ${orgID}. User not found`, Date.now() - start);
+            throw new Error("User not found");
+        }
+
+
+        // Check if org exists and is active
+        try{
+            const orgResult = await this.getById(orgID);
+            if(orgResult.active_status === false){
+                logger.warning(`Cannot remove user: ${userID} from org: ${orgID}. Org not active or doesn't exist`, Date.now() - start);
+                throw new Error("Org is not active or does not exist");
+            }
+        }catch(e){
+            logger.warning(`Cannot remove user: ${userID} from org: ${orgID}. Org not active or doesn't exist`, Date.now() - start);
+            throw new Error("Org not found or does not exist");
+        }
+
+        // Remove user from org
+        const query = "DELETE FROM raesum_organization_x_user WHERE user_id = $1 AND org_id = $2";
+        try {
+            await raesumDB.query(query, [userID, orgID]);
+            logger.debug(`User: ${userID} removed from org: ${orgID}`, Date.now() - start);
+        }catch(e){
+            logger.error(`Error removing user: ${userID} from org: ${orgID} with error: ${e}`, Date.now() - start);
+            throw new Error("Error removing user from org");
+        }
+
+        // TO-DO: Remove user roles in org
+
+
+
+        return true;
+
+    }
 
 }
 

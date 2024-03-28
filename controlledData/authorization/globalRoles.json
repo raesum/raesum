@@ -1,0 +1,53 @@
+[
+  {
+    "string_key": "raesumAdmin",
+    "name": "Super Admin",
+    "active_status": true,
+    "permissions": {
+      "raesum_user": {
+        "log_in": ["self"],
+        "read": ["crossorganization"],
+        "update": ["crossorganization"],
+        "delete": ["crossorganization"],
+        "create": ["crossorganization"],
+        "set_status": ["crossorganization"]
+      },
+      "raesum_organization": {
+        "read": ["crossorganization"],
+        "update": ["crossorganization"],
+        "delete": ["crossorganization"],
+        "create": ["crossorganization"],
+        "set_status": ["crossorganization"]
+      },
+      "raesum_role": {
+        "read": ["crossorganization"],
+        "update": ["crossorganization"],
+        "delete": ["crossorganization"],
+        "create": ["crossorganization"],
+        "set_status": ["crossorganization"]
+      },
+      "raesum_audit": {
+        "read": ["crossorganization"]
+      }
+    }
+
+  },
+  {
+    "string_key": "raesumMinimalUser",
+    "name": "Minimal USer",
+    "active_status": true,
+    "permissions": {
+      "raesum_user": {
+        "log_in": ["self"],
+        "read": ["self"]
+      },
+      "raesum_organization": {
+        "read": ["organization"]
+      },
+      "raesum_audit": {
+        "read": ["self"]
+      }
+    }
+
+  }
+]

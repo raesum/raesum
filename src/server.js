@@ -24,6 +24,15 @@ export async function createApp() {
     app.use(express.urlencoded({ extended: true }));
 
 
+    // Run startup tasks
+    logger.info("Running Raesum Startup Tasks", Date.now()-start);
+    const startup = new raesumStartup();
+    await startup.initialize();
+
+    logger.info("Running Raesum Startup Tasks Complete. Proceeding to Security Initialization", Date.now()-start);
+
+
+
     // Add timing decorator for requests
     app.use((req, res, next) => {
         const start = Date.now();

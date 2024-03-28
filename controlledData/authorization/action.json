@@ -9,24 +9,36 @@
     "id": 2,
     "name": "Create",
     "string_key": "create",
-    "description": "User has created a new object"
+    "description": "User can create"
   },
   {
     "id": 3,
     "name": "Update",
     "string_key": "update",
-    "description": "User has updated an object"
+    "description": "User can update"
   },
   {
     "id": 4,
     "name": "Delete",
     "string_key": "delete",
-    "description": "User has deleted an object"
+    "description": "User can delete"
   },
-    {
-        "id": 5,
-        "name": "View",
-        "string_key": "view",
-        "description": "User has viewed an object"
-    }
+  {
+    "id": 5,
+    "name": "Read",
+    "string_key": "read",
+    "description": "User can view "
+  },
+  {
+    "id": 6,
+    "name": "Deny",
+    "string_key": "deny",
+    "description": "Denies all access to an . This will OVERRIDE any other permissions"
+  },
+  {
+    "id": 7,
+    "name": "Set Status",
+    "string_key": "set_status",
+    "description": "Use can activate or deactivate"
+  }
 ]

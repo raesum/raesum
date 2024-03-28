@@ -1,6 +1,7 @@
 import {raesumLogger} from "../modules/raesumLogger.js";
 import {fileURLToPath} from "url";
 import raesumDB from "../modules/raesumDB.js";
+import raesumAuthorization from "./raesumAuthorization.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename, "module");
@@ -13,28 +14,9 @@ class raesumAuditObject{
         const start = Date.now();
         logger.info("Initializing Audit Module", Date.now() - start);
 
-        // Get all actions from db
-        let query = "SELECT * FROM raesum_action_types";
-
-        let actions = await raesumDB.query(query);
-
-        // Save to memory
-        actions['rows'].forEach((action)=>{
-            this.#actionsByStringKey[action.string_key.toLowerCase()] = action.id;
-        });
-        logger.info(Object.keys(this.#actionsByStringKey).length + " actions loaded", Date.now() - start);
-
-
-
-        // Get all object types from db
-        query = "SELECT * FROM raesum_object_types";
-        let objectTypes = await raesumDB.query(query);
-
-        // Save to memory
-        objectTypes['rows'].forEach((objectType)=>{
-            this.#objectTypesByStringKey[objectType.string_key.toLowerCase()] = objectType.id;
-        });
-        logger.info(Object.keys(this.#objectTypesByStringKey).length + " object types loaded", Date.now() - start);
+        await raesumAuthorization.init();
+        this.#objectTypesByStringKey = raesumAuthorization.objectTypesByStringKey
+        this.#actionsByStringKey = raesumAuthorization.actionsByStringKey
 
         logger.info("Audit Module Initialized", Date.now() - start);
     }
@@ -61,11 +43,11 @@ class raesumAuditObject{
 
         // if actionType is a string, convert to ID
         if(typeof actionType == "string"){
-            actionType = await this.convertActionStringToID(actionType);
+            actionType = await raesumAuthorization.convertActionStringToID(actionType);
         }
         // if objectType is a string, convert to ID
         if(typeof objectType == "string"){
-            objectType = await this.convertObjectTypeStringToID(objectType);
+            objectType = await raesumAuthorization.convertObjectTypeStringToID(objectType);
         }
 
         // If either actionType or objectType are not valid, log error and return false

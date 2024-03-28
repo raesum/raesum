@@ -12,41 +12,6 @@ describe("Raesum Audit System", () => {
 
     const iftest = (dbTestsEnabled) ? test : test.skip;
 
-    iftest('Convert action string_key to actionID', async () => {
-           const actionID = await raesumAudit.convertActionStringToID("log_in");
-           expect(actionID).toBe(1);
-    });
-
-    iftest('Convert action string_key to actionID wrong case', async () => {
-        const actionID = await raesumAudit.convertActionStringToID("lOG_in");
-        expect(actionID).toBe(1);
-    });
-
-    iftest('Convert action string_key to actionID bad input', async () => {
-        const actionID = await raesumAudit.convertActionStringToID("moo");
-        expect(actionID).toBe(false);
-    });
-
-    iftest('Convert object string_key to objectId', async () => {
-        const actionID = await raesumAudit.convertObjectTypeStringToID("raesum_user");
-        expect(actionID).toBe(1);
-    });
-
-    iftest('Convert object string_key to objectId wrong case', async () => {
-        const actionID = await raesumAudit.convertObjectTypeStringToID("rAESum_user");
-        expect(actionID).toBe(1);
-    });
-
-    iftest('Convert object string_key to objectId bad input', async () => {
-        const actionID = await raesumAudit.convertObjectTypeStringToID("cow");
-        expect(actionID).toBe(false);
-    });
-
-    iftest('Convert object string_key to objectId bad input type', async () => {
-        expect(async () => {
-            await raesumAudit.convertObjectTypeStringToID({"angryGOPHER": "angryGOPHER"});
-        }).rejects.toThrow();
-    });
 
     iftest('Add an audit log entry via IDs', async () => {
 

@@ -21,7 +21,7 @@ class raesumStartup {
 
         // Get metadata initialized
         const initializationStatus = await metadata.getByKey("initialized");
-console.log("initializationStatus", initializationStatus)
+
         // If not initialized, initialize
         if(initializationStatus === true){
             logger.info("Raesum is already initialized", Date.now() - start);

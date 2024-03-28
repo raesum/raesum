@@ -5,6 +5,7 @@ import fs from "fs";
 import {fileURLToPath} from "url";
 import raesumDB from "./raesumDB.js";
 import raesumConfig from "./raesumConfig.js";
+import raesumAuthorization from "../models/raesumAuthorization.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -130,11 +131,14 @@ class raesumMigrate {
 
     async loadAllStaticContent(){
         const start = Date.now();
+
+
         // Load/Update Static Content
         logger.info("Loading/Updating static content", Date.now() - start);
         const staticContent = [
-            {filename: 'authorization/action.json', targetTable: 'raesum_action_types'},
-            {filename: 'authorization/object.json', targetTable: 'raesum_object_types'}
+            {filename: 'authorization/action.json', targetTable: 'raesum_auth_action_type'},
+            {filename: 'authorization/object.json', targetTable: 'raesum_auth_object_type'},
+            {filename: 'authorization/scope.json', targetTable: 'raesum_auth_scope_type'},
         ]
 
         // Lop through static content list
@@ -147,6 +151,12 @@ class raesumMigrate {
                 return false;
             }
         }
+
+
+        // Load Specialized Static Content (files that need custom load functions)
+
+        // Load the global roles
+        await raesumAuthorization.loadGlobalRolesToDatabase();
 
         logger.info("Static content load/update complete", Date.now() - start);
         return true;

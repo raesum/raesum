@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "name": "Self",
+    "string_key": "self",
+    "description": "Objects owned by the user"
+  },
+  {
+    "id": 2,
+    "name": "Organization",
+    "string_key": "organization",
+    "description": "Objects owned by other users in the same organization"
+  },
+  {
+    "id": 3,
+    "name": "Cross Organization",
+    "string_key": "crossorganization",
+    "description": "All objects"
+  }
+  ]

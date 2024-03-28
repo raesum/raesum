@@ -64,7 +64,7 @@ class raesumSeed {
 
 
         // Create Users
-        const loadUsers = await this.#loadSQLSeed('raesum_users.sql');
+        const loadUsers = await this.#loadSQLSeed('raesum_user.sql');
         if(!loadUsers){
             logger.error("Creating Users Failed.", Date.now() - start);
             return false;
@@ -86,10 +86,10 @@ class raesumSeed {
 
         const tableList = [
             'raesum_audit_log',
-            'raesum_users',
-            'raesum_action_types',
-            'raesum_object_types',
-            'raesum_organizations'
+            'raesum_user',
+            'raesum_auth_action_type',
+            'raesum_auth_object_type',
+            'raesum_organization'
         ];
 
         for(let i=0; i<tableList.length; i++){

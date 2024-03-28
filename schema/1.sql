@@ -1,13 +1,15 @@
 BEGIN;
-CREATE TABLE public.raesum_metadata
+CREATE TABLE raesum_metadata
 (
-    datakey character(256) PRIMARY KEY,
-    datavalue character(4096)
+    datakey   varchar(256) PRIMARY KEY,
+    datavalue varchar(4096)
 );
-INSERT INTO public.raesum_metadata (datakey,datavalue) VALUES ('schemaVersion',0);
-INSERT INTO public.raesum_metadata (datakey,datavalue) VALUES ('initialized',false);
+INSERT INTO raesum_metadata (datakey, datavalue)
+VALUES ('schemaVersion', 0);
+INSERT INTO raesum_metadata (datakey, datavalue)
+VALUES ('initialized', false);
 
--- CREATE TABLE public.raesum_db_cache
+-- CREATE TABLE raesum_db_cache
 -- (
 --     datakey character varying(256) PRIMARY KEY,
 --     datavalue json,
@@ -15,124 +17,208 @@ INSERT INTO public.raesum_metadata (datakey,datavalue) VALUES ('initialized',fal
 --     createdAt timestamp with time zone NOT NULL DEFAULT now()
 -- );
 
-create table public.raesum_organizations
+create table raesum_organization
 (
     id            bigserial
-        constraint raesum_organizations_pk
+        constraint raesum_organization_pk
             primary key,
     name          varchar not null,
     active_status boolean   default false,
     created_at    timestamp default now()
 );
 
-alter table public.raesum_organizations
+alter table raesum_organization
     owner to seneca;
 
-create index raesum_organizations__active_status
-    on public.raesum_organizations (active_status, id);
+create index raesum_organization__active_status
+    on raesum_organization (active_status, id);
 
 
 
-create table public.raesum_users
+create table raesum_user
 (
     id                      bigserial
-        constraint raesum_users_pk
+        constraint raesum_user_pk
             primary key,
     current_organization_id integer not null
-        constraint raesum_users___fk_user_org
-            references public.raesum_organizations,
+        constraint raesum_user___fk_user_org
+            references raesum_organization,
     external_id             varchar not null
-        constraint raesum_users_pk_3
+        constraint raesum_user_pk_3
             unique,
     username                varchar
-        constraint raesum_users_pk_2
+        constraint raesum_user_pk_2
             unique,
-    active_status            boolean   default false,
+    active_status           boolean   default false,
     created_at              timestamp default now()
 );
 
-alter table public.raesum_users
+alter table raesum_user
     owner to seneca;
 
-create index raesum_users__index_created_at
-    on public.raesum_users (created_at);
+create index raesum_user__index_created_at
+    on raesum_user (created_at);
 
-create index raesum_users__index_external_id
-    on public.raesum_users (external_id, id, username);
+create index raesum_user__index_external_id
+    on raesum_user (external_id, id, username);
 
-create index raesum_users__index_username
-    on public.raesum_users (username, id);
+create index raesum_user__index_username
+    on raesum_user (username, id);
 
-create index raesum_users__index_organization_id
-    on public.raesum_users (current_organization_id, id);
+create index raesum_user__index_organization_id
+    on raesum_user (current_organization_id, id);
 
 
-create table public.raesum_action_types
+
+create table raesum_organization_x_user
+(
+    user_id    bigint not null
+        constraint raesum_organization_x_user_raesum_user_id_fk
+            references raesum_user,
+    org_id     bigint not null
+        constraint raesum_organization_x_user_raesum_organization_id_fk
+            references raesum_organization,
+    created_at timestamp default now(),
+    constraint raesum_organization_x_user_pk
+        primary key (user_id, org_id)
+);
+
+alter table raesum_organization_x_user
+    owner to seneca;
+
+create index raesum_organization_x_user_org_id_index
+    on raesum_organization_x_user (org_id);
+
+
+
+create table raesum_auth_action_type
 (
     id          integer not null
-        constraint raesum_action_types_pk
+        constraint raesum_auth_action_type_pk
             primary key,
     name        varchar,
     string_key  varchar,
     description text
 );
 
-alter table public.raesum_action_types
+alter table raesum_auth_action_type
     owner to seneca;
 
-create index raesum_action_types__index_string_key
-    on public.raesum_action_types (string_key, id);
+create index raesum_auth_action_type__index_string_key
+    on raesum_auth_action_type (string_key, id);
 
-create table public.raesum_object_types
+create table raesum_auth_object_type
 (
     id          integer not null
-        constraint raesum_object_types_pk
+        constraint raesum_auth_object_type_pk
             primary key,
     name        varchar,
     string_key  varchar,
     description text
 );
 
-alter table public.raesum_object_types
+alter table raesum_auth_object_type
     owner to seneca;
 
-create index raesum_object_types__index_string_key
-    on public.raesum_object_types (string_key, id);
+create index raesum_auth_object_type__index_string_key
+    on raesum_auth_object_type (string_key, id);
 
-create table public.raesum_audit_log
+create table raesum_auth_scope_type
+(
+    id          integer
+        constraint raesum_auth_scope_type_pk
+            primary key,
+    name        varchar,
+    string_key  varchar,
+    description text
+);
+
+create index raesum_auth_scope_type_string_key_index
+    on raesum_auth_scope_type (string_key);
+
+create table raesum_audit_log
 (
     id             bigserial
         constraint raesum_audit_log_pk
             primary key,
     user_id        bigint
         constraint raesum_audit_log_raesum_user_id_fk
-            references public.raesum_users,
+            references raesum_user,
     action_id      integer not null
-        constraint raesum_audit_log_raesum_action_types_id_fk
-            references public.raesum_action_types,
+        constraint raesum_audit_log_raesum_auth_action_type_id_fk
+            references raesum_auth_action_type,
     object_type_id integer not null
-        constraint raesum_audit_log_raesum_object_types_id_fk
-            references public.raesum_object_types,
+        constraint raesum_audit_log_raesum_auth_object_type_id_fk
+            references raesum_auth_object_type,
     object_id      integer not null,
     event_at       timestamp default now(),
     metadata       text
 );
 
-alter table public.raesum_audit_log
+alter table raesum_audit_log
     owner to seneca;
 
 create index raesum_audit_log__index_at
-    on public.raesum_audit_log (event_at);
+    on raesum_audit_log (event_at);
 
 create index raesum_audit_log__index_user_action
-    on public.raesum_audit_log (user_id, action_id, event_at);
+    on raesum_audit_log (user_id, action_id, event_at);
 
 create index raesum_audit_log__object_action
-    on public.raesum_audit_log (object_type_id, action_id, event_at);
+    on raesum_audit_log (object_type_id, action_id, event_at);
 
 create index raesum_audit_log__object_id_action
-    on public.raesum_audit_log (object_id, action_id, event_at);
+    on raesum_audit_log (object_id, action_id, event_at);
 
+
+create table raesum_auth_role
+(
+    id            serial
+        constraint raesum_auth_role_pk
+            primary key,
+    string_key    varchar,
+    org_id        integer default 0 not null,
+    name          varchar,
+    active_status boolean default true
+);
+
+create index raesum_auth_role_string_key_org_id_index
+    on raesum_auth_role (string_key, org_id);
+
+
+create table raesum_auth_role_x_permission
+(
+    role_id        integer
+        constraint raesum_auth_role_x_permission_raesum_auth_role_id_fk
+            references raesum_auth_role,
+    object_type_id integer
+        constraint raesum_auth_role_x_permission_raesum_auth_object_type_id_fk
+            references raesum_auth_object_type,
+    scope_id       integer
+        constraint raesum_auth_role_x_permission_raesum_auth_scope_type_id_fk
+            references raesum_auth_scope_type,
+    action_id      integer
+        constraint raesum_auth_role_x_permission_raesum_auth_action_type_id_fk
+            references raesum_auth_action_type,
+    constraint raesum_auth_role_x_permission_pk
+        primary key (role_id, object_type_id, scope_id, action_id)
+);
+
+
+create table raesum_auth_user_x_organization_x_role
+(
+    user_id bigint  not null,
+    org_id  bigint  not null,
+    role_id integer not null,
+    primary key (user_id, org_id, role_id),
+    foreign key (role_id) references raesum_auth_role (id)
+        match simple on update no action on delete no action,
+    foreign key (org_id) references raesum_organization (id)
+        match simple on update no action on delete no action,
+    foreign key (user_id) references raesum_user (id)
+        match simple on update no action on delete no action
+);
+create index raesum_auth_user_x_organization_x_role_org_id_role_id_index on raesum_auth_user_x_organization_x_role using btree (org_id, role_id);
 
 
 

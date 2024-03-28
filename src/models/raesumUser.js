@@ -42,14 +42,19 @@ class raesumUser {
     /**
      * Initializes the Raesum system. It will create the first user based on the system settings. It should only be used on the initial system setup and/or during seeding.
      */
-    async initialize(){
+    async initRaesum(){
 
         // Get the firstUserExternalId from the system settings
         const firstUserExternalId = await raesumSettings.get("initialization.firstUserExternalId");
         const firstUserUsername = await raesumSettings.get("initialization.firstUserUsername");
 
         // Create the first user if they don't exist
-        return this.createUser(firstUserExternalId, firstUserUsername, 1, true);
+        const userID = await this.createUser(firstUserExternalId, firstUserUsername, 1, true);
+
+        // TODO: Assign user to super admin role
+
+
+        return userID;
 
     }
 
