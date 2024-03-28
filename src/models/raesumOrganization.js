@@ -41,7 +41,8 @@ class raesumOrganization {
         try{
             const query = "INSERT INTO raesum_organization (name, active_status) VALUES ($1, $2) RETURNING id";
             const result = await raesumDB.query(query, [name, activeStatus]);
-            return result.rows[0].id;
+            logger.info(`Organization created with id: ${result.rows[0].id}`, Date.now() - start);
+            return parseInt(result.rows[0].id);
         }catch(e){
             logger.error("Error creating organization: " + e, Date.now() - start);
             throw new Error("Error creating organization");
@@ -78,6 +79,7 @@ class raesumOrganization {
         if (result.rows.length === 0) {
             throw new Error("Organization not found");
         }
+        logger.debug(`Organization found for ID: ${id}`, Date.now() - start);
         return result.rows[0];
     }
 
@@ -118,7 +120,7 @@ class raesumOrganization {
 
         // Check if user exists
         try{
-            const userResult = await user.getUserByID(userID);
+            const userResult = await user.getUserById(userID);
             if(userResult.length === 0){
                 logger.warning(`Cannot add user: ${userID} to org: ${orgID}. User not found`, Date.now() - start);
                 throw new Error("User not found");
@@ -149,8 +151,9 @@ class raesumOrganization {
             return true;
         }
 
-        // Add user to org
-        const query = "INSERT INTO raesum_organization_x_user (user_id, org_id) VALUES ($1, $2)";
+        // Upsert user to raesum_organization_x_user
+        const query = "INSERT INTO raesum_organization_x_user (user_id, org_id) VALUES ($1, $2) ON CONFLICT (user_id, org_id) DO NOTHING;";
+
         try{
             await raesumDB.query(query, [userID, orgID]);
             logger.debug(`User: ${userID} added to org: ${orgID}`, Date.now() - start);
@@ -188,7 +191,7 @@ class raesumOrganization {
 
         // Check if user exists
         try{
-            const userResult = await user.getUserByID(userID);
+            const userResult = await user.getUserById(userID);
             if(userResult.length === 0){
                 logger.warning(`Cannot remove user: ${userID} from org: ${orgID}. User not found`, Date.now() - start);
                 throw new Error("User not found");

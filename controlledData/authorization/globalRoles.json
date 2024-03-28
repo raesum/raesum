@@ -3,6 +3,7 @@
     "string_key": "raesumAdmin",
     "name": "Super Admin",
     "active_status": true,
+    "restrict_to_organization": [1],
     "permissions": {
       "raesum_user": {
         "log_in": ["self"],
@@ -36,6 +37,7 @@
     "string_key": "raesumMinimalUser",
     "name": "Minimal USer",
     "active_status": true,
+    "restrict_to_organization": [],
     "permissions": {
       "raesum_user": {
         "log_in": ["self"],

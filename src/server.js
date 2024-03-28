@@ -8,8 +8,10 @@ import { fileURLToPath } from 'url';
 import { unless } from "express-unless";
 import raesumDB from "./modules/raesumDB.js";
 import {raesumCognitoAuthRequired} from "./middleware/cognitoAuthentication.js";
-// Logger
 import {raesumLogger, raesumLoggerRequestFinishMiddleware} from "./modules/raesumLogger.js";
+import raesumStartup from "./modules/raesumStartup.js";
+
+
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename, "module");
 
@@ -25,11 +27,17 @@ export async function createApp() {
 
 
     // Run startup tasks
-    logger.info("Running Raesum Startup Tasks", Date.now()-start);
+    logger.info("Running Raesum startup tasks", Date.now()-start);
     const startup = new raesumStartup();
-    await startup.initialize();
+    try{
+        await startup.initialize();
+    }catch(e){
+        logger.critical(`Raesum failed critical startup task to initialize: ${e}`, Date.now() - start);
+        // Critical failure, exit Raesum
+        process.exit(1);
+    }
 
-    logger.info("Running Raesum Startup Tasks Complete. Proceeding to Security Initialization", Date.now()-start);
+    logger.info("Running Raesum startup tasks complete. Proceeding to security initialization", Date.now()-start);
 
 
 
@@ -78,7 +86,7 @@ export async function createApp() {
 
 
 
-    logger.info("Finished Initializing Raesum", Date.now()-start);
+    logger.info("Finished initializing Raesum", Date.now()-start);
     return app;
 }
 
@@ -88,7 +96,7 @@ let start = Date.now();
 
 const app = createApp().then((app) => {
     app.listen(port, () => {
-        logger.info(`Server listening at ${port}!`, Date.now() - start);
+        logger.info(`Server listening at port: ${port}!`, Date.now() - start);
     });
 });
 

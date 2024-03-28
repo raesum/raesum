@@ -11,7 +11,6 @@ const __dirname = path.dirname(__filename);
 const logger = raesumLogger(__filename, "module");
 
 const metadata = new raesumMetadata();
-
 class raesumStartup {
 
     async initialize(){
@@ -28,8 +27,23 @@ class raesumStartup {
             return false;
         }else{
             logger.info("Raesum is not initialized. Initializing now.", Date.now() - start);
-            const org = new raesumOrganization();
-            await org.initRaesum();
+
+            try{
+                // Create the default organization
+                const org = new raesumOrganization();
+                const firstOrgID = await org.initRaesum();
+
+                // Create the default users
+                const users = new raesumUser();
+                await users.initRaesum(firstOrgID);
+            }catch(e){
+                logger.critical(`Raesum failed to initialize: ${e}`, Date.now() - start);
+                throw new Error("Raesum failed to initialize");
+            }
+
+
+            // Set the initialized metadata
+            metadata.set("initialized", true);
         }
 
     }

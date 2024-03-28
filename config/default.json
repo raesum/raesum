@@ -70,7 +70,8 @@
   ],
   "initialization": {
     "firstUserExternalId": "cognitoIdentityId",
-    "firstUserUsername": "odin"
+    "firstUserUsername": "odin",
+    "firstUserRole": "raesumAdmin"
   },
   "integrationTestEnabled": {
     "redis": false,
