@@ -2,14 +2,31 @@
 
 This is a starting point to build an API sever. It is the result of the recurring problem of needing to build key foundational components yet still have a heavily customizable system.
 
+## What is Included?
+
+* A user management system integrated with AWS Cognito
+* A multi-tenant system to allow different organizations to use the same system
+* A role-based access control system that allows users to switch between organizations and have different roles per organization
+* A logging system designed for easy integration with AWS CloudWatch and specifically designed for easy system management and monitoring
+* A separate audit log system to aid in user management and security
+* A caching system that can be backed by Redis or memory
+* A system for managing secrets and configurations that is designed to be easily integrated with AWS Secrets Manager
+
+## What Does "Raesum" Mean?
+
+Raesum is derived from the Icelandic word for "starting up" or "beginning". It is a nod to the idea that this is a starting point for a project.
+
 # System Requirements
 
 * Node (Currently tested against 18.x)
-* PSQL
+* PostgreSQL
+* AWS Cognito
+* Optional: AWS Secrets Manager
 * Optional: Redis
-
+* 
 # How to Use
 
+- [Quick Start](/documentation/quickStart.md)
 - [Configuration Options](/documentation/configurationOptions.md)
 
 # Principles
