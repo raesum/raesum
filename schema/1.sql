@@ -177,13 +177,12 @@ create table raesum_auth_role
         constraint raesum_auth_role_pk
             primary key,
     string_key    varchar,
-    org_id        integer default 0 not null,
     name          varchar,
     active_status boolean default true
 );
 
-create index raesum_auth_role_string_key_org_id_index
-    on raesum_auth_role (string_key, org_id);
+create index raesum_auth_role_id_active_status_index
+    on raesum_auth_role (active_status);
 
 
 create table raesum_auth_role_x_permission
@@ -219,6 +218,21 @@ create table raesum_auth_user_x_organization_x_role
         match simple on update no action on delete no action
 );
 create index raesum_auth_user_x_organization_x_role_org_id_role_id_index on raesum_auth_user_x_organization_x_role using btree (org_id, role_id);
+
+create table raesum_auth_role_x_organization_restriction
+(
+    role_id integer not null
+        constraint raesum_auth_rxor_raesum_auth_role_id_fk
+            references raesum_auth_role,
+    org_id  bigint  not null
+        constraint raesum_auth_rxor_raesum_organization_id_fk
+            references raesum_organization,
+    constraint raesum_auth_role_x_organization_restriction_pk
+        primary key (org_id, role_id)
+);
+
+create index raesum_auth_role_x_organization_restriction_role_id_index
+    on raesum_auth_role_x_organization_restriction (role_id);
 
 
 

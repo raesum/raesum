@@ -5,6 +5,7 @@ import {fileURLToPath} from "url";
 import raesumOrganization from "../models/raesumOrganization.js";
 import raesumUser from "../models/raesumUser.js";
 import raesumMetadata from "../models/raesumMetadata.js";
+import raesumAuthorization from "../models/raesumAuthorization.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,6 +37,10 @@ class raesumStartup {
                 // Create the default users
                 const users = new raesumUser();
                 await users.initRaesum(firstOrgID);
+
+                // Force Reload of Global Roles to Database (these depend on the default orgs existing)
+                await raesumAuthorization.loadGlobalRolesToDatabase();
+
             }catch(e){
                 logger.critical(`Raesum failed to initialize: ${e}`, Date.now() - start);
                 throw new Error("Raesum failed to initialize");
