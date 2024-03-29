@@ -236,9 +236,46 @@ class raesumUser {
      * Activates or deactivates a user. This will also change their ability to log in via cognito.
      * @param  {Number} id The ID of the user
      * @param  {Boolean} activeStatus The activation status of the user
-     * @return {Boolean} The activation status
+     * @return {Boolean} True of successful
+     * @throw {Error} If the ID is not a number or is less than 1 or is not an integer
+     * @throw {Error} If the user is not found
+     * @throw {Error} If the activeStatus is not a boolean
      */
-    async setActivationStatus(id, activeStatus){}
+    async setActivationStatus(id, activeStatus){
+        const start = Date.now();
+
+
+        // If activeStatus is not boolean, throw error
+        if(typeof activeStatus !== 'boolean'){
+             throw new Error("Activation status must be a boolean");
+        }
+
+        // If the ID is not a number, throw error
+        if(isNaN(id) || id < 1 || !Number.isInteger(id)){
+            throw new Error("User ID must be a positive integer");
+        }
+        logger.verbose(`Setting activation status for user with ID: ${id} to: ${activeStatus}`, Date.now() - start);
+
+        // Get the user by ID
+        let user = null;
+        try {
+            user = await this.getUserById(id);
+        }catch(e){
+            logger.warning("Error getting user by ID: " + e, Date.now() - start);
+            throw new Error("User not found");
+        }
+
+        // Update the user
+        try {
+            const query = "UPDATE raesum_user SET active_status = $1 WHERE id = $2";
+            await raesumDB.query(query, [activeStatus, id]);
+            logger.info(`Activation status set for user with ID: ${id} to: ${activeStatus}`, Date.now() - start);
+            return true;
+        }catch{
+            logger.error("DB Error updating user", Date.now() - start);
+            throw new Error("Error updating user");
+        }
+    }
 
     /**
      * Initializes the Raesum system. It will create the first user based on the system settings. It should only be used on the initial system setup and/or during seeding.
@@ -274,13 +311,91 @@ class raesumUser {
 
     }
 
+
     /**
-     * Gets a list of users
-     * @param  {Number} orgId The ID of the organization
-     * @param  {Boolean} activeStatus The activation status of the user
-     * @return {Array} The array of user objects
+     * Gets a list of active organizations the user is allowed to be in
+     * @param  {Number} userId The ID of the user
+     * @return {Array} The array of organization ID's the user is allowed to switch to
+     * @throw {Error} If the userId is not a number or is less than 1 or is not an integer
      */
-    async getUsers(orgId, activeStatus){}
+    async getAllowedUserOrgs(userID){
+        const start = Date.now();
+
+        logger.debug(`Getting allowed organizations for user with ID: ${userID}`, Date.now() - start);
+
+        // If the ID is not a number, throw error
+        if(isNaN(userID) || userID < 1 || !Number.isInteger(userID)){
+            throw new Error("User ID must be a positive integer");
+        }
+
+        // Get all orgs allowed for the user
+        let orgs = [];
+        try {
+            const query = `SELECT org_id FROM raesum_organization_x_user as oxu
+                       INNER JOIN raesum_organization as o ON oxu.org_id = o.id
+                       WHERE oxu.user_id = $1 and o.active_status = true;`;
+            const result = await raesumDB.query(query, [userID]);
+
+            for(let i=0; i<result.rows.length; i++){
+                const orgID = parseInt(result.rows[i].organization_id);
+                if(!isNaN(orgID) && orgID > 0){
+                    orgs.push(orgID);
+                }
+            }
+        }catch(e){
+            logger.error("Error getting allowed organizations: " + e, Date.now() - start);
+            throw new Error("Error getting allowed organizations");
+        }
+        logger.debug(`${orgs.length} allowed organizations for user with ID: ${userID} found`, Date.now() - start);
+        return orgs;
+    }
+
+
+    /**
+     * Gets a list of active organizations the user is allowed to be in
+     * @param  {Number} userId The ID of the user
+     * @param  {Number} orgId The ID of the organization
+     * @return {Array} The array of organization ID's the user is allowed to switch to
+     * @throw {Error} If the userId is not a number or is less than 1 or is not an integer
+     * @throw {Error} If the userId is not found
+     * @throw {Error} If the orgId is not a number or is less than 1 or is not an integer
+     * @throw {Error} If the user is not allowed to switch to the organization
+     */
+    async changeUserOrg(userID, orgID){
+        const start = Date.now();
+
+        logger.debug(`Changing user with ID: ${userID} to organization with ID: ${orgID}`, Date.now() - start);
+
+        // If the ID is not a number, throw error
+        if(isNaN(userID) || userID < 1 || !Number.isInteger(userID)){
+            throw new Error("User ID must be a positive integer");
+        }
+
+        // If the ID is not a number, throw error
+        if(isNaN(orgID) || orgID < 1 || !Number.isInteger(orgID)){
+            throw new Error("Organization ID must be a positive integer");
+        }
+
+        // If the user is not allowed to switch to the organization, throw error
+        const allowedOrgs = await this.getAllowedUserOrgs(userID);
+        if(!allowedOrgs.includes(orgID)){
+            logger.warning(`User with ID: ${userID} is not allowed to switch to organization with ID: ${orgID}. OrgID or UserID might not exist.`, Date.now() - start);
+            throw new Error("User not allowed to switch to organization");
+        }
+
+        // Update the user
+        try {
+            const query = "UPDATE raesum_user SET current_organization_id = $1 WHERE id = $2";
+            await raesumDB.query(query, [orgID, userID]);
+            logger.info(`User with ID: ${userID} changed to organization with ID: ${orgID}`, Date.now() - start);
+            return true;
+        }catch{
+            logger.error("DB Error updating user", Date.now() - start);
+            throw new Error("Error updating user");
+        }
+    }
+
+
 }
 
 export default raesumUser;
