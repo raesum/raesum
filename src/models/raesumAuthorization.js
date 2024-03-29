@@ -70,6 +70,9 @@ class raesumAuthorizationObject {
      * Loads the global roles into the database. Should run on migrate.
      */
     async loadGlobalRolesToDatabase(){
+        /*
+        Note: Several of the SQL commands here are not using prepared statements. This except is made because the data is controlled solely in the core codebase and the data is not user input. Further, this function only runs during a migrate or initialization and is not exposed to the public.
+         */
         const start = Date.now();
         logger.info("Loading Global Roles", Date.now() - start);
 
@@ -90,6 +93,7 @@ class raesumAuthorizationObject {
 
 
                 let roleID;
+
                 // If role does not exist, create the role and get the ID
                 if(roleResult.rows.length == 0) {
                     logger.debug(`Role with key: ${jsonData[i].string_key} does not exist, creating role`, Date.now() - start);
@@ -163,6 +167,7 @@ class raesumAuthorizationObject {
 
                     // For each object key, get the object ID and loop through the permissions
                     for(let j=0; j<objectKeys.length; j++) {
+
                        // Convert object string to ID
                           const objectID = await this.convertObjectTypeStringToID(objectKeys[j]);
                             if(objectID) {
@@ -502,6 +507,258 @@ class raesumAuthorizationObject {
             return false;
         }
 
+    }
+
+    /**
+     * Adds a user to a role for an organization. The user MUST already be allowed to switch to the organization. The role must also be available to the organization. A user cannot be added to an inactive role.
+     * @param  {Number} id The ID of the user
+     * @param  {Number} roleID The ID of the role
+     * @param  {Number} [orgID=currentOrgID] The ID of the organization. Defaults to the user's current orgID
+     * @returns {boolean} True on success
+     * @throws {Error} If the user ID is not a positive int
+     * @throws {Error} If the role ID is not a positive int
+     */
+    async addUserToRole(userID, roleID, orgID){
+        const start = Date.now();
+
+        // Validate the data types of the inputs
+        if(typeof userID != "number" || userID < 1){
+            logger.error("Invalid input for addUserToRole. Must be a positive int.", Date.now() - start);
+            throw new Error("Invalid input for addUserToRole. Must be a positive int.");
+        }
+
+        if(typeof roleID != "number" || roleID < 1){
+            logger.error("Invalid input for addUserToRole. Must be a positive int.", Date.now() - start);
+            throw new Error("Invalid input for addUserToRole. Must be a positive int.");
+        }
+
+        // If the orgID is not submitted
+        if(typeof orgID != "number" || orgID < 1){
+            logger.verbose("OrgID not submitted. Getting current orgID for user", Date.now() - start);
+            const user = new raesumUser();
+            orgID = await user.getOrgID(userID);
+        }
+
+        const query = `INSERT INTO raesum_auth_user_x_organization_x_role (user_id, org_id, role_id)
+                SELECT allowedRole.id as role_id, oxu.user_id, oxu.org_id FROM
+                (SELECT * FROM raesum_auth_role as r
+                INNER JOIN raesum_auth_role_x_organization_restriction as rxor 
+                    ON r.id = rxor.role_id 
+                        AND org_id =$1
+                    WHERE r.active_status = true
+                UNION
+                SELECT * FROM raesum_auth_role as r
+                LEFT JOIN raesum_auth_role_x_organization_restriction as rxor 
+                    ON r.id = rxor.role_id
+                WHERE org_id IS NULL
+                  AND r.active_status = true) as allowedRole
+                LEFT JOIN raesum_organization_x_user as oxu ON oxu.org_id = allowedRole.org_id AND oxu.user_id = $2
+                WHERE allowedRole.id = $3
+                 AND oxu.user_id IS NOT NULL
+                ON CONFLICT DO NOTHING;`;
+
+        const params = [orgID, userID, roleID];
+        try{
+            const result = await raesumDB.query(query, params);
+            if(result.rowCount > 0){
+                logger.info(`User: ${userID} added to role: ${roleID} for org: ${orgID}`, Date.now() - start);
+                return true;
+            }else{
+                logger.warning(`User ${userID} already in role: ${roleID} for org: ${orgID}, or role, org, or user does not exist`, Date.now() - start);
+                return false;
+            }
+        }catch(e){
+            logger.error("Error adding user to role with error: " + e, Date.now() - start);
+            throw new Error("Error adding user to role");
+
+        }
+
+    }
+
+    /**
+     * Removes a user to a role for an organization.
+     * @param  {Number} id The ID of the user
+     * @param  {Number} roleID The ID of the role
+     * @param  {Number} [orgID=currentOrgID] The ID of the organization. Defaults to the user's current orgID
+     * @returns {boolean} True on success
+     * @throws {Error} If the user ID is not a positive int
+     * @throws {Error} If the role ID is not a positive int
+     */
+    async removeUserFromRole(userID, roleID, orgID){
+        const start = Date.now();
+
+        // Validate the data types of the inputs
+        if(typeof userID != "number" || userID < 1){
+            logger.error("Invalid input for removeUserFromRole. Must be a positive int.", Date.now() - start);
+            throw new Error("Invalid input for removeUserFromRole. Must be a positive int.");
+        }
+
+        if(typeof roleID != "number" || roleID < 1){
+            logger.error("Invalid input for removeUserFromRole. Must be a positive int.", Date.now() - start);
+            throw new Error("Invalid input for removeUserFromRole. Must be a positive int.");
+        }
+
+        // If the orgID is not submitted
+        if(typeof orgID != "number" || orgID < 1){
+            logger.verbose("OrgID not submitted. Getting current orgID for user", Date.now() - start);
+            const user = new raesumUser();
+            orgID = await user.getOrgID(userID);
+        }
+
+        // Remove the user from the role
+        const query = `DELETE FROM raesum_auth_user_x_organization_x_role WHERE user_id = $1 AND org_id = $2 AND role_id = $3;`;
+        const params = [userID, orgID, roleID];
+        try {
+            const result = await raesumDB.query(query, params);
+            if (result.rowCount > 0) {
+                logger.info(`User: ${userID} removed from role: ${roleID} for org: ${orgID}`, Date.now() - start);
+                return true;
+            } else {
+                logger.warning(`User ${userID} not in role: ${roleID} for org: ${orgID}, or role, org, or user does not exist`, Date.now() - start);
+                return false;
+            }
+        }catch (e){
+            logger.error("Error removing user from role with error: " + e, Date.now() - start);
+            throw new Error("Error removing user from role");
+        }
+
+    }
+
+    /**
+     * Get role by ID
+     * @param  {Number} roleID The ID of the role
+     * @param   {boolean} [activeOnly=true] Only return active roles
+     * @returns {object} A single role object
+     * @throws {Error} If the role ID is not a positive int
+     * @throws {Error} If the role does not exist
+     */
+    async getRoleByID(roleID){
+        const start = Date.now();
+
+        // Validate that roleID is a positive int
+        if(typeof roleID != "number" || roleID < 1){
+            logger.error("Invalid input for getRoleByID. Must be a positive int.", Date.now() - start);
+            throw new Error("Invalid input for getRoleByID. Must be a positive int.");
+        }
+
+        // Determine whether to include inactive records
+        // Create query fragment for activeonly
+        let activeOnlyQuery = "";
+        if(activeOnly !== false){
+            activeOnlyQuery = " WHERE r.active_status = true ";
+        }
+
+        const query = `SELECT * FROM raesum_auth_role as r WHERE id = $1 ${activeOnlyQuery};`;
+        const result = await raesumDB.query(query, [roleID]);
+
+        if(result.rows.length > 0){
+            logger.debug(`Found role`, Date.now() - start);
+            return result.rows[0];
+        }else{
+            logger.warning("Role not found", Date.now() - start);
+            throw new Error("Role not found");
+        }
+
+    }
+
+    /**
+     * Get roles by ID
+     * @param  {Array} roleIDArray An array of roleIDs
+     * @param   {boolean} [activeOnly=true] Only return active roles
+     * @returns {Array} Array of role objects
+     * @throws {Error} If the roleIDArray does not contain at least one positive INT
+     * @throws {Error} If the role does not exist
+     */
+    async getRolesByID(roleIDArray, activeOnly){
+        const start = Date.now();
+
+        // Validate the data types of the inputs
+        if(!Array.isArray(roleIDArray) || roleIDArray.length == 0){
+            logger.error("Invalid input for getRolesByID. Must be an array with at least one positive int.", Date.now() - start);
+            throw new Error("Invalid input for getRolesByID. Must be an array with at least one positive int.");
+        }
+
+        // Remove all non-positive INT from the array
+        roleIDArray = roleIDArray.filter((el) => {
+            return typeof el == "number" && el > 0;
+        });
+
+        // If the array is empty, throw error
+        if(roleIDArray.length == 0){
+            logger.error("Invalid input for getRolesByID. Must be an array with at least one positive int.", Date.now() - start);
+            throw new Error("Invalid input for getRolesByID. Must be an array with at least one positive int.");
+        }
+
+        // Determine whether to include inactive records
+        // Create query fragment for activeonly
+        let activeOnlyQuery = "";
+        if(activeOnly !== false){
+            activeOnlyQuery = " WHERE r.active_status = true ";
+        }
+
+        const query = `SELECT * FROM raesum_auth_role as r WHERE id IN ($1) ${activeOnlyQuery};`;
+        const result = await raesumDB.query(query, [roleIDArray]);
+
+        if(result.rows.length > 0){
+            logger.debug(`Found ${result.rows.length} roles`, Date.now() - start);
+            return result.rows;
+        }else{
+            logger.warning("Role(s) does not exist", Date.now() - start);
+            throw new Error("Role(s) does not exist");
+        }
+
+    }
+
+
+    /**
+     * Get roles available to an organization.
+     * @param  {Number} orgID The ID of the organization.
+     * @param   {boolean} [activeOnly=true] Only return active roles
+     * @returns {Array} Array of roleIDs available for the organization
+     * @param  {Number} orgID The ID of the organization
+     * @throws {Error} If the orgID is not a positive int
+     */
+    async getRolesForOrg(orgID, activeOnly){
+        const start = Date.now();
+
+
+        // Validate that orgID is a positive int
+        if(typeof orgID != "number" || orgID < 1){
+            logger.error("Invalid input for getRolesForOrg. Must be a positive int.", Date.now() - start);
+            throw new Error("Invalid input for getRolesForOrg. Must be a positive int.");
+        }
+
+        // Determine whether to include inactive records
+        // Create query fragment for activeonly
+        let activeOnlyQuery1 = "";
+        let activeOnlyQuery2 = "";
+        if(activeOnly !== false){
+            activeOnlyQuery1 = " WHERE r.active_status = true ";
+            activeOnlyQuery2 = " AND r.active_status = true ";
+        }
+
+        logger.verbose(`Getting roles for org: ${orgID}`, Date.now() - start);
+
+        const query = `SELECT id FROM raesum_auth_role as r
+                    INNER JOIN raesum_auth_role_x_organization_restriction as rxor ON r.id = rxor.role_id AND org_id =1
+                        ${activeOnlyQuery1}
+                    UNION
+                    SELECT id FROM raesum_auth_role as r
+                    LEFT JOIN raesum_auth_role_x_organization_restriction as rxor ON r.id = rxor.role_id
+                    WHERE org_id IS NULL
+                        ${activeOnlyQuery2};`;
+
+        const params = [orgID, activeOnly];
+        const result = await raesumDB.query(query, params);
+
+        const roleIDs = [];
+        result.rows.forEach((row)=>{
+            roleIDs.push(row.id);
+        });
+
+        logger.debug(`Found ${roleIDs.length} roles for org: ${orgID}`, Date.now() - start);
+
+        return roleIDs;
     }
 
 }
