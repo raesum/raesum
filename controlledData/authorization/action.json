@@ -40,5 +40,11 @@
     "name": "Set Status",
     "string_key": "set_status",
     "description": "Use can activate or deactivate"
+  },
+  {
+    "id": 8,
+    "name": "Change Organization",
+    "string_key": "change_organization",
+    "description": "User can switch their organization to another allowed organization"
   }
 ]

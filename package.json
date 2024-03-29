@@ -47,6 +47,7 @@
     "@babel/preset-env": "^7.23.8",
     "@babel/register": "^7.23.7",
     "@babel/runtime": "^7.23.8",
+    "@faker-js/faker": "^8.4.1",
     "@jest-mock/express": "^2.0.2",
     "babel-plugin-dynamic-import-node": "^2.3.3",
     "eslint": "^8.56.0",
@@ -56,8 +57,7 @@
     "prettier": "^3.2.4"
   },
   "jest": {
-    "transform": {
-    },
+    "transform": {},
     "testEnvironment": "jest-environment-node",
     "globalSetup": "<rootDir>/test/setup.js",
     "testPathIgnorePatterns": [

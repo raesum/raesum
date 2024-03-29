@@ -22,6 +22,8 @@ class raesumStartup {
         // Get metadata initialized
         const initializationStatus = await metadata.getByKey("initialized");
 
+        let firstUserID = null;
+
         // If not initialized, initialize
         if(initializationStatus === true){
             logger.info("Raesum is already initialized", Date.now() - start);
@@ -36,7 +38,7 @@ class raesumStartup {
 
                 // Create the default users
                 const users = new raesumUser();
-                await users.initRaesum(firstOrgID);
+                firstUserID = await users.initRaesum(firstOrgID);
 
                 // Force Reload of Global Roles to Database (these depend on the default orgs existing)
                 await raesumAuthorization.loadGlobalRolesToDatabase();
@@ -51,6 +53,7 @@ class raesumStartup {
             metadata.set("initialized", true);
         }
 
+        return firstUserID;
     }
 }
 

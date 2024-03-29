@@ -7,7 +7,7 @@ import {jest} from '@jest/globals'
 describe("Raesum Authorization System: Actions, Objects, and Scopes", () => {
     // If a database tests have been enabled
 
-    const dbTestsEnabled = config.get("integrationTestEnabled.primaryDatabase");
+    const dbTestsEnabled = config.get("developmentAndTesting.integrationTestEnabled.primaryDatabase");
     console.log("DB Tests Enabled: " + dbTestsEnabled);
 
     const iftest = (dbTestsEnabled) ? test : test.skip;

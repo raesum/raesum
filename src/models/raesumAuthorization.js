@@ -20,23 +20,22 @@ class raesumAuthorizationObject {
     scopesIDs = [];
 
 
-    async init(){
+    async init() {
         const start = Date.now();
         logger.info("Initializing Authorization Module", Date.now() - start);
 
         // Get all actions from db
-        if(Object.keys(this.actionsByStringKey).length == 0 || Object.keys(this.objectTypesByStringKey).length == 0){
+        if (Object.keys(this.actionsByStringKey).length == 0 || Object.keys(this.objectTypesByStringKey).length == 0) {
             let query = "SELECT * FROM raesum_auth_action_type";
 
             let actions = await raesumDB.query(query);
 
             // Save to memory
-            actions['rows'].forEach((action)=>{
+            actions['rows'].forEach((action) => {
                 this.actionsByStringKey[action.string_key.toLowerCase()] = action.id;
                 this.actionIDs.push(action.id);
             });
             logger.info(Object.keys(this.actionsByStringKey).length + " actions loaded", Date.now() - start);
-
 
 
             // Get all object types from db
@@ -44,7 +43,7 @@ class raesumAuthorizationObject {
             let objectTypes = await raesumDB.query(query);
 
             // Save to memory
-            objectTypes['rows'].forEach((objectType)=>{
+            objectTypes['rows'].forEach((objectType) => {
                 this.objectTypesByStringKey[objectType.string_key.toLowerCase()] = objectType.id;
                 this.objectIDs.push(objectType.id);
             });
@@ -55,7 +54,7 @@ class raesumAuthorizationObject {
             let scopes = await raesumDB.query(query);
 
             // Save to memory
-            scopes['rows'].forEach((scope)=>{
+            scopes['rows'].forEach((scope) => {
                 this.scopesByStringKey[scope.string_key.toLowerCase()] = scope.id;
                 this.scopesIDs.push(scope.id);
             });
@@ -69,7 +68,7 @@ class raesumAuthorizationObject {
     /**
      * Loads the global roles into the database. Should run on migrate.
      */
-    async loadGlobalRolesToDatabase(){
+    async loadGlobalRolesToDatabase() {
         /*
         Note: Several of the SQL commands here are not using prepared statements. This except is made because the data is controlled solely in the core codebase and the data is not user input. Further, this function only runs during a migrate or initialization and is not exposed to the public.
          */
@@ -77,7 +76,7 @@ class raesumAuthorizationObject {
         logger.info("Loading Global Roles", Date.now() - start);
 
         // Load the globalRoles.json file
-        const dirPath = path.join(__dirname, '..','..', 'controlledData/authorization/');
+        const dirPath = path.join(__dirname, '..', '..', 'controlledData/authorization/');
         const jsonFile = fs.readFileSync(path.join(dirPath, "globalRoles.json"), 'utf8');
         const jsonData = JSON.parse(jsonFile);
 
@@ -95,12 +94,12 @@ class raesumAuthorizationObject {
                 let roleID;
 
                 // If role does not exist, create the role and get the ID
-                if(roleResult.rows.length == 0) {
+                if (roleResult.rows.length == 0) {
                     logger.debug(`Role with key: ${jsonData[i].string_key} does not exist, creating role`, Date.now() - start);
                     const roleInsertQuery = "INSERT INTO raesum_auth_role (string_key, name, active_status) VALUES ($1, $2, $3) RETURNING id";
                     const roleInsertResult = await raesumDB.query(roleInsertQuery, [jsonData[i].string_key, jsonData[i].name, jsonData[i].active_status]);
                     roleID = roleInsertResult.rows[0].id;
-                }else{
+                } else {
                     // Update the role
                     logger.debug(`Role with key: ${jsonData[i].string_key} exists, updating role`, Date.now() - start);
                     roleID = roleResult.rows[0].id;
@@ -109,12 +108,14 @@ class raesumAuthorizationObject {
                 }
 
                 // Create the role org restrictions
-                if(jsonData[i].restrict_to_organization.length > 0){
+                if (jsonData[i].restrict_to_organization.length > 0) {
                     // Start a transaction
                     let query = "BEGIN;";
 
                     // Remove old restrictions
-                    query += `DELETE FROM raesum_auth_role_x_organization_restriction WHERE role_id = ${roleID}; `;
+                    query += `DELETE
+                              FROM raesum_auth_role_x_organization_restriction
+                              WHERE role_id = ${roleID}; `;
 
                     // Add new restrictions
 
@@ -124,77 +125,81 @@ class raesumAuthorizationObject {
                     });
 
                     // Insert new restrictions if any are INT
-                    if(orgRestrictionsArr.length > 0){
+                    if (orgRestrictionsArr.length > 0) {
                         const orgRestrictionsString = orgRestrictionsArr.join(",");
-                        query += `INSERT INTO raesum_auth_role_x_organization_restriction (role_id, org_id) 
-                                    SELECT ${roleID} as role_id, id as org_id 
-                                    FROM raesum_organization as ro 
-                                    WHERE ro.id IN (${orgRestrictionsString}); `;
+                        query += `INSERT INTO raesum_auth_role_x_organization_restriction (role_id, org_id)
+                                  SELECT ${roleID} as role_id, id as org_id
+                                  FROM raesum_organization as ro
+                                  WHERE ro.id IN (${orgRestrictionsString}); `;
                     }
 
                     // Commit transaction
                     query += "COMMIT;";
 
                     // Run transaction
-                    try{
+                    try {
                         const dbReturn = await raesumDB.query(query);
-                        logger.debug(`Set org restrictions set for role: ${jsonData[i].name} with key: ${jsonData[i].string_key}` , Date.now() - start);
-                    }catch(e){
+                        logger.debug(`Set org restrictions set for role: ${jsonData[i].name} with key: ${jsonData[i].string_key}`, Date.now() - start);
+                    } catch (e) {
                         logger.error(`Error setting org restrictions for role: ${jsonData[i].name} with key: ${jsonData[i].string_key}. Error: ${e}`, Date.now() - start);
                     }
 
 
-                }else{
-                    logger.debug(`No org restrictions for role: ${jsonData[i].name} with key: ${jsonData[i].string_key}` , Date.now() - start);
+                } else {
+                    logger.debug(`No org restrictions for role: ${jsonData[i].name} with key: ${jsonData[i].string_key}`, Date.now() - start);
                     // Delete all org restrictions
-                    const deleteOrgRestrictionsQuery = `DELETE FROM raesum_auth_role_x_organization_restriction WHERE role_id = ${roleID}`;
+                    const deleteOrgRestrictionsQuery = `DELETE
+                                                        FROM raesum_auth_role_x_organization_restriction
+                                                        WHERE role_id = ${roleID}`;
                     await raesumDB.query(deleteOrgRestrictionsQuery);
                 }
 
 
-
                 // Create the role permissions
-                logger.debug(`Setting permissions for role: ${jsonData[i].name} with key: ${jsonData[i].string_key}` , Date.now() - start);
-                if(typeof roleID == "number" && roleID > 0) {
+                logger.debug(`Setting permissions for role: ${jsonData[i].name} with key: ${jsonData[i].string_key}`, Date.now() - start);
+                if (typeof roleID == "number" && roleID > 0) {
                     // Start a transaction
                     let query = "BEGIN;"
 
                     // Delete all permissions for the role
-                    query += `DELETE FROM raesum_auth_role_x_permission WHERE role_id = ${roleID};`
+                    query += `DELETE
+                              FROM raesum_auth_role_x_permission
+                              WHERE role_id = ${roleID};`
 
                     // Get the object keys for the role permissions
                     const objectKeys = Object.keys(jsonData[i].permissions);
 
                     // For each object key, get the object ID and loop through the permissions
-                    for(let j=0; j<objectKeys.length; j++) {
+                    for (let j = 0; j < objectKeys.length; j++) {
 
-                       // Convert object string to ID
-                          const objectID = await this.convertObjectTypeStringToID(objectKeys[j]);
-                            if(objectID) {
-                                const theObject = jsonData[i].permissions[objectKeys[j]];
-                                // Get the permission keys for the object
-                                const permissionKeys = Object.keys(theObject);
+                        // Convert object string to ID
+                        const objectID = await this.convertObjectTypeStringToID(objectKeys[j]);
+                        if (objectID) {
+                            const theObject = jsonData[i].permissions[objectKeys[j]];
+                            // Get the permission keys for the object
+                            const permissionKeys = Object.keys(theObject);
 
-                                for(let k=0; k<permissionKeys.length; k++) {
-                                    // Convert permission string to ID
-                                    const permissionID = await this.convertActionStringToID(permissionKeys[k]);
+                            for (let k = 0; k < permissionKeys.length; k++) {
+                                // Convert permission string to ID
+                                const permissionID = await this.convertActionStringToID(permissionKeys[k]);
 
 
-                                    if(permissionID) {
+                                if (permissionID) {
 
-                                        // Loop through the scopes
-                                        for(let s=0; s<theObject[permissionKeys[k]].length;s++){
-                                            // Convert the scope string key into a number
-                                            const scopeID = await this.convertScopeStringToID(theObject[permissionKeys[k]][s]);
+                                    // Loop through the scopes
+                                    for (let s = 0; s < theObject[permissionKeys[k]].length; s++) {
+                                        // Convert the scope string key into a number
+                                        const scopeID = await this.convertScopeStringToID(theObject[permissionKeys[k]][s]);
 
-                                            if(typeof scopeID == "number" && scopeID > 0){
-                                                // Add the permission to the role
-                                                query += `INSERT INTO raesum_auth_role_x_permission (role_id, object_type_id, action_id, scope_id) VALUES (${roleID}, ${objectID}, ${permissionID}, ${scopeID});`
-                                            }
+                                        if (typeof scopeID == "number" && scopeID > 0) {
+                                            // Add the permission to the role
+                                            query += `INSERT INTO raesum_auth_role_x_permission (role_id, object_type_id, action_id, scope_id)
+                                                      VALUES (${roleID}, ${objectID}, ${permissionID}, ${scopeID});`
                                         }
                                     }
                                 }
                             }
+                        }
 
                     }
                     // Finish Transaction
@@ -212,7 +217,6 @@ class raesumAuthorizationObject {
     }
 
 
-
     /**
      * Checks to see if the user is allowed to perform the action on the object. It wraps checkUserPermissionByID
      * @param  {Number} id The ID of the user
@@ -225,32 +229,31 @@ class raesumAuthorizationObject {
      * @throws {Error} If the object type string is not a string or is not a valid object type
      * @throws {Error} If the action string is not a string or is not a valid action type
      */
-    async checkUserPermission(userID,objectTypeString,actionString,orgID,objectOwnerUserID){
+    async checkUserPermission(userID, objectTypeString, actionString, orgID, objectOwnerUserID) {
         const start = Date.now();
 
         // Init if needed
-        if(Object.keys(this.objectTypesByStringKey).length == 0){
+        if (Object.keys(this.objectTypesByStringKey).length == 0) {
             await this.init();
         }
 
         // Convert object type string to ID
-        try{
+        try {
             objectTypeString = await this.convertObjectTypeStringToID(objectTypeString);
-        }catch(e){
+        } catch (e) {
             throw e;
         }
 
         // Convert action type string to ID
-        try{
+        try {
             actionString = await this.convertActionStringToID(actionString);
-        }catch(e){
+        } catch (e) {
             throw e;
         }
 
-        return await this.checkUserPermissionByID(userID,objectTypeString,actionString,orgID,objectOwnerUserID);
+        return await this.checkUserPermissionByID(userID, objectTypeString, actionString, orgID, objectOwnerUserID);
 
     }
-
 
 
     /**
@@ -268,35 +271,35 @@ class raesumAuthorizationObject {
      * @throws {Error} If the orgID is not a positive int
      * @throws {Error} If the objectOwnerUserID is not a positive int
      */
-    async checkUserPermissionByID(userID,objectTypeId,actionId,orgID,objectOwnerUserID, scopesRequired){
+    async checkUserPermissionByID(userID, objectTypeId, actionId, orgID, objectOwnerUserID, scopesRequired) {
         const start = Date.now();
 
         // Init if not already initialized
-        if(this.scopesIDs.length == 0){
+        if (this.scopesIDs.length == 0) {
             await this.init();
         }
 
         // Check to see if orgID is positive int
-        if(typeof orgID != "number" || orgID < 1){
+        if (typeof orgID != "number" || orgID < 1) {
             logger.error("Invalid input for checkUserPermissionByID. Must be a positive int.", Date.now() - start);
             throw new Error("Invalid input for checkUserPermissionByID. Must be a positive int.");
         }
 
         // Check to see if the user ID is a positive int
-        if(typeof userID != "number" || userID < 1){
+        if (typeof userID != "number" || userID < 1) {
             logger.error("Invalid input for checkUserPermissionByID. Must be a positive int.", Date.now() - start);
             throw new Error("Invalid input for checkUserPermissionByID. Must be a positive int.");
         }
 
         // Check to see if the object type ID is in the objectID list
-        if(!this.objectIDs.includes(objectTypeId)){
+        if (!this.objectIDs.includes(objectTypeId)) {
             logger.error("Invalid input for checkUserPermissionByID. Must be a valid object type ID.", Date.now() - start);
             throw new Error("Invalid input for checkUserPermissionByID. Must be a valid object type ID.");
         }
 
 
         // Check to see if the action ID is in the action list
-        if(!this.actionIDs.includes(actionId)){
+        if (!this.actionIDs.includes(actionId)) {
             logger.error("Invalid input for checkUserPermissionByID. Must be a valid action ID.", Date.now() - start);
             throw new Error("Invalid input for checkUserPermissionByID. Must be a valid action ID.");
         }
@@ -305,36 +308,36 @@ class raesumAuthorizationObject {
         logger.debug("Determining allowed scopes", Date.now() - start);
 
         // If scopesRequired has been supplied and is an array
-        if(scopesRequired && Array.isArray(scopesRequired) && scopesRequired.length > 0){
+        if (scopesRequired && Array.isArray(scopesRequired) && scopesRequired.length > 0) {
             logger.verbose("Scopes required have been supplied", Date.now() - start);
             // Check to see if the specified scopes exist
-            for(let i=0;i<scopesRequired.length;i++){
-                if(!this.scopesIDs.includes(scopesRequired[i])){
-                    scopesRequired.splice(i,1);
+            for (let i = 0; i < scopesRequired.length; i++) {
+                if (!this.scopesIDs.includes(scopesRequired[i])) {
+                    scopesRequired.splice(i, 1);
                 }
             }
-        }else{
+        } else {
             scopesRequired = [];
         }
 
-        if(scopesRequired.length == 0){
+        if (scopesRequired.length == 0) {
             logger.verbose("No valid scopes required have been supplied", Date.now() - start);
 
             // If the user is the owner of the object, and their current org matches the object org, then look for scopes 1, 2, 3
-            if(userID == objectOwnerUserID && orgID == objectOwnerUserID) {
+            if (userID == objectOwnerUserID && orgID == objectOwnerUserID) {
                 logger.verbose("User is the owner of the object and the org matches the object org", Date.now() - start);
                 scopesRequired = [1, 2, 3];
-            }else {
+            } else {
                 logger.verbose("User is not the owner of the object. Getting user org to determine if org-level access is allowed", Date.now() - start);
                 // Get current user's org
                 const user = new raesumUser();
                 const userOrg = await user.getOrgID(userID);
 
                 // If the user's current org and the object's org match then look for scopes 2, 3
-                if(userOrg == orgID) {
+                if (userOrg == orgID) {
                     logger.verbose("User's org matches the object's org. Using org level or global scope", Date.now() - start);
                     scopesRequired = [2, 3];
-                }else{
+                } else {
                     // If there are no matches, then require scope three
                     logger.verbose("User's org does not match the object's org. Using global scope", Date.now() - start);
                     scopesRequired = [3];
@@ -343,23 +346,24 @@ class raesumAuthorizationObject {
         }
 
         // Check to see if the user has the required permissions
-        const query = `SELECT user_id FROM raesum_auth_role_x_permission as rxp
-                    INNER JOIN raesum_auth_user_x_organization_x_role as uxoxr
-                        ON rxp.role_id = uxoxr.role_id
-                        AND uxoxr.org_id = $1
-                        AND uxoxr.user_id = $2
-                    WHERE rxp.scope_id IN $3
-                    AND action_id = $4
-                    AND object_type_id=$5
-                    LIMIT 1;`;
+        const query = `SELECT user_id
+                       FROM raesum_auth_role_x_permission as rxp
+                                INNER JOIN raesum_auth_user_x_organization_x_role as uxoxr
+                                           ON rxp.role_id = uxoxr.role_id
+                                               AND uxoxr.org_id = $1
+                                               AND uxoxr.user_id = $2
+                       WHERE rxp.scope_id IN $3
+                         AND action_id = $4
+                         AND object_type_id = $5
+                       LIMIT 1;`;
 
         const params = [orgID, userID, scopesRequired, actionId, objectTypeId];
         const result = await raesumDB.query(query, params);
 
-        if(result.rows.length > 0){
+        if (result.rows.length > 0) {
             logger.verbose("User has permission", Date.now() - start);
             return true;
-        }else{
+        } else {
             logger.verbose("User does not have permission", Date.now() - start);
             return false;
         }
@@ -376,51 +380,53 @@ class raesumAuthorizationObject {
      * @throws {Error} If the object type string is not an id
      * @throws {Error} If the action string is not an id
      */
-    async getAllowedUserScopesByIDs(userID,objectTypeId,actionId){
+    async getAllowedUserScopesByIDs(userID, objectTypeId, actionId) {
         const start = Date.now();
 
         // Init if not already initialized
-        if(this.scopesIDs.length == 0){
+        if (this.scopesIDs.length == 0) {
             await this.init();
         }
 
         // Check to see if the user ID is a positive int
-        if(typeof userID != "number" || userID < 1){
+        if (typeof userID != "number" || userID < 1) {
             logger.error("Invalid input for checkUserPermissionByID. Must be a positive int.", Date.now() - start);
             throw new Error("Invalid input for checkUserPermissionByID. Must be a positive int.");
         }
 
         // Check to see if the object type ID is in the objectID list
-        if(!this.objectIDs.includes(objectTypeId)){
+        if (!this.objectIDs.includes(objectTypeId)) {
             logger.error("Invalid input for getAllowedUserScopesByIDs. Must be a valid object type ID.", Date.now() - start);
             throw new Error("Invalid input for getAllowedUserScopesByIDs. Must be a valid object type ID.");
         }
 
         // Check to see if actionID is in the actionLIst
-        if(!this.actionIDs.includes(actionId)){
+        if (!this.actionIDs.includes(actionId)) {
             logger.error("Invalid input for checkUserPermissionByID. Must be a valid action ID.", Date.now() - start);
             throw new Error("Invalid input for checkUserPermissionByID. Must be a valid action ID.");
         }
 
         // Get the higest value scopeID
-        const query = `SELECT rxp.scope_id FROM raesum_auth_role_x_permission as rxp
-            INNER JOIN raesum_auth_user_x_organization_x_role as uxoxr
-                ON rxp.role_id = uxoxr.role_id
-                AND uxoxr.user_id = $1
-             INNER JOIN raesum_user as u ON uxoxr.user_id = u.id AND uxoxr.org_id = u.current_organization_id
-            WHERE action_id = $3
-            AND object_type_id=$2
-            ORDER BY rxp.scope_id DESC
-            LIMIT 1;`
+        const query = `SELECT rxp.scope_id
+                       FROM raesum_auth_role_x_permission as rxp
+                                INNER JOIN raesum_auth_user_x_organization_x_role as uxoxr
+                                           ON rxp.role_id = uxoxr.role_id
+                                               AND uxoxr.user_id = $1
+                                INNER JOIN raesum_user as u
+                                           ON uxoxr.user_id = u.id AND uxoxr.org_id = u.current_organization_id
+                       WHERE action_id = $3
+                         AND object_type_id = $2
+                       ORDER BY rxp.scope_id DESC
+                       LIMIT 1;`
 
         const params = [userID, objectTypeId, actionId];
 
         const result = await raesumDB.query(query, params);
-        if(result.rows.length > 0 && !isNaN(parseInt(result.rows[0].scope_id))){
+        if (result.rows.length > 0 && !isNaN(parseInt(result.rows[0].scope_id))) {
             const allowedScope = parseInt(result.rows[0].scope_id);
             logger.verbose("User has allowed scope: " + allowedScope, Date.now() - start);
             return allowedScope;
-        }else{
+        } else {
             logger.verbose("No scopes found for user", Date.now() - start);
             return false;
         }
@@ -432,23 +438,23 @@ class raesumAuthorizationObject {
      * @returns {Number} The ID of the action type
      * @throws {Error} If the action string is not a string or is not a valid action type
      */
-    async convertActionStringToID(actionString){
+    async convertActionStringToID(actionString) {
         const start = Date.now();
-        if(Object.keys(this.actionsByStringKey).length == 0){
+        if (Object.keys(this.actionsByStringKey).length == 0) {
             await this.init();
         }
 
 
-        if(typeof actionString != "string"){
+        if (typeof actionString != "string") {
             logger.error("Invalid input for convertActionStringToID. Must be a string.", Date.now() - start);
             throw new Error("Invalid input for convertActionStringToID. Must be a string.")
         }
 
         actionString = actionString.toLowerCase();
 
-        if(this.actionsByStringKey[actionString]){
+        if (this.actionsByStringKey[actionString]) {
             return this.actionsByStringKey[actionString];
-        }else{
+        } else {
             logger.warning("Unable to find action type with string: " + actionString, Date.now() - start);
             return false;
         }
@@ -460,22 +466,22 @@ class raesumAuthorizationObject {
      * @returns {Number} The ID of the object type
      * @throws {Error} If the object string is not a string or is not a valid object type
      */
-    async convertObjectTypeStringToID(objectTypeString){
+    async convertObjectTypeStringToID(objectTypeString) {
         const start = Date.now();
-        if(Object.keys(this.actionsByStringKey).length == 0){
+        if (Object.keys(this.actionsByStringKey).length == 0) {
             await this.init();
         }
 
-        if(typeof objectTypeString != "string"){
+        if (typeof objectTypeString != "string") {
             logger.error("Invalid input for convertObjectTypeStringToID. Must be a string.", Date.now() - start);
             throw new Error("Invalid input for convertObjectTypeStringToID. Must be a string.")
         }
 
         objectTypeString = objectTypeString.toLowerCase();
 
-        if(this.objectTypesByStringKey[objectTypeString]){
+        if (this.objectTypesByStringKey[objectTypeString]) {
             return this.objectTypesByStringKey[objectTypeString];
-        }else{
+        } else {
             logger.warning("Unable to find object type with string: " + objectTypeString, Date.now() - start)
             return false;
         }
@@ -487,22 +493,22 @@ class raesumAuthorizationObject {
      * @returns {Number} The ID of the scope type
      * @throws {Error} If the scope string is not a string or is not a valid scope type
      */
-    async convertScopeStringToID(scopeString){
+    async convertScopeStringToID(scopeString) {
         const start = Date.now();
-        if(Object.keys(this.scopesByStringKey).length == 0){
+        if (Object.keys(this.scopesByStringKey).length == 0) {
             await this.init();
         }
 
-        if(typeof scopeString != "string"){
+        if (typeof scopeString != "string") {
             logger.error("Invalid input for convertScopeStringToID. Must be a string.", Date.now() - start);
             throw new Error("Invalid input for convertScopeStringToID. Must be a string.")
         }
 
         scopeString = scopeString.toLowerCase();
 
-        if(this.scopesByStringKey[scopeString]){
+        if (this.scopesByStringKey[scopeString]) {
             return this.scopesByStringKey[scopeString];
-        }else{
+        } else {
             logger.warning("Unable to find scope type with string: " + scopeString, Date.now() - start)
             return false;
         }
@@ -518,62 +524,103 @@ class raesumAuthorizationObject {
      * @throws {Error} If the user ID is not a positive int
      * @throws {Error} If the role ID is not a positive int
      */
-    async addUserToRole(userID, roleID, orgID){
+    async addUserToRole(userID, roleID, orgID) {
         const start = Date.now();
 
         // Validate the data types of the inputs
-        if(typeof userID != "number" || userID < 1){
+        if (typeof userID != "number" || userID < 1) {
             logger.error("Invalid input for addUserToRole. Must be a positive int.", Date.now() - start);
             throw new Error("Invalid input for addUserToRole. Must be a positive int.");
         }
 
-        if(typeof roleID != "number" || roleID < 1){
+        if (typeof roleID != "number" || roleID < 1) {
             logger.error("Invalid input for addUserToRole. Must be a positive int.", Date.now() - start);
             throw new Error("Invalid input for addUserToRole. Must be a positive int.");
         }
 
         // If the orgID is not submitted
-        if(typeof orgID != "number" || orgID < 1){
+        if (typeof orgID != "number" || orgID < 1) {
             logger.verbose("OrgID not submitted. Getting current orgID for user", Date.now() - start);
             const user = new raesumUser();
             orgID = await user.getOrgID(userID);
         }
 
-        const query = `INSERT INTO raesum_auth_user_x_organization_x_role (user_id, org_id, role_id)
-                SELECT allowedRole.id as role_id, oxu.user_id, oxu.org_id FROM
-                (SELECT * FROM raesum_auth_role as r
-                INNER JOIN raesum_auth_role_x_organization_restriction as rxor 
-                    ON r.id = rxor.role_id 
-                        AND org_id =$1
-                    WHERE r.active_status = true
-                UNION
-                SELECT * FROM raesum_auth_role as r
-                LEFT JOIN raesum_auth_role_x_organization_restriction as rxor 
-                    ON r.id = rxor.role_id
-                WHERE org_id IS NULL
-                  AND r.active_status = true) as allowedRole
-                LEFT JOIN raesum_organization_x_user as oxu ON oxu.org_id = allowedRole.org_id AND oxu.user_id = $2
-                WHERE allowedRole.id = $3
-                 AND oxu.user_id IS NOT NULL
-                ON CONFLICT DO NOTHING;`;
+        const query = ` SELECT allowedRole.id as role_id, oxu.user_id, oxu.org_id
+                        FROM (SELECT r.id as id, rxor.org_id as org_id
+                              FROM raesum_auth_role as r
+                                       INNER JOIN raesum_auth_role_x_organization_restriction as rxor
+                                                  ON r.id = rxor.role_id
+                                                      AND org_id = $1
+                              WHERE r.active_status = true
+                              UNION
+                              SELECT r.id as id, $2 as org_id
+                              FROM raesum_auth_role as r
+                                       LEFT JOIN raesum_auth_role_x_organization_restriction as rxor
+                                                 ON r.id = rxor.role_id
+                              WHERE rxor.org_id IS NULL
+                                AND r.active_status = true) as allowedRole
+                                 LEFT JOIN raesum_organization_x_user as oxu
+                                           ON oxu.org_id = allowedRole.org_id AND oxu.user_id = $3
+                        WHERE allowedRole.id = $4
+                          AND oxu.user_id IS NOT NULL`;
 
-        const params = [orgID, userID, roleID];
-        try{
+        const params = [orgID, orgID, userID, roleID];
+
+        try {
             const result = await raesumDB.query(query, params);
-            if(result.rowCount > 0){
+            if (result.rowCount > 0) {
                 logger.info(`User: ${userID} added to role: ${roleID} for org: ${orgID}`, Date.now() - start);
                 return true;
-            }else{
+            } else {
                 logger.warning(`User ${userID} already in role: ${roleID} for org: ${orgID}, or role, org, or user does not exist`, Date.now() - start);
+                console.log(query, params, result);
+
                 return false;
             }
-        }catch(e){
+        } catch (e) {
             logger.error("Error adding user to role with error: " + e, Date.now() - start);
             throw new Error("Error adding user to role");
 
         }
 
     }
+
+    /**
+     * Adds a user to a role for an organization using the role's stringkey. It wraps addUserToRole.
+     * @param  {Number} id The ID of the user
+     * @param  {Number} roleStringKey The ID of the role
+     * @param  {Number} [orgID=currentOrgID] The ID of the organization. Defaults to the user's current orgID
+     * @returns {boolean} True on success
+     * @throws {Error} If the addUserToRole fails
+     * @throws {Error} If the roleSringKey does not match any role
+     * @throws {Error} If the roleSringKey is not a string
+     */
+    async addUserToRoleByKey(userID, roleStringKey, orgID) {
+        const start = Date.now();
+
+        // Validate that the role string key
+        if (typeof roleStringKey != "string" || roleStringKey == "") {
+            logger.error("Invalid input for addUserToRoleByKey. 'roleStringKey' must be a string.", Date.now() - start);
+            throw new Error("Invalid input for addUserToRoleByKey. 'roleStringKey' must be a string.");
+        }
+
+        // Look up the roleID by string in the database
+        const query = `SELECT id
+                       FROM raesum_auth_role
+                       WHERE string_key = $1
+                       LIMIT 1;`;
+        const result = await raesumDB.query(query, [roleStringKey]);
+        if (result.rows.length > 0) {
+            const roleID = parseInt(result.rows[0].id);
+            logger.debug(`Role found for key ${roleStringKey}. Adding user to role.`, Date.now() - start);
+            return await this.addUserToRole(userID, roleID, orgID);
+        } else {
+            logger.warning("Role not found", Date.now() - start);
+            throw new Error("Role not found");
+        }
+
+    }
+
 
     /**
      * Removes a user to a role for an organization.
@@ -584,29 +631,33 @@ class raesumAuthorizationObject {
      * @throws {Error} If the user ID is not a positive int
      * @throws {Error} If the role ID is not a positive int
      */
-    async removeUserFromRole(userID, roleID, orgID){
+    async removeUserFromRole(userID, roleID, orgID) {
         const start = Date.now();
 
         // Validate the data types of the inputs
-        if(typeof userID != "number" || userID < 1){
+        if (typeof userID != "number" || userID < 1) {
             logger.error("Invalid input for removeUserFromRole. Must be a positive int.", Date.now() - start);
             throw new Error("Invalid input for removeUserFromRole. Must be a positive int.");
         }
 
-        if(typeof roleID != "number" || roleID < 1){
+        if (typeof roleID != "number" || roleID < 1) {
             logger.error("Invalid input for removeUserFromRole. Must be a positive int.", Date.now() - start);
             throw new Error("Invalid input for removeUserFromRole. Must be a positive int.");
         }
 
         // If the orgID is not submitted
-        if(typeof orgID != "number" || orgID < 1){
+        if (typeof orgID != "number" || orgID < 1) {
             logger.verbose("OrgID not submitted. Getting current orgID for user", Date.now() - start);
             const user = new raesumUser();
             orgID = await user.getOrgID(userID);
         }
 
         // Remove the user from the role
-        const query = `DELETE FROM raesum_auth_user_x_organization_x_role WHERE user_id = $1 AND org_id = $2 AND role_id = $3;`;
+        const query = `DELETE
+                       FROM raesum_auth_user_x_organization_x_role
+                       WHERE user_id = $1
+                         AND org_id = $2
+                         AND role_id = $3;`;
         const params = [userID, orgID, roleID];
         try {
             const result = await raesumDB.query(query, params);
@@ -617,7 +668,7 @@ class raesumAuthorizationObject {
                 logger.warning(`User ${userID} not in role: ${roleID} for org: ${orgID}, or role, org, or user does not exist`, Date.now() - start);
                 return false;
             }
-        }catch (e){
+        } catch (e) {
             logger.error("Error removing user from role with error: " + e, Date.now() - start);
             throw new Error("Error removing user from role");
         }
@@ -632,11 +683,11 @@ class raesumAuthorizationObject {
      * @throws {Error} If the role ID is not a positive int
      * @throws {Error} If the role does not exist
      */
-    async getRoleByID(roleID){
+    async getRoleByID(roleID, activeOnly) {
         const start = Date.now();
 
         // Validate that roleID is a positive int
-        if(typeof roleID != "number" || roleID < 1){
+        if (typeof roleID != "number" || roleID < 1) {
             logger.error("Invalid input for getRoleByID. Must be a positive int.", Date.now() - start);
             throw new Error("Invalid input for getRoleByID. Must be a positive int.");
         }
@@ -644,21 +695,62 @@ class raesumAuthorizationObject {
         // Determine whether to include inactive records
         // Create query fragment for activeonly
         let activeOnlyQuery = "";
-        if(activeOnly !== false){
-            activeOnlyQuery = " WHERE r.active_status = true ";
+        if (activeOnly !== false) {
+            activeOnlyQuery = " AND r.active_status = true ";
         }
 
-        const query = `SELECT * FROM raesum_auth_role as r WHERE id = $1 ${activeOnlyQuery};`;
+        const query = `SELECT *
+                       FROM raesum_auth_role as r
+                       WHERE id = $1 ${activeOnlyQuery};`;
         const result = await raesumDB.query(query, [roleID]);
 
-        if(result.rows.length > 0){
+        if (result.rows.length > 0) {
             logger.debug(`Found role`, Date.now() - start);
             return result.rows[0];
-        }else{
-            logger.warning("Role not found", Date.now() - start);
+        } else {
+            logger.warning(`Role with ID: ${roleID} not found`, Date.now() - start);
             throw new Error("Role not found");
         }
 
+    }
+
+
+    /**
+     * Get role by Key
+     * @param  {Number} roleStringKey The string of the role     * @param   {boolean} [activeOnly=true] Only return active roles
+     * @returns {object} A single role object
+     * @throws {Error} If the role string key is a non-empty string
+     * @throws {Error} If the role does not exist
+     */
+    async getRoleByKey(roleStringKey, activeOnly) {
+        const start = Date.now();
+
+        // Determine if the roleStringKey is a non-empty string
+        if (typeof roleStringKey != "string" || roleStringKey == "") {
+            logger.error("Invalid input for getRoleByKey. Must be a non-empty string.", Date.now() - start);
+            throw new Error("Invalid input for getRoleByKey. Must be a non-empty string.");
+        }
+
+        // Determine whether to include inactive records
+        // Create query fragment for activeonly
+        let activeOnlyQuery = "";
+        if (activeOnly !== false) {
+            activeOnlyQuery = " AND r.active_status = true ";
+        }
+
+        // Get the role ID
+        const query = `SELECT id
+                       FROM raesum_auth_role as r
+                       WHERE string_key = $1 ${activeOnlyQuery};`;
+        const result = await raesumDB.query(query, [roleStringKey]);
+
+        // If the role exists, get the role
+        if (result.rows.length > 0) {
+            return await this.getRoleByID(result.rows[0].id, activeOnly);
+        } else {
+            logger.warning(`Role with key: ${roleStringKey} not found`, Date.now() - start);
+            throw new Error("Role not found");
+        }
     }
 
     /**
@@ -669,11 +761,11 @@ class raesumAuthorizationObject {
      * @throws {Error} If the roleIDArray does not contain at least one positive INT
      * @throws {Error} If the role does not exist
      */
-    async getRolesByID(roleIDArray, activeOnly){
+    async getRolesByID(roleIDArray, activeOnly) {
         const start = Date.now();
 
         // Validate the data types of the inputs
-        if(!Array.isArray(roleIDArray) || roleIDArray.length == 0){
+        if (!Array.isArray(roleIDArray) || roleIDArray.length == 0) {
             logger.error("Invalid input for getRolesByID. Must be an array with at least one positive int.", Date.now() - start);
             throw new Error("Invalid input for getRolesByID. Must be an array with at least one positive int.");
         }
@@ -684,7 +776,7 @@ class raesumAuthorizationObject {
         });
 
         // If the array is empty, throw error
-        if(roleIDArray.length == 0){
+        if (roleIDArray.length == 0) {
             logger.error("Invalid input for getRolesByID. Must be an array with at least one positive int.", Date.now() - start);
             throw new Error("Invalid input for getRolesByID. Must be an array with at least one positive int.");
         }
@@ -692,17 +784,19 @@ class raesumAuthorizationObject {
         // Determine whether to include inactive records
         // Create query fragment for activeonly
         let activeOnlyQuery = "";
-        if(activeOnly !== false){
+        if (activeOnly !== false) {
             activeOnlyQuery = " WHERE r.active_status = true ";
         }
 
-        const query = `SELECT * FROM raesum_auth_role as r WHERE id IN ($1) ${activeOnlyQuery};`;
+        const query = `SELECT *
+                       FROM raesum_auth_role as r
+                       WHERE id IN ($1) ${activeOnlyQuery};`;
         const result = await raesumDB.query(query, [roleIDArray]);
 
-        if(result.rows.length > 0){
+        if (result.rows.length > 0) {
             logger.debug(`Found ${result.rows.length} roles`, Date.now() - start);
             return result.rows;
-        }else{
+        } else {
             logger.warning("Role(s) does not exist", Date.now() - start);
             throw new Error("Role(s) does not exist");
         }
@@ -718,12 +812,12 @@ class raesumAuthorizationObject {
      * @param  {Number} orgID The ID of the organization
      * @throws {Error} If the orgID is not a positive int
      */
-    async getRolesForOrg(orgID, activeOnly){
+    async getRolesForOrg(orgID, activeOnly) {
         const start = Date.now();
 
 
         // Validate that orgID is a positive int
-        if(typeof orgID != "number" || orgID < 1){
+        if (typeof orgID != "number" || orgID < 1) {
             logger.error("Invalid input for getRolesForOrg. Must be a positive int.", Date.now() - start);
             throw new Error("Invalid input for getRolesForOrg. Must be a positive int.");
         }
@@ -732,27 +826,32 @@ class raesumAuthorizationObject {
         // Create query fragment for activeonly
         let activeOnlyQuery1 = "";
         let activeOnlyQuery2 = "";
-        if(activeOnly !== false){
+        if (activeOnly !== false) {
             activeOnlyQuery1 = " WHERE r.active_status = true ";
             activeOnlyQuery2 = " AND r.active_status = true ";
         }
 
         logger.verbose(`Getting roles for org: ${orgID}`, Date.now() - start);
 
-        const query = `SELECT id FROM raesum_auth_role as r
-                    INNER JOIN raesum_auth_role_x_organization_restriction as rxor ON r.id = rxor.role_id AND org_id =1
-                        ${activeOnlyQuery1}
-                    UNION
-                    SELECT id FROM raesum_auth_role as r
-                    LEFT JOIN raesum_auth_role_x_organization_restriction as rxor ON r.id = rxor.role_id
-                    WHERE org_id IS NULL
-                        ${activeOnlyQuery2};`;
+        const query = `SELECT id
+                       FROM raesum_auth_role as r
+                                INNER JOIN raesum_auth_role_x_organization_restriction as rxor
+                                           ON r.id = rxor.role_id AND org_id = $1
+                           ${activeOnlyQuery1}
+                       UNION
+        SELECT id
+        FROM raesum_auth_role as r
+                 LEFT JOIN raesum_auth_role_x_organization_restriction as rxor ON r.id = rxor.role_id
+        WHERE org_id IS NULL
+            ${activeOnlyQuery2};`;
 
-        const params = [orgID, activeOnly];
+        const params = [orgID];
+
+
         const result = await raesumDB.query(query, params);
 
         const roleIDs = [];
-        result.rows.forEach((row)=>{
+        result.rows.forEach((row) => {
             roleIDs.push(row.id);
         });
 
@@ -762,7 +861,6 @@ class raesumAuthorizationObject {
     }
 
 }
-
 
 
 const raesumAuthorization = new raesumAuthorizationObject();

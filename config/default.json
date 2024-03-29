@@ -73,9 +73,20 @@
     "firstUserUsername": "odin",
     "firstUserRole": "raesumAdmin"
   },
-  "integrationTestEnabled": {
-    "redis": false,
-    "aws": false,
-    "primaryDatabase": false
+  "developmentAndTesting": {
+    "integrationTestEnabled": {
+      "redis": false,
+      "aws": false,
+      "primaryDatabase": false
+    },
+    "seed": {
+      "scaleFactor": 1,
+      "createInCognito": false,
+      "seedRoles": {
+        "orgAdmin": "raesumOrgAdmin",
+        "orgManager": "raesumOrgManager",
+        "baseUser": "raesumMinimalUser"
+      }
+    }
   }
 }

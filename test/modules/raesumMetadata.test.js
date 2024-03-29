@@ -8,7 +8,7 @@ import raesumMetadata from "../../src/models/raesumMetadata.js";
 describe("Raesum Metadata System", () => {
     // If a database tests have been enabled
 
-    const dbTestsEnabled = config.get("integrationTestEnabled.primaryDatabase");
+    const dbTestsEnabled = config.get("developmentAndTesting.integrationTestEnabled.primaryDatabase");
     console.log("DB Tests Enabled: " + dbTestsEnabled);
 
     const iftest = (dbTestsEnabled) ? test : test.skip;
@@ -29,7 +29,6 @@ describe("Raesum Metadata System", () => {
         // Query the database to verify that the data is there
         const query = "SELECT * FROM raesum_metadata WHERE datakey = $1";
         const queryResult = await raesumDB.query(query, [key]);
-        console.log("\n||| TEST QUERY: \n",query, queryResult['rows'])
 
         expect(queryResult['rows'].length).toBe(1);
         expect(queryResult['rows'][0]['datavalue']).toBe("testValue");

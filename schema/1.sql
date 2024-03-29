@@ -136,39 +136,27 @@ create table raesum_auth_scope_type
 create index raesum_auth_scope_type_string_key_index
     on raesum_auth_scope_type (string_key);
 
-create table raesum_audit_log
+create table public.raesum_audit_log
 (
-    id             bigserial
-        constraint raesum_audit_log_pk
-            primary key,
-    user_id        bigint
-        constraint raesum_audit_log_raesum_user_id_fk
-            references raesum_user,
-    action_id      integer not null
-        constraint raesum_audit_log_raesum_auth_action_type_id_fk
-            references raesum_auth_action_type,
-    object_type_id integer not null
-        constraint raesum_audit_log_raesum_auth_object_type_id_fk
-            references raesum_auth_object_type,
-    object_id      integer not null,
-    event_at       timestamp default now(),
-    metadata       text
+    id             bigint primary key not null default nextval('raesum_audit_log_id_seq'::regclass),
+    user_id        bigint,
+    action_id      integer            not null,
+    object_type_id integer            not null,
+    object_id      integer,
+    event_at       timestamp without time zone default now(),
+    metadata       text,
+    foreign key (action_id) references public.raesum_auth_action_type (id)
+        match simple on update no action on delete no action,
+    foreign key (object_type_id) references public.raesum_auth_object_type (id)
+        match simple on update no action on delete no action,
+    foreign key (user_id) references public.raesum_user (id)
+        match simple on update no action on delete no action
 );
+create index raesum_audit_log__index_at on raesum_audit_log using btree (event_at);
+create index raesum_audit_log__index_user_action on raesum_audit_log using btree (user_id, action_id, event_at);
+create index raesum_audit_log__object_action on raesum_audit_log using btree (object_type_id, action_id, event_at);
+create index raesum_audit_log__object_id_action on raesum_audit_log using btree (object_id, action_id, event_at);
 
-alter table raesum_audit_log
-    owner to seneca;
-
-create index raesum_audit_log__index_at
-    on raesum_audit_log (event_at);
-
-create index raesum_audit_log__index_user_action
-    on raesum_audit_log (user_id, action_id, event_at);
-
-create index raesum_audit_log__object_action
-    on raesum_audit_log (object_type_id, action_id, event_at);
-
-create index raesum_audit_log__object_id_action
-    on raesum_audit_log (object_id, action_id, event_at);
 
 
 create table raesum_auth_role

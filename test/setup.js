@@ -8,8 +8,8 @@ async function setup(){
     const start = Date.now();
     console.info('Setting up ...')
 
-    // Check to see if integrationTestEnabled.primaryDatabase is enabled
-    const dbTestEnabled = config.get("integrationTestEnabled.primaryDatabase");
+    // Check to see if developmentAndTesting.integrationTestEnabled.primaryDatabase is enabled
+    const dbTestEnabled = config.get("developmentAndTesting.integrationTestEnabled.primaryDatabase");
 
 
     // Seed the database if required

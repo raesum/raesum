@@ -9,7 +9,6 @@
         "log_in": ["self"],
         "read": ["crossorganization"],
         "update": ["crossorganization"],
-        "delete": ["crossorganization"],
         "create": ["crossorganization"],
         "set_status": ["crossorganization"]
       },
@@ -23,7 +22,6 @@
       "raesum_role": {
         "read": ["crossorganization"],
         "update": ["crossorganization"],
-        "delete": ["crossorganization"],
         "create": ["crossorganization"],
         "set_status": ["crossorganization"]
       },
@@ -35,7 +33,7 @@
   },
   {
     "string_key": "raesumMinimalUser",
-    "name": "Minimal USer",
+    "name": "Minimal User",
     "active_status": true,
     "restrict_to_organization": [],
     "permissions": {
@@ -51,5 +49,61 @@
       }
     }
 
+  },
+  {
+    "string_key": "raesumOrgAdmin",
+    "name": "Organization Admin",
+    "active_status": true,
+    "restrict_to_organization": [],
+    "permissions": {
+      "raesum_user": {
+        "log_in": ["self"],
+        "read": ["organization"],
+        "update": ["organization"],
+        "create": ["organization"],
+        "set_status": ["organization"]
+      },
+      "raesum_organization": {
+        "read": ["organization"],
+        "update": ["organization"]
+      },
+      "raesum_role": {
+        "read": ["organization"],
+        "update": ["organization"],
+        "create": ["organization"],
+        "set_status": ["organization"]
+      },
+      "raesum_audit": {
+        "read": ["organization"]
+      }
+    }
+
+  },
+  {
+    "string_key": "raesumOrgManager",
+    "name": "Organization Manager",
+    "active_status": true,
+    "restrict_to_organization": [],
+    "permissions": {
+      "raesum_user": {
+        "log_in": ["self"],
+        "read": ["organization"],
+        "update": ["self"],
+        "set_status": ["organization"]
+      },
+      "raesum_organization": {
+        "read": ["organization"],
+        "update": ["organization"],
+        "delete": ["organization"]
+      },
+      "raesum_role": {
+        "read": ["organization"]
+      },
+      "raesum_audit": {
+        "read": ["organization"]
+      }
+    }
+
   }
+
 ]

@@ -312,7 +312,7 @@ class raesumOrganization {
     async getUsers(orgID, activeStatus) {
         const start = Date.now();
 
-        logger.info(`Getting users for org: ${orgID}`, Date.now() - start);
+        logger.debug(`Getting users for org: ${orgID}`, Date.now() - start);
 
         // Parse inputs as INT
         orgID = parseInt(orgID);

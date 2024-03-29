@@ -7,7 +7,7 @@ import {jest} from '@jest/globals'
 describe("Raesum Cache Redis Mode", () => {
 // If a redis server is available test redis based cache
 
-    const redisTestsEnabled = config.get("integrationTestEnabled.redis");
+    const redisTestsEnabled = config.get("developmentAndTesting.integrationTestEnabled.redis");
     console.log("Redis Tests Enabled: " + redisTestsEnabled);
 
     const iftest = (redisTestsEnabled) ? test : test.skip;

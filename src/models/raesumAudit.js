@@ -20,7 +20,7 @@ class raesumAuditObject{
 
         logger.info("Audit Module Initialized", Date.now() - start);
     }
-    async create(actionType, objectType, objectID, userID){
+    async create(actionType, objectType, objectID=null, userID){
         const start = Date.now();
 
         // If #actions or #objectTypes are empty, run init
@@ -35,9 +35,15 @@ class raesumAuditObject{
             throw new Error("Missing input for logEvent");
         }
 
-        // If objectID or userID are not numbers, log error and return false
-        if(isNaN(objectID) || isNaN(userID)){
+        // If userID are not numbers, log error and return false
+        if(isNaN(userID) || userID < 1){
             logger.error("Non-numeric input for logEvent", Date.now() - start);
+            throw new Error("Invalid format for objectID or userID");
+        }
+
+        // If objectID is set and not a number, throw an error
+        if(objectID && (isNaN(objectID) || objectID < 1) && objectID != null){
+            logger.error("Non-numeric input for objectID logEvent", Date.now() - start);
             throw new Error("Invalid format for objectID or userID");
         }
 

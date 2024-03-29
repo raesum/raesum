@@ -3,10 +3,18 @@ import {raesumLogger, raesumLoggerRequestFinishMiddleware} from "./raesumLogger.
 import path from "path";
 import fs from "fs";
 import {fileURLToPath} from "url";
-import raesumDB from "./raesumDB.js";
+import { faker } from '@faker-js/faker';
+
 import raesumMigrate from "./raesumMigrate.js";
 import raesumStartup from "../modules/raesumStartup.js";
 import raesumMetadata from "../models/raesumMetadata.js";
+import raesumDB from "./raesumDB.js";
+import raesumAuthorization from "../models/raesumAuthorization.js";
+import raesumConfig from "../modules/raesumConfig.js";
+import raesumOrganization from "../models/raesumOrganization.js";
+import raesumAudit from "../models/raesumAudit.js";
+import raesumUser from "../models/raesumUser.js";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,25 +68,300 @@ class raesumSeed {
         // Run Raesum Initialize
         logger.info("Running Raesum Initialize", Date.now() - start);
         const startup = new raesumStartup();
-        await startup.initialize();
+        const firstUserID = await startup.initialize();
+
+        // Set up user and org counters
+        let userCount = 0;
+        let orgCount = 0;
 
 
-        // Create Users
-        const loadUsers = await this.#loadSQLSeed('raesum_user.sql');
-        if(!loadUsers){
-            logger.error("Creating Users Failed.", Date.now() - start);
-            return false;
+        // Determine How Many Orgs to Create
+        const seedScale = await raesumConfig.get("developmentAndTesting.seed.scaleFactor");
+        const clientTypeOrgCount = Math.ceil(10 * seedScale);
+        const clientTypeOrgList = [];
+        const agencyTypeOrgCount = Math.ceil(4 * seedScale);
+        const agencyTypeOrgList = [];
+        const org = new raesumOrganization();
+
+        // Create 'Client' Type Organizations
+        logger.info("Creating Seed Organizations: Client Type", Date.now() - start);
+        for(let i=0; i<clientTypeOrgCount; i++){
+            const orgType = "client";
+
+            const orgName = faker.company.name();
+            const orgID = await org.create(orgName+orgCount, true);
+            clientTypeOrgList.push(orgID);
+
+            // Create Audit Log Entry
+            await raesumAudit.create("create", "raesum_organization", orgID, firstUserID);
+
+            // Create Users for the Organization
+            userCount += await this.#createSeedUsersForOrg(orgID, orgType, firstUserID,[]);
+            orgCount++;
         }
-        // Create Audit Log Entries
-        const loadAuditLog = await this.#loadSQLSeed('raesum_audit_log.sql');
-        if(!loadAuditLog){
-            logger.error("Creating Audit Log Entries Failed.", Date.now() - start);
-            return false;
+        logger.info("Created " + clientTypeOrgCount + " Client Type Organizations", Date.now() - start)
+
+
+
+        // Create 'Agency' Type Organizations
+        logger.info("Creating Seed Organizations: Agency Type", Date.now() - start);
+
+
+        for(let i=0; i<agencyTypeOrgCount; i++){
+            const orgType = "agency";
+
+            const orgName = faker.company.name();
+            const orgID = await org.create(orgName, true);
+            agencyTypeOrgList.push(orgID);
+
+            // Create Audit Log Entry
+            await raesumAudit.create("create", "raesum_organization", orgID, firstUserID);
+
+            // Chose some clients from the client list
+            const numberOfClients = Math.ceil(Math.random() * 5) + 1;
+            let clientList = [];
+
+            for(let c=0; c < numberOfClients; c++){
+
+                // Choose a random index in the client array
+                const clientIndex = Math.floor(Math.random() * clientTypeOrgList.length);
+                const candidateClient = clientTypeOrgList[clientIndex];
+
+                // Add to the client list
+                if(clientList.indexOf(candidateClient) === -1) {
+                    clientList.push(candidateClient);
+                }
+            }
+
+            logger.debug(`Created the client list for org: ${orgID} with ${clientList.length} clients. Expected number of clients: ${numberOfClients}`);
+
+            // Create Users for the Organization
+            userCount += await this.#createSeedUsersForOrg(orgID, orgType, firstUserID,clientList);
+            orgCount++;
         }
+        logger.info("Created " + agencyTypeOrgCount + " Agency Type Organizations", Date.now() - start);
+
+        // Randomly Deactivate a client organization
+        const deactivateIndex = Math.floor(Math.random() * clientTypeOrgList.length);
+        const deactivateOrgID = clientTypeOrgList[deactivateIndex];
+        await org.setActivationStatus(deactivateOrgID, false);
+        await raesumAudit.create("set_status", "raesum_organization", deactivateOrgID, firstUserID);
+
+        logger.info(`Created ${orgCount} Organizations and ${userCount} Users`, Date.now() - start);
+
+
+        // // Create Users
+        // const loadUsers = await this.#loadSQLSeed('raesum_user.sql');
+        // if(!loadUsers){
+        //     logger.error("Creating Users Failed.", Date.now() - start);
+        //     return false;
+        // }
+        // // Create Audit Log Entries
+        // const loadAuditLog = await this.#loadSQLSeed('raesum_audit_log.sql');
+        // if(!loadAuditLog){
+        //     logger.error("Creating Audit Log Entries Failed.", Date.now() - start);
+        //     return false;
+        // }
 
         return true;
 
     }
+
+    async #createSeedUsersForOrg(orgID, orgType, firstUserID, clientOrgs = []){
+        const start = Date.now();
+
+        logger.debug("Creating Seed Users for Org: " + orgID);
+
+        const user = new raesumUser();
+        const org = new raesumOrganization();
+        const seedScale = await raesumConfig.get("developmentAndTesting.seed.scaleFactor");
+
+        // Get the roles for the seeding
+        const orgAdmin = await raesumConfig.get("developmentAndTesting.seed.seedRoles.orgAdmin");
+        const orgManager = await raesumConfig.get("developmentAndTesting.seed.seedRoles.orgManager");
+        const baseUser = await raesumConfig.get("developmentAndTesting.seed.seedRoles.baseUser");
+
+        // Create Users for the Organization
+        const userCount = Math.ceil(seedScale * Math.random() * 5) + 3;
+        const orgAdminCount = Math.ceil(userCount / 4);
+        const usersInOrg = [];
+
+        // Add Org Users
+        for(let i=0; i<userCount; i++){
+            const userName = faker.internet.userName();
+            const external_id = "us-east-1:" + faker.string.uuid();
+
+            const userID = await user.createUser(external_id, userName + "_" + orgID + "_" + i, orgID, true);
+            usersInOrg.push(userID);
+            // Create Audit Log Entry
+            await raesumAudit.create("create", "raesum_user", userID, firstUserID);
+            await org.addUserToOrganization(userID, orgID);
+            await raesumAudit.create("update", "raesum_organization", userID, orgID);
+
+            // If i < admin count, then the user is an admin
+            if(i < orgAdminCount){
+                await raesumAuthorization.addUserToRoleByKey(userID, orgAdmin, orgID);
+                await raesumAudit.create("update", "raesum_user", userID, firstUserID);
+            }
+
+            // All users get the minimal user role
+            await raesumAuthorization.addUserToRoleByKey(userID, baseUser, orgID);
+            await raesumAudit.create("update", "raesum_user", userID, firstUserID);
+        }
+        logger.debug("Created " + userCount + " users for org " + orgID + " with orgType " + orgType, Date.now() - start);
+
+        // If org is an agency, add the users to the agency's customers
+        if(orgType == "agency"){
+            logger.debug(`Org: ${orgID} is an 'agency' type. Adding agency users to client ${clientOrgs.length} orgs`, Date.now() - start);
+
+            // Choose the clientAdmin Users
+            const clientAdminCount = Math.ceil(usersInOrg.length / 2);
+            const clientAdmins = usersInOrg.slice(0, clientAdminCount);
+
+            logger.debug(`Org: ${orgID} will have ${clientAdminCount.length} client administrators for ${clientOrgs.length} clients`, Date.now() - start);
+
+            // For each 'client' org, add the clientAdmins
+            for(let i=0; i<clientOrgs.length; i++){
+
+                // For each admin user
+                for(let a=0; a < clientAdmins.length; a++){
+                    // Add user to org
+                    await org.addUserToOrganization(clientAdmins[a], clientOrgs[i]);
+
+                    // Add org role to user
+                    await raesumAuthorization.addUserToRoleByKey(clientAdmins[a], baseUser, clientOrgs[i]);
+
+                }
+            }
+        }
+
+
+        logger.info(`Generating Audit Logs for Users in Org: ${orgID}`, Date.now() - start);
+        // Create Audit Logs for the Users
+        for(let i=0; i<usersInOrg.length; i++){
+            await this.#generateAuditLogs(usersInOrg[i]);
+        }
+        logger.info(`Finished Generating Audit Logs for Users in Org: ${orgID}`, Date.now() - start);
+
+
+        logger.debug(`Org: ${orgID} Seed Users Created`, Date.now() - start);
+
+        return userCount;
+    }
+
+
+    async #generateAuditLogs(userID){
+        const start = Date.now();
+        logger.verbose("Seeding User Audit Logs: " + userID, Date.now() - start);
+
+        // Get the User and allowed orgs
+        const users = new raesumUser();
+        const organizations = new raesumOrganization();
+        const user = await users.getUserById(userID);
+        const userRoles = await raesumAuthorization.getRolesForOrg(userID);
+        const orgUsers = await organizations.getUsers(user.current_organization_id);
+
+        // Determine number of sessions
+        const sessionCount = Math.ceil(Math.random() * 3) + 2;
+
+        // Determine Oldest Date Possible for Audit Log
+        const oldestDate = new Date(new Date().setFullYear(new Date().getFullYear() - 1));
+        const newestDate  = new Date(new Date().setFullYear(new Date().getFullYear()));
+
+        // Create the dates of the sessions
+        const sessionDates = faker.date.betweens({from: oldestDate, to: newestDate, count: sessionCount});
+
+        for(let s=0;s<sessionCount;s++) {
+            // Determine the session start and end (1 day total)
+            const sessionEnd = new Date(sessionDates[s].getTime + 60 * 60 * 24 * 1000) ;
+
+            // Determine the number of events in session
+            const eventCount = Math.ceil(Math.random() * 36) + 4;
+
+
+            // Create the dates of session
+            const currentSessionDate = faker.date.betweens({from: sessionDates[s], to: sessionEnd, count: eventCount});
+
+            // Start the transaction query
+            let query = "BEGIN; INSERT INTO raesum_audit_log (action_id, object_id, object_type_id, user_id, event_at) VALUES \n";
+            let valueArray = []
+
+            // Create the events
+            for(let e=0;e<eventCount;e++){
+                // The FIRST event must be login
+                const eventDate = currentSessionDate[e].toISOString();
+                if(e==0){
+                    valueArray.push("(1, " + userID + ", 1, " + userID + ", '" + eventDate + "')");
+                }else{
+                    // Determine the event
+                    const eventID = Math.ceil(Math.random() * 7);
+
+                    // Determine the event to create with a case statement
+                    switch(eventID){
+                        case 1:
+                            // Read Current Organization
+                            valueArray.push("(5, " + user.current_organization_id + ", 2, " + userID + ", '" + eventDate + "')");
+                            break;
+                        case 2:
+                            // Update Current Organization
+                            valueArray.push("(3, " + user.current_organization_id + ", 2, " + userID + ", '" + eventDate + "')");
+                            break;
+                        case 3:
+                            // Read A Role
+
+                            // Pick a random role from userRoles
+                            const roleIndex = Math.abs(Math.floor(Math.random() * userRoles.length -1));
+                            const roleID = userRoles[roleIndex];
+
+                            valueArray.push("(5, " + roleID + ", 3, " + userID + ", '" + eventDate + "')");
+                            break;
+                        case 4:
+                            // Read Audit Log
+                            valueArray.push("(5, null, 4, " + userID + ", '" + eventDate + "')");
+                            break;
+                        case 5:
+                            // Read their own user
+                            valueArray.push("(5, " + userID + ", 1, " + userID + ", '" + eventDate + "')");
+                            break;
+                        case 6:
+                            // Get another user from their org
+                            // Pick a random user from orgUsers
+                            const userIndex = Math.floor(Math.random() * orgUsers.length);
+                            const userToRead = orgUsers[userIndex].id;
+
+                            valueArray.push("(5, " + userToRead + ", 1, " + userID + ", '" + eventDate + "')");
+                            break;
+                        case 7:
+                            // Update their user
+                            valueArray.push("(3, " + userID + ", 1, " + userID + ", '" + eventDate + "')");
+                            break;
+                    }
+
+                }
+
+
+
+            }
+
+            query += valueArray.join(",\n") + "; COMMIT;";
+
+            try {
+                const result = await raesumDB.query(query);
+                logger.debug(`Seed User: ${userID} Audit Logs Generated`, Date.now() - start);
+                    return true;
+            }catch(e){
+                logger.error(`Seed User: ${userID} Audit Logs Failed`, Date.now() - start);
+                throw new Error(`Seed User: ${userID} Audit Logs Failed`)
+            }
+
+        }
+
+
+
+
+        logger.verbose(`Seed User: ${userID} Audit Logs Generated`, Date.now() - start);
+    }
+
 
     async #truncateRaesumTables(){
         const start = Date.now();

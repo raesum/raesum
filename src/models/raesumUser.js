@@ -92,7 +92,7 @@ class raesumUser {
         try {
             const query = "INSERT INTO raesum_user (external_id, username, current_organization_id, active_status) VALUES ($1, $2, $3, $4) RETURNING id";
             const result = await raesumDB.query(query, [external_id, username, currentOrganizationId, activeStatus]);
-            newUserID = result.rows[0].id;
+            newUserID = parseInt(result.rows[0].id);
         }catch (e){
             logger.error("DB Error creating user: " + e, Date.now() - start);
             throw new Error("Error creating user");
@@ -172,12 +172,12 @@ class raesumUser {
             if(result.rows.length > 0){
                 theId = parseInt(result.rows[0].id)
             }else{
-                logger.warning(`User with username: ${username} not found`, Date.now() - start);
+                logger.debug(`User with username: ${username} not found`, Date.now() - start);
                 throw new Error("User not found");
             }
         }catch(e){
-            logger.error("Error getting user by username: " + e, Date.now() - start);
-            throw new Error("Error getting user by username");
+            logger.debug(`Warning getting user by username: ${username} with error: ` + e, Date.now() - start);
+            throw new Error("User not found");
         }
 
         if(theId && !isNaN(theId) && theId > 0){
@@ -215,11 +215,11 @@ class raesumUser {
             if(result.rows.length > 0){
                 theId = parseInt(result.rows[0].id)
             }else{
-                logger.warning(`User with external_id: ${external_id} not found`, Date.now() - start);
+                logger.debug(`User with external_id: ${external_id} not found`, Date.now() - start);
                 throw new Error("User not found");
             }
         }catch(e){
-            logger.warning("Error getting user by external_id: " + e, Date.now() - start);
+            logger.debug("Error getting user by external_id: " + e, Date.now() - start);
             throw new Error("Error getting user by external_id");
         }
 
