@@ -33,7 +33,7 @@
     "id": 6,
     "name": "Deny",
     "string_key": "deny",
-    "description": "Denies all access to an . This will OVERRIDE any other permissions"
+    "description": "Denies all access to an . This will OVERRIDE any other permissions. Deny is the most powerful permission and is scopeless. A deny anywhere in a scope setting overrides all other permissions for that object in EVERY scope."
   },
   {
     "id": 7,

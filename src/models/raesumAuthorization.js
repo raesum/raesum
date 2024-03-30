@@ -345,6 +345,26 @@ class raesumAuthorizationObject {
             }
         }
 
+        // Check to see if the user has a deny permission
+        const denyquery = `SELECT user_id
+                       FROM raesum_auth_role_x_permission as rxp
+                                INNER JOIN raesum_auth_user_x_organization_x_role as uxoxr
+                                           ON rxp.role_id = uxoxr.role_id
+                                               AND uxoxr.org_id = $1
+                                               AND uxoxr.user_id = $2
+                       WHERE action_id = $3
+                         AND object_type_id = $4
+                       LIMIT 1;`;
+
+        const denyparams = [orgID, userID, 6, objectTypeId];
+        const denyresult = await raesumDB.query(denyquery, denyparams);
+
+        if (denyresult.rows.length > 0) {
+            logger.verbose("User has permission denied", Date.now() - start);
+            return false;
+        }
+
+
         // Check to see if the user has the required permissions
         const query = `SELECT user_id
                        FROM raesum_auth_role_x_permission as rxp
@@ -406,7 +426,30 @@ class raesumAuthorizationObject {
             throw new Error("Invalid input for checkUserPermissionByID. Must be a valid action ID.");
         }
 
-        // Get the higest value scopeID
+
+        // Check for Deny Permission
+        const denyquery = `SELECT rxp.scope_id
+                       FROM raesum_auth_role_x_permission as rxp
+                                INNER JOIN raesum_auth_user_x_organization_x_role as uxoxr
+                                           ON rxp.role_id = uxoxr.role_id
+                                               AND uxoxr.user_id = $1
+                                INNER JOIN raesum_user as u
+                                           ON uxoxr.user_id = u.id AND uxoxr.org_id = u.current_organization_id
+                       WHERE action_id = $3
+                         AND object_type_id = $2
+                       ORDER BY rxp.scope_id DESC
+                       LIMIT 1;`
+
+        const denyparams = [userID, objectTypeId, 6];
+
+        const denyresult = await raesumDB.query(denyquery, denyparams);
+        if (denyresult.rows.length > 0) {
+            logger.verbose("User has been denied permission", Date.now() - start);
+            return false;
+        }
+
+
+        // Get the highest value scopeID
         const query = `SELECT rxp.scope_id
                        FROM raesum_auth_role_x_permission as rxp
                                 INNER JOIN raesum_auth_user_x_organization_x_role as uxoxr
