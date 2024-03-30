@@ -35,13 +35,16 @@ class raesumeCacheMemory{
     }
 
     async get(key){
-        const start = Date.now()
+
+
         // Get the key and return the value (return undefined if key does not exist)
         const returnVal = await this.#nodeCacheInstance.get(key);
         return returnVal;
     }
 
-    async set(key,value,ttl){
+    async set(key, value,ttl){
+
+
         // Set the key and return true/false on success/fail
         const returnStatus = await this.#nodeCacheInstance.set(key,value,ttl);
 
@@ -59,6 +62,22 @@ class raesumeCacheMemory{
             return false;
         }
     }
+
+
+    async deleteKeysStartingWith(partialKey){
+        // Get all keys that start with the partialKey
+        let keys = await this.#nodeCacheInstance.keys();
+
+        //Filter the key list where the key starts with the partial key
+        keys = keys.filter((key) => key.startsWith(partialKey));
+
+        // Delete all keys that start with the partial key
+        for(const key of keys){
+            await this.#nodeCacheInstance.del(key);
+        }
+        return true;
+    }
+
 }
 //
 class raesumeCacheRedis{
@@ -170,6 +189,20 @@ class raesumeCacheRedis{
             return false;
         }
     }
+
+    async deleteKeysStartingWith(partialKey){
+        if(this.#redisRunning){
+            // Get all keys that start with the partialKey
+            let keys = await this.#redisInstance.keys(partialKey+"*");
+
+            // Delete all keys that start with the partialKey
+            await this.#redisInstance.del(keys);
+            return true;
+        }else{
+            return false;
+        }
+
+    }
 }
 
 class raesumCachePool{
@@ -235,60 +268,83 @@ class raesumCachePool{
         }
     }
 
-    async get(key){
+    async get(key, objectType,orgId=null,userID=null){
         const start = Date.now();
         const cacheFunctioning = await this.#init();
 
         if(!cacheFunctioning){return undefined;}
 
-        // If key is not set return undefined
-        if(typeof key == "undefined"){return undefined;}
+
+        // Create the key
+        let cacheKey;
+        try{
+            cacheKey = this.#keymaker(key, objectType,orgId,userID);
+        }catch (e){
+            logger.error(`Error creating cache key: ${e}`, Date.now() - start);
+            return e;
+        }
 
         // Add prefix to key
-        key = await this.prefixKey(key);
+        cacheKey = await this.prefixKey(cacheKey);
 
-        const returnVal= await this.#cachePoolInstance.get(key);
+        const returnVal= await this.#cachePoolInstance.get(cacheKey);
         if(returnVal == undefined){
-            logger.verbose(`Cache Key Miss: ${key} CacheType: ${this.#cacheType}`, Date.now()-start)
+            logger.verbose(`Cache Key Miss: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start)
         }else{
-            logger.verbose(`Cache Key Hit: ${key} Miss CacheType: ${this.#cacheType}`, Date.now()-start)
+            logger.verbose(`Cache Key Hit: ${cacheKey} Miss CacheType: ${this.#cacheType}`, Date.now()-start)
         }
         return returnVal;
 
     }
 
-    async set(key,value,ttl){
+    async set(key,value,ttl, objectType,orgId=null,userID=null){
         const start = Date.now();
         const cacheFunctioning = await this.#init();
         if(!cacheFunctioning){return undefined;}
 
-        // If key is not set return undefined
-        if(typeof key == "undefined"){return undefined;}
+        // Create the key
+        let cacheKey;
+        try{
+            cacheKey = this.#keymaker(key, objectType,orgId,userID);
+        }catch (e){
+            logger.error(`Error creating cache key: ${e}`, Date.now() - start);
+            return e;
+        }
 
         // Add prefix to key
-        key = await this.prefixKey(key);
+        cacheKey = await this.prefixKey(cacheKey);
 
-        const returnVal = await this.#cachePoolInstance.set(key,value,ttl);
+        const returnVal = await this.#cachePoolInstance.set(cacheKey,value,ttl);
         if(returnVal == undefined){
-            logger.verbose(`Cache Key Failed: ${key} CacheType: ${this.#cacheType}`, Date.now()-start)
+            logger.verbose(`Cache Key Failed: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start)
         }else{
-            logger.verbose(`Cache Key Set: ${key} Miss CacheType: ${this.#cacheType}`, Date.now()-start)
+            logger.verbose(`Cache Key Set: ${cacheKey} Miss CacheType: ${this.#cacheType}`, Date.now()-start)
         }
         return returnVal;
 
     }
 
-    async delete(key){
+    async delete(key, objectType,orgId=null,userID=null){
         const start = Date.now();
         const cacheFunctioning = await this.#init();
         if(!cacheFunctioning){return undefined;}
-        key = await this.prefixKey(key);
 
-        const returnVal = await this.#cachePoolInstance.delete(key);
+        // Create the key
+        let cacheKey;
+        try{
+            cacheKey = this.#keymaker(key, objectType,orgId,userID);
+        }catch (e){
+            logger.error(`Error creating cache key: ${e}`, Date.now() - start);
+            return e;
+        }
+
+        cacheKey = await this.prefixKey(cacheKey);
+
+        const returnVal = await this.#cachePoolInstance.delete(cacheKey);
         if(returnVal){
-            logger.verbose(`Cache Key Deleted: ${key} CacheType: ${this.#cacheType}`, Date.now()-start)
+            logger.verbose(`Cache Key Deleted: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start)
         }else{
-            logger.verbose(`Cache Key Delete Fail: ${key} Miss CacheType: ${this.#cacheType}`, Date.now()-start)
+            logger.verbose(`Cache Key Delete Fail: ${cacheKey} Miss CacheType: ${this.#cacheType}`, Date.now()-start)
         }
         return returnVal;
     }
@@ -304,6 +360,90 @@ class raesumCachePool{
             return prefix+key;
         }
     }
+
+    /**
+     * Creates the key actually stored in redis
+     * @param  {String} objectType The object type / name of model storing a cached key.
+     * @param  {Number} orgId The id of the organization type
+     * @param  {Number} userID The id of the user
+     * @param  {String} key The key to store. Cannot contain : or be empty
+     * @return {String} The key to store in redis
+     * @throws {Error} If the user ID is not a positive int or null
+     * @throws {Error} If the org ID is not a positive int or null
+     * @throws {Error} If the object type string is not an string
+     * @throws {Error} If key is not a string
+     */
+    #keymaker(key, objectType="cache",orgId=null,userID=null){
+        // If the user ID is not a positive int or null, throw an error
+        if(userID != null && (isNaN(userID) || userID < 1)){
+            throw new Error("Invalid format for userID");
+        }
+
+        // If the org ID is not a positive int or null, throw an error
+        if(orgId != null && (isNaN(orgId) || orgId < 1)){
+            throw new Error("Invalid format for orgId");
+        }
+
+        // If the object type string is not an string, throw an error
+        if(typeof objectType != "string"){
+            throw new Error("Invalid format for objectType");
+        }
+
+        // If key is not a string, or empty , or contains a :, throw an error
+        if(typeof key != "string" || key == "" || key.includes(":")){
+            throw new Error("Invalid format for key");
+        }
+
+
+        // Create the key
+        const keyString = `${objectType}:${orgId}:${userID}:${key}`;
+        return keyString;
+
+    }
+
+
+    /**
+     * Deletes keys based on a pattern
+     * @param  {String} objectType The object type / name of model storing a cached key.
+     * @param  {Number} orgId The id of the organization type
+     * @param  {Number} userID The id of the user
+     * @return {boolean} Whether the operation was successful or not
+     * @throws {Error} If the user ID is not a positive int or null
+     * @throws {Error} If the org ID is not a positive int or null
+     * @throws {Error} If the object type is not an string
+     */
+    async deleteSet(objectType,orgId=null, userID=null){
+        const start = Date.now();
+
+        // If the user ID is not a positive int or null, throw an error
+        if(userID != null && (isNaN(userID) || userID < 1)){
+            throw new Error("Invalid format for userID");
+        }
+
+        // If the org ID is not a positive int or null, throw an error
+        if(orgId != null && (isNaN(orgId) || orgId < 1)){
+            throw new Error("Invalid format for orgId");
+        }
+
+        // If the object type is not an string, throw an error
+        if(typeof objectType != "string"){
+            throw new Error("Invalid format for objectType");
+        }
+
+        // Create the key
+        const cacheKey =  `${objectType}:${orgId}:${userID}`;
+
+        const result = await this.#cachePoolInstance.deleteKeysStartingWith(cacheKey);
+        if(result){
+            logger.verbose(`Cache Key Set Deleted: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start);
+            return true;
+        }else{
+            logger.error(`Cache Key Set Delete Fail: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start);
+            return false;
+        }
+
+    }
+
 
 }
 
