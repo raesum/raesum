@@ -24,7 +24,7 @@ class raesumUser {
     async createUser(external_id, username, currentOrganizationId, activeStatus){
         const start = Date.now();
 
-        logger.info(`Attempting to create user with username: ${username} for org: ${currentOrganizationId}`, Date.now() - start);
+        logger.debug(`Attempting to create user with username: ${username} for org: ${currentOrganizationId}`, Date.now() - start);
 
         // If activeStatus is not passed or is not boolean, default to true
         if(typeof activeStatus !== 'boolean'){
@@ -83,6 +83,7 @@ class raesumUser {
 
         // If the username is not unique, throw error
         if(user){
+            logger.error(`Cannot create new user. ExternalID: ${external_id} is not unique`, Date.now() - start);
             throw new Error("ExternalID is not unique");
         }
 
@@ -102,6 +103,7 @@ class raesumUser {
         const addedToOrg = await organization.addUserToOrganization(newUserID, currentOrganizationId);
 
         if(addedToOrg){
+            logger.info(`User created with ID: ${newUserID}`, Date.now() - start);
             return newUserID;
         }else{
             throw new Error("Error adding user to organization");
