@@ -44,10 +44,11 @@ const rl = readline.createInterface({
 });
 
 
+
 rl.question("WARNING! \nWARNING! \nWARNING! \nThis will delete all data in the database and seed it with new data. Are you sure you want to continue? (type 'yes' to confirm)\n", confirmation => {
     if(confirmation != "yes"){
         console.log("You must type 'yes' to continue. Exiting.");
-        logger.info("Seeding Cancelled", Date.now() - start);
+        logger.warning("Seeding Cancelled", Date.now() - start);
         process.exit(0);
     }else{
         // Proceed with seeding

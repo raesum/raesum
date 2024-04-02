@@ -138,7 +138,7 @@ create index raesum_auth_scope_type_string_key_index
 
 create table public.raesum_audit_log
 (
-    id             bigint primary key not null default nextval('raesum_audit_log_id_seq'::regclass),
+    id             bigserial primary key not null,
     user_id        bigint,
     action_id      integer            not null,
     object_type_id integer            not null,

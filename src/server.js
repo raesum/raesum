@@ -17,7 +17,7 @@ const logger = raesumLogger(__filename, "module");
 
 export async function createApp() {
     const start = Date.now();
-    logger.info("Starting Raesum", Date.now()-start);
+    logger.info(`Starting Raesum Environment ${process.env.NODE_ENV}`, Date.now()-start);
 
     // Initialize Express
     const app = express();
@@ -92,9 +92,10 @@ export async function createApp() {
 
 const configPort = parseInt(config.get('server.port'));
 const port = configPort ? configPort : 3000;
-let start = Date.now();
 
 const app = createApp().then((app) => {
+    let start = Date.now();
+
     app.listen(port, () => {
         logger.info(`Server listening at port: ${port}!`, Date.now() - start);
     });

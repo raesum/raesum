@@ -3,7 +3,7 @@ import {raesumLogger, raesumLoggerRequestFinishMiddleware} from "./raesumLogger.
 import path from "path";
 import fs from "fs";
 import {fileURLToPath} from "url";
-import { faker } from '@faker-js/faker';
+import {faker} from '@faker-js/faker';
 
 import raesumMigrate from "./raesumMigrate.js";
 import raesumStartup from "../modules/raesumStartup.js";
@@ -25,14 +25,14 @@ const metadata = new raesumMetadata();
 
 class raesumSeed {
 
-    async canSeed(){
+    async canSeed() {
         const start = Date.now();
         logger.info("Checking to see if database can be seeded", Date.now() - start);
         // Check to see if migrations are current
         const migrator = new raesumMigrate();
         const schemaVersion = await migrator.getCurrentSchemaVesion();
         const migrationSet = await migrator.getValidMigrationsAvailableList();
-        const mostRecentMigration = migrationSet[migrationSet.length-1];
+        const mostRecentMigration = migrationSet[migrationSet.length - 1];
         const numberElement = parseInt(mostRecentMigration.replace(/\D/g, ''));
         logger.debug("Current Schema Version: " + schemaVersion, Date.now() - start);
         logger.debug("Most Recent Migration Version: " + numberElement, Date.now() - start);
@@ -42,17 +42,40 @@ class raesumSeed {
             return false;
         }
 
+        const isProductionDatabase = await metadata.getByKey("isProductionDatabase");
+        try {
+            if (isProductionDatabase) {
+                logger.critical("Database is a production database. Production databases CANNOT be seeded.", Date.now() - start);
+                return false;
+            }
+        } catch (e) {
+            logger.info("Database has not yet been tattooed as a production or non-production database. Proceeding with seeding.", Date.now() - start);
+        }
+
         logger.info("Database can be seeded", Date.now() - start);
         return true;
     }
-    async seedDB(){
+
+    async seedDB() {
         const start = Date.now();
+
+        const isProductionDatabase = await metadata.getByKey("isProductionDatabase");
+        try {
+            if (isProductionDatabase) {
+                logger.error("Database is a production database. Production databases CANNOT be seeded.", Date.now() - start);
+                return false;
+            }
+        } catch (e) {
+            logger.info("Database has not yet been tattoed as a production or non-production database. Proceeding with seeding.", Date.now() - start);
+        }
+
+
         logger.info("Starting Seeding", Date.now() - start);
 
         // Truncate Extant Tables
         logger.info("Truncating Tables", Date.now() - start);
         const truncateStatus = await this.#truncateRaesumTables();
-        if(!truncateStatus){
+        if (!truncateStatus) {
             logger.error("Truncation Failed", Date.now() - start);
             return false;
         }
@@ -60,7 +83,7 @@ class raesumSeed {
         // Load static content into tables
         logger.info("Loading Static Content", Date.now() - start);
         const staticContentReturn = await migrator.loadAllStaticContent();
-        if(!staticContentReturn){
+        if (!staticContentReturn) {
             logger.error("Loading Static Content Failed.", Date.now() - start);
             return false;
         }
@@ -85,29 +108,28 @@ class raesumSeed {
 
         // Create 'Client' Type Organizations
         logger.info("Creating Seed Organizations: Client Type", Date.now() - start);
-        for(let i=0; i<clientTypeOrgCount; i++){
+        for (let i = 0; i < clientTypeOrgCount; i++) {
             const orgType = "client";
 
             const orgName = faker.company.name();
-            const orgID = await org.create(orgName+orgCount, true);
+            const orgID = await org.create(orgName + orgCount, true);
             clientTypeOrgList.push(orgID);
 
             // Create Audit Log Entry
             await raesumAudit.create("create", "raesum_organization", orgID, firstUserID);
 
             // Create Users for the Organization
-            userCount += await this.#createSeedUsersForOrg(orgID, orgType, firstUserID,[]);
+            userCount += await this.#createSeedUsersForOrg(orgID, orgType, firstUserID, []);
             orgCount++;
         }
         logger.info("Created " + clientTypeOrgCount + " Client Type Organizations", Date.now() - start)
-
 
 
         // Create 'Agency' Type Organizations
         logger.info("Creating Seed Organizations: Agency Type", Date.now() - start);
 
 
-        for(let i=0; i<agencyTypeOrgCount; i++){
+        for (let i = 0; i < agencyTypeOrgCount; i++) {
             const orgType = "agency";
 
             const orgName = faker.company.name();
@@ -121,14 +143,14 @@ class raesumSeed {
             const numberOfClients = Math.ceil(Math.random() * 5) + 1;
             let clientList = [];
 
-            for(let c=0; c < numberOfClients; c++){
+            for (let c = 0; c < numberOfClients; c++) {
 
                 // Choose a random index in the client array
                 const clientIndex = Math.floor(Math.random() * clientTypeOrgList.length);
                 const candidateClient = clientTypeOrgList[clientIndex];
 
                 // Add to the client list
-                if(clientList.indexOf(candidateClient) === -1) {
+                if (clientList.indexOf(candidateClient) === -1) {
                     clientList.push(candidateClient);
                 }
             }
@@ -136,7 +158,7 @@ class raesumSeed {
             logger.debug(`Created the client list for org: ${orgID} with ${clientList.length} clients. Expected number of clients: ${numberOfClients}`);
 
             // Create Users for the Organization
-            userCount += await this.#createSeedUsersForOrg(orgID, orgType, firstUserID,clientList);
+            userCount += await this.#createSeedUsersForOrg(orgID, orgType, firstUserID, clientList);
             orgCount++;
         }
         logger.info("Created " + agencyTypeOrgCount + " Agency Type Organizations", Date.now() - start);
@@ -167,7 +189,7 @@ class raesumSeed {
 
     }
 
-    async #createSeedUsersForOrg(orgID, orgType, firstUserID, clientOrgs = []){
+    async #createSeedUsersForOrg(orgID, orgType, firstUserID, clientOrgs = []) {
         const start = Date.now();
 
         logger.debug("Creating Seed Users for Org: " + orgID);
@@ -187,7 +209,7 @@ class raesumSeed {
         const usersInOrg = [];
 
         // Add Org Users
-        for(let i=0; i<userCount; i++){
+        for (let i = 0; i < userCount; i++) {
             const userName = faker.internet.userName();
             const external_id = "us-east-1:" + faker.string.uuid();
 
@@ -199,7 +221,7 @@ class raesumSeed {
             await raesumAudit.create("update", "raesum_organization", userID, orgID);
 
             // If i < admin count, then the user is an admin
-            if(i < orgAdminCount){
+            if (i < orgAdminCount) {
                 await raesumAuthorization.addUserToRoleByKey(userID, orgAdmin, orgID);
                 await raesumAudit.create("update", "raesum_user", userID, firstUserID);
             }
@@ -211,7 +233,7 @@ class raesumSeed {
         logger.debug("Created " + userCount + " users for org " + orgID + " with orgType " + orgType, Date.now() - start);
 
         // If org is an agency, add the users to the agency's customers
-        if(orgType == "agency"){
+        if (orgType == "agency") {
             logger.debug(`Org: ${orgID} is an 'agency' type. Adding agency users to client ${clientOrgs.length} orgs`, Date.now() - start);
 
             // Choose the clientAdmin Users
@@ -221,10 +243,10 @@ class raesumSeed {
             logger.debug(`Org: ${orgID} will have ${clientAdminCount.length} client administrators for ${clientOrgs.length} clients`, Date.now() - start);
 
             // For each 'client' org, add the clientAdmins
-            for(let i=0; i<clientOrgs.length; i++){
+            for (let i = 0; i < clientOrgs.length; i++) {
 
                 // For each admin user
-                for(let a=0; a < clientAdmins.length; a++){
+                for (let a = 0; a < clientAdmins.length; a++) {
                     // Add user to org
                     await org.addUserToOrganization(clientAdmins[a], clientOrgs[i]);
 
@@ -238,7 +260,7 @@ class raesumSeed {
 
         logger.info(`Generating Audit Logs for Users in Org: ${orgID}`, Date.now() - start);
         // Create Audit Logs for the Users
-        for(let i=0; i<usersInOrg.length; i++){
+        for (let i = 0; i < usersInOrg.length; i++) {
             await this.#generateAuditLogs(usersInOrg[i]);
         }
         logger.info(`Finished Generating Audit Logs for Users in Org: ${orgID}`, Date.now() - start);
@@ -250,7 +272,7 @@ class raesumSeed {
     }
 
 
-    async #generateAuditLogs(userID){
+    async #generateAuditLogs(userID) {
         const start = Date.now();
         logger.verbose("Seeding User Audit Logs: " + userID, Date.now() - start);
 
@@ -266,14 +288,14 @@ class raesumSeed {
 
         // Determine Oldest Date Possible for Audit Log
         const oldestDate = new Date(new Date().setFullYear(new Date().getFullYear() - 1));
-        const newestDate  = new Date(new Date().setFullYear(new Date().getFullYear()));
+        const newestDate = new Date(new Date().setFullYear(new Date().getFullYear()));
 
         // Create the dates of the sessions
         const sessionDates = faker.date.betweens({from: oldestDate, to: newestDate, count: sessionCount});
 
-        for(let s=0;s<sessionCount;s++) {
+        for (let s = 0; s < sessionCount; s++) {
             // Determine the session start and end (1 day total)
-            const sessionEnd = new Date(sessionDates[s].getTime + 60 * 60 * 24 * 1000) ;
+            const sessionEnd = new Date(sessionDates[s].getTime + 60 * 60 * 24 * 1000);
 
             // Determine the number of events in session
             const eventCount = Math.ceil(Math.random() * 36) + 4;
@@ -287,17 +309,17 @@ class raesumSeed {
             let valueArray = []
 
             // Create the events
-            for(let e=0;e<eventCount;e++){
+            for (let e = 0; e < eventCount; e++) {
                 // The FIRST event must be login
                 const eventDate = currentSessionDate[e].toISOString();
-                if(e==0){
+                if (e == 0) {
                     valueArray.push("(1, " + userID + ", 1, " + userID + ", '" + eventDate + "')");
-                }else{
+                } else {
                     // Determine the event
                     const eventID = Math.ceil(Math.random() * 7);
 
                     // Determine the event to create with a case statement
-                    switch(eventID){
+                    switch (eventID) {
                         case 1:
                             // Read Current Organization
                             valueArray.push("(5, " + user.current_organization_id + ", 2, " + userID + ", '" + eventDate + "')");
@@ -310,7 +332,7 @@ class raesumSeed {
                             // Read A Role
 
                             // Pick a random role from userRoles
-                            const roleIndex = Math.abs(Math.floor(Math.random() * userRoles.length -1));
+                            const roleIndex = Math.abs(Math.floor(Math.random() * userRoles.length - 1));
                             const roleID = userRoles[roleIndex];
 
                             valueArray.push("(5, " + roleID + ", 3, " + userID + ", '" + eventDate + "')");
@@ -340,7 +362,6 @@ class raesumSeed {
                 }
 
 
-
             }
 
             query += valueArray.join(",\n") + "; COMMIT;";
@@ -348,8 +369,8 @@ class raesumSeed {
             try {
                 const result = await raesumDB.query(query);
                 logger.debug(`Seed User: ${userID} Audit Logs Generated`, Date.now() - start);
-                    return true;
-            }catch(e){
+                return true;
+            } catch (e) {
                 logger.error(`Seed User: ${userID} Audit Logs Failed`, Date.now() - start);
                 throw new Error(`Seed User: ${userID} Audit Logs Failed`)
             }
@@ -357,13 +378,11 @@ class raesumSeed {
         }
 
 
-
-
         logger.verbose(`Seed User: ${userID} Audit Logs Generated`, Date.now() - start);
     }
 
 
-    async #truncateRaesumTables(){
+    async #truncateRaesumTables() {
         const start = Date.now();
         logger.info("Truncating Tables", Date.now() - start);
 
@@ -375,11 +394,11 @@ class raesumSeed {
             'raesum_organization'
         ];
 
-        for(let i=0; i<tableList.length; i++){
+        for (let i = 0; i < tableList.length; i++) {
             const query = "TRUNCATE TABLE " + tableList[i] + " RESTART IDENTITY CASCADE;";
-            try{
+            try {
                 await raesumDB.query(query);
-            }catch(e){
+            } catch (e) {
                 logger.error(`Error truncating table ${tableList[i]} with error: ${e}`, Date.now() - start);
                 return false;
             }
@@ -394,16 +413,16 @@ class raesumSeed {
 
     }
 
-    async #loadSQLSeed(filename){
+    async #loadSQLSeed(filename) {
         const start = Date.now();
         logger.info("Loading SQL Seed " + filename, Date.now() - start);
 
         const filePath = path.join(__dirname, '..', '..', 'controlledData/seeds', filename);
         const sql = fs.readFileSync(filePath, 'utf8');
 
-        try{
+        try {
             await raesumDB.query(sql);
-        }catch(e){
+        } catch (e) {
             logger.error("Error loading SQL Seed " + filename + " with error: " + e, Date.now() - start);
             return false;
         }

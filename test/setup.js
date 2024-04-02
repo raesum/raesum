@@ -1,15 +1,38 @@
 import config from 'config';
 import readline  from 'node:readline';
 import raesumSeed from "../src/modules/raesumSeed.js";
+import raseumMetadata from "../src/models/raesumMetadata.js";
 import {fileURLToPath} from "url";
 import path from "path";
+import {raesumLogger} from "../src/modules/raesumLogger.js";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const logger = raesumLogger(__filename, "module");
+
 
 async function setup(){
     const start = Date.now();
-    console.info('Setting up ...')
+    console.log('Setting up ...');
+    console.log(`Setting up Raesum Environment: ${process.env.NODE_ENV}`, Date.now() - start);
 
     // Check to see if developmentAndTesting.integrationTestEnabled.primaryDatabase is enabled
     const dbTestEnabled = config.get("developmentAndTesting.integrationTestEnabled.primaryDatabase");
+    const awsTestEnabled = config.get("developmentAndTesting.integrationTestEnabled.aws");
+    const redisTestEnabled = config.get("developmentAndTesting.integrationTestEnabled.redis");
+
+    // Check to see if it's a production database
+    const metadata = new raseumMetadata();
+    let productionDB = await metadata.getByKey("isProductionDatabase");
+
+    logger.debug("Database type is production: " + productionDB, Date.now() - start);
+
+    if(productionDB){
+        // If any of the external tests are enabled, then the database cannot be a production database.
+        if(dbTestEnabled || awsTestEnabled || redisTestEnabled){
+            logger.critical("Cannot run tests on a production database. If this is a test database, disable the primaryDatabase test in the metadata table, otherwise, disable tests that rely on external systems (AWS, redis, etc).", Date.now() - start);
+            process.exit(1);
+        }
+    }
 
 
     // Seed the database if required
@@ -18,7 +41,7 @@ async function setup(){
 
         const canSeed = await seeder.canSeed();
         if (!canSeed) {
-            console.log("Cannot Seed Database. Try running a migration first.", Date.now() - start);
+            logger.critical("Cannot Seed Database. Either the database is a production type or needs a migration run. If this is production-type database disable primaryDatabase and redis tests in the configuration or use a non-production database.", Date.now() - start);
             process.exit(1);
         }
 
