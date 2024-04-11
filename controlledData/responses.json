@@ -53,6 +53,6 @@
     "message": "Your login as expired and you need to log in again.",
     "description": "User's token haas expired and needs to be renewed.",
     "code": 401,
-    "keycode": 7
+    "keycode": 8
   }
 }

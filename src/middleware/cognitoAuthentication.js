@@ -71,7 +71,7 @@ export const raesumCognitoAuthRequired = async (req, res, next) => {
 
         if(e.name === "TokenExpiredError"){
             // get token expired response and send to user
-            const response = await raesumResponses.get("notLoggedInError",[e]);
+            const response = await raesumResponses.get("tokenExpired");
             return res.status(response.code).json(response);
         }
         if(e.name === "TokenNotFound"){
