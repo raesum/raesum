@@ -5,7 +5,7 @@ import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const logger = raesumLogger(__filename, "module");
+const logger = raesumLogger(__filename);
 
 
 class raesumResponses{
@@ -30,6 +30,8 @@ class raesumResponses{
                 logger.error("Error loading responses.json", e);
                 throw new Error("Error loading responses.json");
             }
+            logger.info("Finished Initializing raesumResponses", Date.now() - start);
+
         }
     }
 
@@ -47,7 +49,7 @@ class raesumResponses{
 
         // If the response exists
         if(this.#responseCache.hasOwnProperty(responseKey)){
-            logger.verbose("Found response: " + responseKey, Date.now() - start);
+            logger.debug("Found response: " + responseKey, Date.now() - start);
 
             // If there are variables AND the message contains {0}
             const response = JSON.parse(JSON.stringify(this.#responseCache[responseKey]));
@@ -56,7 +58,7 @@ class raesumResponses{
             // If the number of variables is the same as the number of {0} in the message replace them
 
             if(variables.length > 0 && variableCount == variables.length){
-                logger.verbose("Replacing variables in response: " + responseKey, Date.now() - start);
+                logger.debug("Replacing variables in response: " + responseKey, Date.now() - start);
 
                     let newMessage = message;
                     for(let i=0; i<variables.length; i++){

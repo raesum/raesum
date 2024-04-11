@@ -5,7 +5,7 @@ import raesumOrganization from "./raesumOrganization.js";
 import raesumDB from "../modules/raesumDB.js";
 
 const __filename = fileURLToPath(import.meta.url);
-const logger = raesumLogger(__filename, "module");
+const logger = raesumLogger(__filename);
 
 
 class raesumUser {
@@ -24,7 +24,7 @@ class raesumUser {
     async createUser(external_id, username, currentOrganizationId, activeStatus){
         const start = Date.now();
 
-        logger.debug(`Attempting to create user with username: ${username} for org: ${currentOrganizationId}`, Date.now() - start);
+        logger.verbose(`Attempting to create user with username: ${username} for org: ${currentOrganizationId}`, Date.now() - start);
 
         // If activeStatus is not passed or is not boolean, default to true
         if(typeof activeStatus !== 'boolean'){
@@ -56,7 +56,7 @@ class raesumUser {
         }
 
         // Check if the username is unique
-        logger.verbose(`Checking if username: ${username} is unique`, Date.now() - start);
+        logger.debug(`Checking if username: ${username} is unique`, Date.now() - start);
         let user = null;
 
         try{
@@ -72,7 +72,7 @@ class raesumUser {
         }
 
         // Check if externalID is unique
-        logger.verbose(`Checking if external_id: ${external_id} is unique`, Date.now() - start);
+        logger.debug(`Checking if external_id: ${external_id} is unique`, Date.now() - start);
 
         try{
             user = await this.getUserByExternalID(external_id);
@@ -120,7 +120,7 @@ class raesumUser {
     async getUserById(id){
         const start = Date.now();
 
-        logger.debug(`Getting user by ID: ${id}`, Date.now() - start);
+        logger.verbose(`Getting user by ID: ${id}`, Date.now() - start);
 
         // If the ID is not a number, throw error
         if(isNaN(id) || id < 1 || !Number.isInteger(id)){
@@ -143,7 +143,7 @@ class raesumUser {
             logger.warning(`User with ID: ${id} not found`, Date.now() - start);
             throw new Error("User not found");
         }else{
-            logger.verbose(`User with ID: ${id} found`, Date.now() - start);
+            logger.debug(`User with ID: ${id} found`, Date.now() - start);
             return user;
         }
     }
@@ -158,7 +158,7 @@ class raesumUser {
     async getUserByUsername(username){
         const start = Date.now();
 
-        logger.debug(`Getting user by username: ${username}`, Date.now() - start);
+        logger.verbose(`Getting user by username: ${username}`, Date.now() - start);
 
         // Valid the username input
         if(typeof username !== 'string' || username.length < 1){
@@ -174,16 +174,16 @@ class raesumUser {
             if(result.rows.length > 0){
                 theId = parseInt(result.rows[0].id)
             }else{
-                logger.debug(`User with username: ${username} not found`, Date.now() - start);
+                logger.verbose(`User with username: ${username} not found`, Date.now() - start);
                 throw new Error("User not found");
             }
         }catch(e){
-            logger.debug(`Warning getting user by username: ${username} with error: ` + e, Date.now() - start);
+            logger.verbose(`Warning getting user by username: ${username} with error: ` + e, Date.now() - start);
             throw new Error("User not found");
         }
 
         if(theId && !isNaN(theId) && theId > 0){
-            logger.verbose(`User with username: ${username} found with ID: ${theId}`, Date.now() - start);
+            logger.debug(`User with username: ${username} found with ID: ${theId}`, Date.now() - start);
             return await this.getUserById(theId);
         }else{
             logger.warning(`User with username: ${username} not found`, Date.now() - start);
@@ -201,7 +201,7 @@ class raesumUser {
     async getUserByExternalID(external_id){
         const start = Date.now();
 
-        logger.debug(`Getting user by external_id: ${external_id}`, Date.now() - start);
+        logger.verbose(`Getting user by external_id: ${external_id}`, Date.now() - start);
 
         // Valid the username input
         if(typeof external_id !== 'string' || external_id.length < 1){
@@ -217,16 +217,16 @@ class raesumUser {
             if(result.rows.length > 0){
                 theId = parseInt(result.rows[0].id)
             }else{
-                logger.debug(`User with external_id: ${external_id} not found`, Date.now() - start);
+                logger.verbose(`User with external_id: ${external_id} not found`, Date.now() - start);
                 throw new Error("User not found");
             }
         }catch(e){
-            logger.debug("Error getting user by external_id: " + e, Date.now() - start);
+            logger.verbose("Error getting user by external_id: " + e, Date.now() - start);
             throw new Error("Error getting user by external_id");
         }
 
         if(theId && !isNaN(theId) && theId > 0){
-            logger.verbose(`User with username: ${external_id} found with ID: ${theId}`, Date.now() - start);
+            logger.debug(`User with username: ${external_id} found with ID: ${theId}`, Date.now() - start);
             return await this.getUserById(theId);
         }else{
             logger.warning(`User with username: ${external_id} not found`, Date.now() - start);
@@ -256,7 +256,7 @@ class raesumUser {
         if(isNaN(id) || id < 1 || !Number.isInteger(id)){
             throw new Error("User ID must be a positive integer");
         }
-        logger.verbose(`Setting activation status for user with ID: ${id} to: ${activeStatus}`, Date.now() - start);
+        logger.debug(`Setting activation status for user with ID: ${id} to: ${activeStatus}`, Date.now() - start);
 
         // Get the user by ID
         let user = null;
@@ -296,15 +296,15 @@ class raesumUser {
         // If no organizationID is passed, assume orgID 1
         if(!organizationID || isNaN(organizationID) || organizationID < 1){
             organizationID = 1;
-            logger.verbose(`Initializing: No organizationID supplied, setting to: ${organizationID}`, Date.now() - start);
+            logger.debug(`Initializing: No organizationID supplied, setting to: ${organizationID}`, Date.now() - start);
         }
-        logger.verbose(`Initializing: Creating Default User for Organization ID: ${organizationID}`, Date.now() - start);
+        logger.debug(`Initializing: Creating Default User for Organization ID: ${organizationID}`, Date.now() - start);
 
 
         // Create the first user if they don't exist
         const userID = await this.createUser(firstUserExternalId, firstUserUsername, organizationID, true);
 
-        logger.debug(`User with ID: ${userID} created`, Date.now() - start);
+        logger.verbose(`User with ID: ${userID} created`, Date.now() - start);
 
         // TODO: Assign user to super admin role
 
@@ -323,7 +323,7 @@ class raesumUser {
     async getAllowedUserOrgs(userID){
         const start = Date.now();
 
-        logger.debug(`Getting allowed organizations for user with ID: ${userID}`, Date.now() - start);
+        logger.verbose(`Getting allowed organizations for user with ID: ${userID}`, Date.now() - start);
 
         // If the ID is not a number, throw error
         if(isNaN(userID) || userID < 1 || !Number.isInteger(userID)){
@@ -348,7 +348,7 @@ class raesumUser {
             logger.error("Error getting allowed organizations: " + e, Date.now() - start);
             throw new Error("Error getting allowed organizations");
         }
-        logger.debug(`${orgs.length} allowed organizations for user with ID: ${userID} found`, Date.now() - start);
+        logger.verbose(`${orgs.length} allowed organizations for user with ID: ${userID} found`, Date.now() - start);
         return orgs;
     }
 
@@ -366,7 +366,7 @@ class raesumUser {
     async changeUserOrg(userID, orgID){
         const start = Date.now();
 
-        logger.debug(`Changing user with ID: ${userID} to organization with ID: ${orgID}`, Date.now() - start);
+        logger.verbose(`Changing user with ID: ${userID} to organization with ID: ${orgID}`, Date.now() - start);
 
         // If the ID is not a number, throw error
         if(isNaN(userID) || userID < 1 || !Number.isInteger(userID)){

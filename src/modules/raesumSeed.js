@@ -1,5 +1,5 @@
 // Logger
-import {raesumLogger, raesumLoggerRequestFinishMiddleware} from "./raesumLogger.js";
+import {raesumLogger} from "./raesumLogger.js";
 import path from "path";
 import fs from "fs";
 import {fileURLToPath} from "url";
@@ -18,7 +18,7 @@ import raesumUser from "../models/raesumUser.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const logger = raesumLogger(__filename, "module");
+const logger = raesumLogger(__filename);
 
 const migrator = new raesumMigrate();
 const metadata = new raesumMetadata();
@@ -34,8 +34,8 @@ class raesumSeed {
         const migrationSet = await migrator.getValidMigrationsAvailableList();
         const mostRecentMigration = migrationSet[migrationSet.length - 1];
         const numberElement = parseInt(mostRecentMigration.replace(/\D/g, ''));
-        logger.debug("Current Schema Version: " + schemaVersion, Date.now() - start);
-        logger.debug("Most Recent Migration Version: " + numberElement, Date.now() - start);
+        logger.verbose("Current Schema Version: " + schemaVersion, Date.now() - start);
+        logger.verbose("Most Recent Migration Version: " + numberElement, Date.now() - start);
 
         if (numberElement > schemaVersion) {
             logger.error("Database is not current. Please run the migration script before seeding the database.", Date.now() - start);
@@ -155,7 +155,7 @@ class raesumSeed {
                 }
             }
 
-            logger.debug(`Created the client list for org: ${orgID} with ${clientList.length} clients. Expected number of clients: ${numberOfClients}`);
+            logger.verbose(`Created the client list for org: ${orgID} with ${clientList.length} clients. Expected number of clients: ${numberOfClients}`);
 
             // Create Users for the Organization
             userCount += await this.#createSeedUsersForOrg(orgID, orgType, firstUserID, clientList);
@@ -192,7 +192,7 @@ class raesumSeed {
     async #createSeedUsersForOrg(orgID, orgType, firstUserID, clientOrgs = []) {
         const start = Date.now();
 
-        logger.debug("Creating Seed Users for Org: " + orgID);
+        logger.verbose("Creating Seed Users for Org: " + orgID);
 
         const user = new raesumUser();
         const org = new raesumOrganization();
@@ -230,17 +230,17 @@ class raesumSeed {
             await raesumAuthorization.addUserToRoleByKey(userID, baseUser, orgID);
             await raesumAudit.create("update", "raesum_user", userID, firstUserID);
         }
-        logger.debug("Created " + userCount + " users for org " + orgID + " with orgType " + orgType, Date.now() - start);
+        logger.verbose("Created " + userCount + " users for org " + orgID + " with orgType " + orgType, Date.now() - start);
 
         // If org is an agency, add the users to the agency's customers
         if (orgType == "agency") {
-            logger.debug(`Org: ${orgID} is an 'agency' type. Adding agency users to client ${clientOrgs.length} orgs`, Date.now() - start);
+            logger.verbose(`Org: ${orgID} is an 'agency' type. Adding agency users to client ${clientOrgs.length} orgs`, Date.now() - start);
 
             // Choose the clientAdmin Users
             const clientAdminCount = Math.ceil(usersInOrg.length / 2);
             const clientAdmins = usersInOrg.slice(0, clientAdminCount);
 
-            logger.debug(`Org: ${orgID} will have ${clientAdminCount.length} client administrators for ${clientOrgs.length} clients`, Date.now() - start);
+            logger.verbose(`Org: ${orgID} will have ${clientAdminCount.length} client administrators for ${clientOrgs.length} clients`, Date.now() - start);
 
             // For each 'client' org, add the clientAdmins
             for (let i = 0; i < clientOrgs.length; i++) {
@@ -266,7 +266,7 @@ class raesumSeed {
         logger.info(`Finished Generating Audit Logs for Users in Org: ${orgID}`, Date.now() - start);
 
 
-        logger.debug(`Org: ${orgID} Seed Users Created`, Date.now() - start);
+        logger.verbose(`Org: ${orgID} Seed Users Created`, Date.now() - start);
 
         return userCount;
     }
@@ -274,7 +274,7 @@ class raesumSeed {
 
     async #generateAuditLogs(userID) {
         const start = Date.now();
-        logger.verbose("Seeding User Audit Logs: " + userID, Date.now() - start);
+        logger.debug("Seeding User Audit Logs: " + userID, Date.now() - start);
 
         // Get the User and allowed orgs
         const users = new raesumUser();
@@ -368,7 +368,7 @@ class raesumSeed {
 
             try {
                 const result = await raesumDB.query(query);
-                logger.debug(`Seed User: ${userID} Audit Logs Generated`, Date.now() - start);
+                logger.verbose(`Seed User: ${userID} Audit Logs Generated`, Date.now() - start);
                 return true;
             } catch (e) {
                 logger.error(`Seed User: ${userID} Audit Logs Failed`, Date.now() - start);
@@ -378,7 +378,7 @@ class raesumSeed {
         }
 
 
-        logger.verbose(`Seed User: ${userID} Audit Logs Generated`, Date.now() - start);
+        logger.debug(`Seed User: ${userID} Audit Logs Generated`, Date.now() - start);
     }
 
 

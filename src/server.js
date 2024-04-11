@@ -8,12 +8,14 @@ import { fileURLToPath } from 'url';
 import { unless } from "express-unless";
 import raesumDB from "./modules/raesumDB.js";
 import {raesumCognitoAuthRequired} from "./middleware/cognitoAuthentication.js";
-import {raesumLogger, raesumLoggerRequestFinishMiddleware} from "./modules/raesumLogger.js";
+import {raesumLogger} from "./modules/raesumLogger.js";
 import raesumStartup from "./modules/raesumStartup.js";
+import raesumLoggerRequestFinishMiddleware from "./middleware/raesumRequestLogger.js";
+import raesumHealtRouter from "./routes/raesumHealth.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
-const logger = raesumLogger(__filename, "module");
+const logger = raesumLogger(__filename);
 
 export async function createApp() {
     const start = Date.now();
@@ -80,6 +82,7 @@ export async function createApp() {
     )
 
     // Routes
+    app.use('/health', raesumHealtRouter);
 
 
 

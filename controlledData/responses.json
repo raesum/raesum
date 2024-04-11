@@ -20,7 +20,7 @@
     "code": 400,
     "keycode": 3
   },
-  "": {
+  "notLoggedIn": {
     "title": "Not Logged In",
     "message": "You are not logged in",
     "description": "Login is required to access this route. Access token may be missing from headers.",

@@ -4,7 +4,7 @@ import raesumDB from "../modules/raesumDB.js";
 import raesumAuthorization from "./raesumAuthorization.js";
 
 const __filename = fileURLToPath(import.meta.url);
-const logger = raesumLogger(__filename, "module");
+const logger = raesumLogger(__filename);
 
 class raesumAuditObject{
     #actionsByStringKey = {};
@@ -70,7 +70,7 @@ class raesumAuditObject{
             await raesumDB.query(query, [actionType, objectType, objectID, userID]);
             const insertedResult = await raesumDB.query(curvalQuery);
 
-            logger.debug(`Audit log entry added: ${insertedResult['rows'][0].currval}`, Date.now() - start);
+            logger.verbose(`Audit log entry added: ${insertedResult['rows'][0].currval}`, Date.now() - start);
             return parseInt(insertedResult['rows'][0].currval);
         }catch(e){
             logger.error("Error adding audit log entry with error: " + e, Date.now() - start);

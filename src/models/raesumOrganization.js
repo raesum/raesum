@@ -4,7 +4,7 @@ import raesumDB from "../modules/raesumDB.js";
 import raesumUser from "./raesumUser.js";
 
 const __filename = fileURLToPath(import.meta.url);
-const logger = raesumLogger(__filename, "module");
+const logger = raesumLogger(__filename);
 const user = new raesumUser();
 
 class raesumOrganization {
@@ -33,7 +33,7 @@ class raesumOrganization {
             throw new Error("Organization name must be a string");
         }
 
-        logger.debug("Creating organization", Date.now() - start);
+        logger.verbose("Creating organization", Date.now() - start);
         if (activeStatus !== false) {
             activeStatus = true;
         }
@@ -62,7 +62,7 @@ class raesumOrganization {
     async getById(id) {
         const start = Date.now();
 
-        logger.debug("Getting organization by ID: " + id, Date.now() - start);
+        logger.verbose("Getting organization by ID: " + id, Date.now() - start);
 
         id = parseInt(id);
 
@@ -79,7 +79,7 @@ class raesumOrganization {
         if (result.rows.length === 0) {
             throw new Error("Organization not found");
         }
-        logger.debug(`Organization found for ID: ${id}`, Date.now() - start);
+        logger.verbose(`Organization found for ID: ${id}`, Date.now() - start);
         return result.rows[0];
     }
 
@@ -115,7 +115,7 @@ class raesumOrganization {
         try {
 
             await raesumDB.query(query, [activeStatus, id]);
-            logger.debug(`Activation status set for org: ${id} to ${activeStatus}`, Date.now() - start);
+            logger.verbose(`Activation status set for org: ${id} to ${activeStatus}`, Date.now() - start);
 
         } catch (e) {
 
@@ -139,13 +139,13 @@ class raesumOrganization {
                     if(userOrgs.length > 1) {
 
                         // If they are part of another org, move them to that org
-                        logger.debug(`Moving user: ${orgUsers[i].id} to org: ${userOrgs[0]}`, Date.now() - start);
+                        logger.verbose(`Moving user: ${orgUsers[i].id} to org: ${userOrgs[0]}`, Date.now() - start);
                         await this.addUserToOrganization(orgUsers[i].id, userOrgs[0]);
                     }else{
 
                         // If they are not part of another org, deactivate them if they are active
                         if(orgUsers[i].active_status === true){
-                            logger.debug(`Deactivating user: ${orgUsers[i].id}`, Date.now() - start);
+                            logger.verbose(`Deactivating user: ${orgUsers[i].id}`, Date.now() - start);
                             await users.setActivationStatus(orgUsers[i].id, false);
                         }
                     }
@@ -216,7 +216,7 @@ class raesumOrganization {
         const checkQuery = "SELECT * FROM raesum_organization_x_user WHERE user_id = $1 AND org_id = $2";
         const checkResult = await raesumDB.query(checkQuery, [userID, orgID]);
         if (checkResult.rows.length > 0) {
-            logger.debug(`Cannot add user: ${userID} to org: ${orgID}. User is already part of the org`, Date.now() - start);
+            logger.verbose(`Cannot add user: ${userID} to org: ${orgID}. User is already part of the org`, Date.now() - start);
             return true;
         }
 
@@ -225,7 +225,7 @@ class raesumOrganization {
 
         try {
             await raesumDB.query(query, [userID, orgID]);
-            logger.debug(`User: ${userID} added to org: ${orgID}`, Date.now() - start);
+            logger.verbose(`User: ${userID} added to org: ${orgID}`, Date.now() - start);
             return true;
         } catch (e) {
             logger.error(`Error adding user: ${userID} to org: ${orgID} with error: ${e}`, Date.now() - start);
@@ -287,7 +287,7 @@ class raesumOrganization {
         const query = "DELETE FROM raesum_organization_x_user WHERE user_id = $1 AND org_id = $2";
         try {
             await raesumDB.query(query, [userID, orgID]);
-            logger.debug(`User: ${userID} removed from org: ${orgID}`, Date.now() - start);
+            logger.verbose(`User: ${userID} removed from org: ${orgID}`, Date.now() - start);
         } catch (e) {
             logger.error(`Error removing user: ${userID} from org: ${orgID} with error: ${e}`, Date.now() - start);
             throw new Error("Error removing user from org");
@@ -312,7 +312,7 @@ class raesumOrganization {
     async getUsers(orgID, activeStatus) {
         const start = Date.now();
 
-        logger.debug(`Getting users for org: ${orgID}`, Date.now() - start);
+        logger.verbose(`Getting users for org: ${orgID}`, Date.now() - start);
 
         // Parse inputs as INT
         orgID = parseInt(orgID);
@@ -335,7 +335,7 @@ class raesumOrganization {
                          AND u.active_status = $2`;
         const result = await raesumDB.query(query, [orgID, activeStatus]);
 
-        logger.debug(`Users found for org: ${orgID}`, Date.now() - start);
+        logger.verbose(`Users found for org: ${orgID}`, Date.now() - start);
         return result.rows;
     }
 

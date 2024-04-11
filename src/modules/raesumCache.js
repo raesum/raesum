@@ -7,7 +7,7 @@ import {conditionallyParseJSON} from "../utils/stringUtils";
 
 
 const __filename = fileURLToPath(import.meta.url);
-const logger = raesumLogger(__filename, "module");
+const logger = raesumLogger(__filename);
 
 class raesumeCacheMemory{
 
@@ -156,12 +156,12 @@ class raesumeCacheRedis{
 
     async get(key){
         if(this.#redisRunning){
-            logger.verbose("Getting Key from Redis Cache: "+key);
+            logger.debug("Getting Key from Redis Cache: "+key);
             // Get the key and return the value (return undefined if key does not exist)
             let returnVal = await this.#redisInstance.get(key);
             return conditionallyParseJSON(returnVal);
         }else{
-            logger.verbose("Unable to find key from Redis Cache: "+key);
+            logger.debug("Unable to find key from Redis Cache: "+key);
             return undefined;
         }
     }
@@ -289,9 +289,9 @@ class raesumCachePool{
 
         const returnVal= await this.#cachePoolInstance.get(cacheKey);
         if(returnVal == undefined){
-            logger.verbose(`Cache Key Miss: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start)
+            logger.debug(`Cache Key Miss: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start)
         }else{
-            logger.verbose(`Cache Key Hit: ${cacheKey} Miss CacheType: ${this.#cacheType}`, Date.now()-start)
+            logger.debug(`Cache Key Hit: ${cacheKey} Miss CacheType: ${this.#cacheType}`, Date.now()-start)
         }
         return returnVal;
 
@@ -316,9 +316,9 @@ class raesumCachePool{
 
         const returnVal = await this.#cachePoolInstance.set(cacheKey,value,ttl);
         if(returnVal == undefined){
-            logger.verbose(`Cache Key Failed: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start)
+            logger.debug(`Cache Key Failed: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start)
         }else{
-            logger.verbose(`Cache Key Set: ${cacheKey} Miss CacheType: ${this.#cacheType}`, Date.now()-start)
+            logger.debug(`Cache Key Set: ${cacheKey} Miss CacheType: ${this.#cacheType}`, Date.now()-start)
         }
         return returnVal;
 
@@ -342,9 +342,9 @@ class raesumCachePool{
 
         const returnVal = await this.#cachePoolInstance.delete(cacheKey);
         if(returnVal){
-            logger.verbose(`Cache Key Deleted: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start)
+            logger.debug(`Cache Key Deleted: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start)
         }else{
-            logger.verbose(`Cache Key Delete Fail: ${cacheKey} Miss CacheType: ${this.#cacheType}`, Date.now()-start)
+            logger.debug(`Cache Key Delete Fail: ${cacheKey} Miss CacheType: ${this.#cacheType}`, Date.now()-start)
         }
         return returnVal;
     }
@@ -435,7 +435,7 @@ class raesumCachePool{
 
         const result = await this.#cachePoolInstance.deleteKeysStartingWith(cacheKey);
         if(result){
-            logger.verbose(`Cache Key Set Deleted: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start);
+            logger.debug(`Cache Key Set Deleted: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start);
             return true;
         }else{
             logger.error(`Cache Key Set Delete Fail: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start);

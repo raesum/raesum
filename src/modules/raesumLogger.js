@@ -20,9 +20,10 @@ const colorSet = {
     critical: "bold redBG white",
     error: "red",
     warning: "yellow",
+    route: "black greenBG",
     info: "green",
-    debug: "cyan",
-    verbose: "grey",
+    verbose: "cyan",
+    debug: "grey"
 }
 winston.addColors(colorSet);
 
@@ -30,9 +31,11 @@ const levelSet ={
         critical: 0,
         error: 1,
         warning: 2,
-        info: 3,
-        debug: 4,
+        route: 3,
+        info: 4,
         verbose: 5,
+        debug: 6,
+
 }
 
 // Console Logger
@@ -132,50 +135,18 @@ const logger = winston.createLogger({
     transports: loggerTransports,
 });
 
-// Middleware to log all responses
-export const raesumLoggerRequestFinishMiddleware = function(req,res,next){
-    const start = Date.now();
-
-    res.on("finish", () => {
-        const end = new Date();
-        const duration = end - start;
-
-        let message = '';
-        if (res.hasOwnProperty('message')) {
-            message = res.message;
-        }
-
-        // Set a default user
-        let userId = 0;
-
-        // If req is set and there is a userID, log that user ID
-        if (typeof req != 'undefined') {
-            if (req.hasOwnProperty('user') && req.user.hasOwnProperty('id')) {
-                userId = req.user.id;
-            }
-        }
-
-        logger.info({
-            userId: userId,
-            duration: `${duration}`,
-            statusCode: res.statusCode,
-            message: message,
-            urlPath: req.originalUrl
-        });
-
-    });
-
-    next();
-}
 
 // Standard intra-module and intra-function logger
 export const raesumLogger = function(fileName){
     const originFile = path.basename(fileName);
 
-    function log ( level, message, duration, type, statusCode,
+    function log ( level, message, duration, statusCode, route, userId
     ) {
+
         // Set a default user
-        let userId = 0;
+        if(typeof usesrID === 'undefined'){
+            userId = 0;
+        }
 
         // If req is set and there is a userID, log that user ID
         if (typeof req != 'undefined') {
@@ -191,11 +162,29 @@ export const raesumLogger = function(fileName){
             userId: userId,
             originFile: originFile,
             statusCode: statusCode,
+            route: route
         };
+        
         logger.log(logEntry);
     };
 
     return {
+        route: (
+            message = '',
+            duration = 0,
+            route = '',
+            statusCode = 0,
+            userId = 0
+        ) => {
+            log(
+                'route',
+                message,
+                duration,
+                statusCode,
+                route,
+                userId
+            );
+        },
         critical: (
             message = '',
             duration = 0,
@@ -244,6 +233,7 @@ export const raesumLogger = function(fileName){
                 statusCode
             );
         },
+        
         debug: (
             message = '',
             duration = 0,

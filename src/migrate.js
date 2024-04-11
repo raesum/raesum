@@ -7,7 +7,7 @@ import raesumMigrate from "./modules/raesumMigrate.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const logger = raesumLogger(__filename, "module");
+const logger = raesumLogger(__filename);
 
 const start = Date.now();
 logger.info("Starting Migration", Date.now() - start);

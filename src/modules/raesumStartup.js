@@ -1,4 +1,4 @@
-import {raesumLogger, raesumLoggerRequestFinishMiddleware} from "./raesumLogger.js";
+import {raesumLogger} from "./raesumLogger.js";
 import path from "path";
 import fs from "fs";
 import {fileURLToPath} from "url";
@@ -10,7 +10,7 @@ import readLineAsync from "../utils/readlineAsync.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const logger = raesumLogger(__filename, "module");
+const logger = raesumLogger(__filename);
 
 const metadata = new raesumMetadata();
 
@@ -40,12 +40,12 @@ class raesumStartup {
             let productionDB = true;
             logger.info("Checking to see if Raesum is a production database. NODE_ENV Value: " + process.env.NODE_ENV, Date.now() - start);
             if (typeof process.env.NODE_ENV == "undefined" || process.env.NODE_ENV == "undefined") {
-                logger.debug("NODE_ENV is undefined", Date.now() - start);
+                logger.verbose("NODE_ENV is undefined", Date.now() - start);
 
                 // No environment type defined, ask the user if this is a production database
                 productionDB = await this.askUserIfNonProductionDB();
             } else {
-                logger.debug("NODE_ENV is defined: " + process.env.NODE_ENV, Date.now() - start);
+                logger.verbose("NODE_ENV is defined: " + process.env.NODE_ENV, Date.now() - start);
 
                 // If it's defined, examine the name to see if it's a non-production type (or a type that shouldn't allow seeding)
                 const knownDevelopmentWords = ["dev", "test", "qa", "local", "sandbox", "development"];

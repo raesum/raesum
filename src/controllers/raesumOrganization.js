@@ -3,9 +3,5 @@ import {fileURLToPath} from "url";
 import raesumDB from "../modules/raesumDB.js";
 import raesumOrganization from "../models/raesumOrganization.js";
 const __filename = fileURLToPath(import.meta.url);
-const logger = raesumLogger(__filename, "module");
+const logger = raesumLogger(__filename);
 
-class raesumOrganizationController {
-
-
-}

@@ -3,7 +3,7 @@ import {fileURLToPath} from "url";
 import raesumDB from "../modules/raesumDB.js";
 
 const __filename = fileURLToPath(import.meta.url);
-const logger = raesumLogger(__filename, "module");
+const logger = raesumLogger(__filename);
 
 class raseumMetadata{
 
@@ -18,7 +18,7 @@ class raseumMetadata{
     async set(key, value){
         const start = Date.now();
 
-        logger.debug("Setting metadata by key: " + key, Date.now() - start);
+        logger.verbose("Setting metadata by key: " + key, Date.now() - start);
 
         if (typeof key !== 'string') {
             throw new Error("Metadata key must be a string");
@@ -44,7 +44,7 @@ class raseumMetadata{
     async getByKey(key){
         const start = Date.now();
 
-        logger.debug("Getting metadata by key: " + key, Date.now() - start);
+        logger.verbose("Getting metadata by key: " + key, Date.now() - start);
 
         if (typeof key !== 'string') {
             throw new Error("Metadata key must be a string");
@@ -97,7 +97,7 @@ class raseumMetadata{
             logger.warning("Metadata not found for deletion: " + key, Date.now() - start);
             return false;
         }
-        logger.debug("Metadata deleted: " + key, Date.now() - start);
+        logger.verbose("Metadata deleted: " + key, Date.now() - start);
 
         return true;
     }

@@ -3,7 +3,7 @@ import {raesumLogger} from "../modules/raesumLogger.js";
 import {fileURLToPath} from "url";
 
 const __filename = fileURLToPath(import.meta.url);
-const logger = raesumLogger(__filename, "module");
+const logger = raesumLogger(__filename);
 
 export function buildAWSConfig() {
     const start = Date.now();
@@ -25,9 +25,9 @@ export function buildAWSConfig() {
             clientConfig.accessKeyId = accessKeyId;
             clientConfig.secretAccessKey = secretAccessKey;
         }
-        logger.debug("AWS Access Key and Secret Access Key are set and included in configuration", Date.now() - start);
+        logger.verbose("AWS Access Key and Secret Access Key are set and included in configuration", Date.now() - start);
     }else{
-        logger.debug("AWS Access Key and Secret Access Key are not set and only AWS region is being used", Date.now() - start);
+        logger.verbose("AWS Access Key and Secret Access Key are not set and only AWS region is being used", Date.now() - start);
     }
 
 

@@ -3,12 +3,6 @@ import {fileURLToPath} from "url";
 import raesumAudit from "../models/raesumAudit.js";
 
 const __filename = fileURLToPath(import.meta.url);
-const logger = raesumLogger(__filename, "module");
-
-class raesumAuditObject{
+const logger = raesumLogger(__filename);
 
 
-
-
-
-}

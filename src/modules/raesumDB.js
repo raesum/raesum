@@ -5,7 +5,7 @@ import raesumConfig from "./raesumConfig.js";
 import {raesumLogger} from "./raesumLogger.js";
 import {fileURLToPath} from "url";
 const __filename = fileURLToPath(import.meta.url);
-const logger = raesumLogger(__filename, "module");
+const logger = raesumLogger(__filename);
 
 class dbPool {
 
@@ -27,7 +27,7 @@ class dbPool {
         for (let i = 0; i < singleDepthSettings.length; i++) {
             // If the value of the setting is present and not null add it to config
             if (settingsObject.hasOwnProperty(singleDepthSettings[i]) && settingsObject[singleDepthSettings[i]] != null) {
-                logger.verbose(`Adding ${singleDepthSettings[i]} to db config`);
+                logger.debug(`Adding ${singleDepthSettings[i]} to db config`);
                 newConfig[singleDepthSettings[i]] = settingsObject[singleDepthSettings[i]];
             }
         }
@@ -65,7 +65,7 @@ class dbPool {
         }
 
         this.#config = newConfig;
-        logger.verbose('Primary Database Configuration Built', Date.now() - start);
+        logger.debug('Primary Database Configuration Built', Date.now() - start);
 
     }
 
@@ -82,7 +82,7 @@ class dbPool {
 
             this.#dbPoolInstance = new Pool(this.#config);
         } else {
-            logger.verbose('Primary Database Already Initialized', Date.now() - start);
+            logger.debug('Primary Database Already Initialized', Date.now() - start);
         }
     }
 
@@ -92,14 +92,14 @@ class dbPool {
 
         const res = await this.#dbPoolInstance.query(text, params)
         const duration = Date.now() - start
-        logger.verbose(`Executed Query: ${text} with rows: ${res.rowCount}`, Date.now() - start);
+        logger.debug(`Executed Query: ${text} with rows: ${res.rowCount}`, Date.now() - start);
         return res
     }
 
     // Most of this is slightly modified reference code from https://node-postgres.com/guides/project-structure
     async dbClient() {
         const start = Date.now();
-        logger.verbose(`Primary Database Manual Client Opened`, Date.now() - start);
+        logger.debug(`Primary Database Manual Client Opened`, Date.now() - start);
 
         await this.#initPool();
 
@@ -125,7 +125,7 @@ class dbPool {
             // set the methods back to their old un-monkey-patched version
             client.query = query
             client.release = release
-            logger.verbose(`Primary Database Manual Client Released`, Date.now() - start);
+            logger.debug(`Primary Database Manual Client Released`, Date.now() - start);
             return release.apply(client)
         }
 

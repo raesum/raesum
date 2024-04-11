@@ -4,3 +4,5 @@ const raesumHealtRouter = express.Router();
 
 
 raesumHealtRouter.get('/', raesumHealthController);
+
+export default raesumHealtRouter;
