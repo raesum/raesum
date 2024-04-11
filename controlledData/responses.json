@@ -33,5 +33,26 @@
     "description": "Login is required to access this route. Error: {0}",
     "code": 401,
     "keycode": 5
+  },
+  "invalidClientToken": {
+    "title": "Invalid Token",
+    "message": "Your token doesn't match the client token or is not a valid format.",
+    "description": "The token provided in the headers does not match the client token or is not a valid format.",
+    "code": 401,
+    "keycode": 6
+  },
+  "invalidUserPool": {
+    "title": "User Not Recognized",
+    "message": "Your user token is not recognized as being a member of this system.",
+    "description": "User might be valid but isn't a member of the cognito pool.",
+    "code": 401,
+    "keycode": 7
+  },
+  "tokenExpired": {
+    "title": "Your Login Has Expired",
+    "message": "Your login as expired and you need to log in again.",
+    "description": "User's token haas expired and needs to be renewed.",
+    "code": 401,
+    "keycode": 7
   }
 }

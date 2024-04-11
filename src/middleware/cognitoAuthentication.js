@@ -9,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
 
 let cognitoExpress;
+let cognitoExpressExpirationTime = Date.now();
 
 const initCognito = async()=>{
     const start = Date.now();
@@ -25,6 +26,7 @@ const initCognito = async()=>{
 
     try{
         cognitoExpress = new CognitoExpress(awsCognitoConfig);
+        cognitoExpressExpirationTime = Date.now() + awsCognitoConfig.tokenExpiration;
         logger.info("Cognito Express Initiated", Date.now() - start);
 
         return true;
@@ -39,7 +41,7 @@ export const raesumCognitoAuthRequired = async (req, res, next) => {
     logger.debug(`Checking to see if user has logged in.`, Date.now() - start);
 
     // Init cognito if it has not yet been initialized
-    if(!cognitoExpress){
+    if(!cognitoExpress || cognitoExpressExpirationTime < Date.now()){
         await initCognito();
     }
 
@@ -66,6 +68,27 @@ export const raesumCognitoAuthRequired = async (req, res, next) => {
     }catch(e){
         // Something has malfunctioned or a user is sending an invalid header
         logger.warning("User has sent an authorization header but has failed validation with error: " + error, Date.now() - start);
+
+        if(e.name === "TokenExpiredError"){
+            // get token expired response and send to user
+            const response = await raesumResponses.get("notLoggedInError",[e]);
+            return res.status(response.code).json(response);
+        }
+        if(e.name === "TokenNotFound"){
+            // get token invalid response and send to user
+            const response = await raesumResponses.get("invalidClientToken");
+            return res.status(response.code).json(response);
+        }
+        if(e.name === "InvalidTokenUse"){
+            // get not authorized response and send to user
+            const response = await raesumResponses.get("invalidClientToken");
+            return res.status(response.code).json(response);
+        }
+        if(e.name === "InvalidUserPool"){
+            // get not authorized response and send to user
+            const response = await raesumResponses.get("invalidUserPool");
+            return res.status(response.code).json(response);
+        } 
 
         // get not logged with error in response and send to user
         let response = await raesumResponses.get("notLoggedInError",[e]);
