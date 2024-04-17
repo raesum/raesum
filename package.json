@@ -15,7 +15,7 @@
   "author": "Tor N. Johnson",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-cognito-identity": "^3.523.0",
+    "@aws-sdk/client-cognito-identity": "^3.540.0",
     "@aws-sdk/client-secrets-manager": "^3.521.0",
     "amazon-cognito-identity-js": "^6.3.7",
     "aws-sdk": "^2.1538.0",
