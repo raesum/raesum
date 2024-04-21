@@ -39,7 +39,8 @@
     "permissions": {
       "raesum_user": {
         "log_in": ["self"],
-        "read": ["self"]
+        "read": ["self"],
+        "update": ["self"]
       },
       "raesum_organization": {
         "read": ["organization"]

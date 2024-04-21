@@ -1,8 +1,8 @@
 import express from 'express';
 import raesumHealthController from "../controllers/raesumHealth.js";
-const raesumHealtRouter = express.Router();
+const raesumHealthRouter = express.Router();
 
 
-raesumHealtRouter.get('/', raesumHealthController);
+raesumHealthRouter.get('/', raesumHealthController);
 
-export default raesumHealtRouter;
+export default raesumHealthRouter;

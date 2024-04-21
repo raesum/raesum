@@ -113,6 +113,7 @@ describe("Raesum Metadata System", () => {
         await metadata.set(key, value);
 
         const result = await metadata.getByKey(key);
+
         expect(result).toBe(value);
 
     });

@@ -5,7 +5,7 @@ import {cloneRecursively} from "../utils/objectUtils.js";
 import {SecretsManagerClient, GetSecretValueCommand} from "@aws-sdk/client-secrets-manager";
 import jp from "jsonpath"
 import {conditionallyParseJSON} from "../utils/stringUtils.js";
-import {buildAWSConfig} from "../utils/awsUtils.js";
+import {buildAWSConfigInitializationOnly} from "../utils/awsUtils.js";
 
 import {raesumLogger} from "./raesumLogger.js";
 const __filename = fileURLToPath(import.meta.url);
@@ -117,7 +117,7 @@ class raesumConfig {
                 logger.debug(`Fetching cloud secret ${key} fetched from AWS: ${secretValue}`, Date.now() - start);
 
                 // Create the AWS client
-                const clientConfig = buildAWSConfig();
+                const clientConfig = buildAWSConfigInitializationOnly();
                 const client = new SecretsManagerClient(clientConfig);
 
                 // Create the request command to AWS

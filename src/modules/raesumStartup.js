@@ -16,6 +16,9 @@ const metadata = new raesumMetadata();
 
 class raesumStartup {
 
+    /*
+    * Initialize is used on the FIRST time Raesum is run to set up the database and initial values
+    * */
     async initialize() {
         const start = Date.now();
 
@@ -135,7 +138,7 @@ class raesumStartup {
 
 
     }
-
+s
 }
 
 export default raesumStartup;

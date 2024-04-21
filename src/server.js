@@ -11,8 +11,9 @@ import {raesumCognitoAuthRequired} from "./middleware/cognitoAuthentication.js";
 import {raesumLogger} from "./modules/raesumLogger.js";
 import raesumStartup from "./modules/raesumStartup.js";
 import raesumLoggerRequestFinishMiddleware from "./middleware/raesumRequestLogger.js";
-import raesumHealtRouter from "./routes/raesumHealth.js";
-
+import raesumHealthRouter from "./routes/raesumHealth.js";
+import raesumAuthRouter from "./routes/raesumAuth.js";
+import raesumCache from "./modules/raesumCache.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -40,6 +41,14 @@ export async function createApp() {
     }
 
     logger.info("Running Raesum startup tasks complete. Proceeding to security initialization", Date.now()-start);
+
+
+
+    // Clear caches
+    logger.info("Clearing Caches",Date.now()-start);
+    await raesumCache.deleteSet('raesumServer');
+    await raesumCache.deleteSet('cognito');
+    logger.info("Clearing Caches Finished",Date.now()-start);
 
 
 
@@ -76,13 +85,14 @@ export async function createApp() {
         raesumCognitoAuthRequired.unless({
             path: [
                 "/health",
-                "/login"
+                "/auth/login"
             ]
         })
     )
 
     // Routes
-    app.use('/health', raesumHealtRouter);
+    app.use('/health', raesumHealthRouter);
+    app.use('/auth', raesumAuthRouter);
 
 
 

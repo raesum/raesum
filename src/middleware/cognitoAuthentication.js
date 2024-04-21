@@ -1,6 +1,6 @@
 import CognitoExpress from "cognito-express";
 import raesumConfig from "../modules/raesumConfig.js";
-import {buildAWSConfig} from "../utils/awsUtils.js";
+import {buildAWSClientConfig} from "../utils/awsUtils.js";
 import raesumResponses from "../modules/raesumResponses.js";
 import {raesumLogger} from "../modules/raesumLogger.js";
 import {fileURLToPath} from "url";
@@ -17,7 +17,7 @@ const initCognito = async()=>{
 
     // Create the base aws configuration
     logger.debug("Setting up Cognito - getting base AWS config",Date.now() - start);
-    let awsCognitoConfig = await buildAWSConfig();
+    let awsCognitoConfig = await buildAWSClientConfig(2);
 
     // Get cognito settins
     awsCognitoConfig.cognitoUserPoolId = await raesumConfig.get('aws.cognito.userPoolId')

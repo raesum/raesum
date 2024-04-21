@@ -3,7 +3,7 @@ import NodeCache from 'node-cache';
 import Redis from 'ioredis';
 import {raesumLogger} from "./raesumLogger.js";
 import {fileURLToPath} from "url";
-import {conditionallyParseJSON} from "../utils/stringUtils";
+import {conditionallyParseJSON} from "../utils/stringUtils.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,7 +20,7 @@ class raesumeCacheMemory{
 
     async init(){
         // Get the cache default TTL
-        const cacheTTL = raesumConfig.get("cache.ttl");
+        const cacheTTL = await raesumConfig.get("cache.ttl");
         logger.info(`Initializing Memory Cache with default TTL: ${cacheTTL}`);
         if(parseInt(cacheTTL) > -1){
             this.#nodeCacheConfig.stdTTL = parseInt(cacheTTL);
@@ -35,7 +35,6 @@ class raesumeCacheMemory{
     }
 
     async get(key){
-
 
         // Get the key and return the value (return undefined if key does not exist)
         const returnVal = await this.#nodeCacheInstance.get(key);
@@ -268,7 +267,7 @@ class raesumCachePool{
         }
     }
 
-    async get(key, objectType,orgId=null,userID=null){
+    async get(key, objectType, orgId=null,userID=null){
         const start = Date.now();
         const cacheFunctioning = await this.#init();
 
@@ -373,9 +372,11 @@ class raesumCachePool{
      * @throws {Error} If the object type string is not an string
      * @throws {Error} If key is not a string
      */
-    #keymaker(key, objectType="cache",orgId=null,userID=null){
+    #keymaker(key, objectType="cache",orgId=null,userId=null){
+        const start = Date.now();
+
         // If the user ID is not a positive int or null, throw an error
-        if(userID != null && (isNaN(userID) || userID < 1)){
+        if(userId != null && (isNaN(userId) || userId < 1)){
             throw new Error("Invalid format for userID");
         }
 
@@ -394,9 +395,20 @@ class raesumCachePool{
             throw new Error("Invalid format for key");
         }
 
+        // Set default values if no org or userID supplied
+        if(orgId == null){
+            orgId = "";
+        }
+
+        if(userId == null){
+            userId = "";
+        }
+
 
         // Create the key
-        const keyString = `${objectType}:${orgId}:${userID}:${key}`;
+        const keyString = `${objectType}:${orgId}:${userId}:${key}`;
+        logger.debug("Created Un-prefixed Cache Key: " + keyString, Date.now() - start)
+
         return keyString;
 
     }
@@ -414,6 +426,9 @@ class raesumCachePool{
      */
     async deleteSet(objectType,orgId=null, userID=null){
         const start = Date.now();
+        const cacheFunctioning = await this.#init();
+
+        if(!cacheFunctioning){return undefined;}
 
         // If the user ID is not a positive int or null, throw an error
         if(userID != null && (isNaN(userID) || userID < 1)){
