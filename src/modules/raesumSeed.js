@@ -14,6 +14,7 @@ import raesumConfig from "../modules/raesumConfig.js";
 import raesumOrganization from "../models/raesumOrganization.js";
 import raesumAudit from "../models/raesumAudit.js";
 import raesumUser from "../models/raesumUser.js";
+import raesumCognito from "./raesumCognito.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -94,6 +95,11 @@ class raesumSeed {
         const firstUserID = await startup.initialize();
 
         // Create user metadata keys
+        const createInCognito = await raesumConfig.get("developmentAndTesting.seed.createInCognito");
+        if(createInCognito){
+            await raesumCognito.synchronizeCognitoUserMetadata();
+        }
+
         await this.#createUserMetadataKeys();
 
 
@@ -221,6 +227,8 @@ class raesumSeed {
         for (let i = 0; i < userCount; i++) {
             const userName = faker.internet.userName();
             const external_id = "us-east-1:" + faker.string.uuid();
+
+            // TO-DO: Add user to cognito if useCognito has been set to true
 
             const userID = await user.createUser(external_id, userName + "_" + orgID + "_" + i, orgID, true);
             usersInOrg.push(userID);
