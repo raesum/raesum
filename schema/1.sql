@@ -232,11 +232,15 @@ create table raesum_user_metadata_keys
             unique,
     cognito_attribute boolean default false not null,
     cognito_writable  boolean default false not null,
+    active_status  boolean default true not null,
     description varchar(4096)
 );
 
 create index raesum_user_metadata_keys_datakey_cognito_attribute_index
     on raesum_user_metadata_keys (datakey asc, cognito_attribute desc);
+
+create index raesum_user_metadata_keys_datakey_active_status_index
+    on raesum_user_metadata_keys (datakey asc, active_status desc);
 
 create table raesum_user_x_metadata
 (

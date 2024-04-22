@@ -216,7 +216,7 @@ class raesumCognito{
 
         // Get list of metadata keys
         const users = new raesumUser();
-        const metadataKeys = await users.getMetadataKeys();
+        const metadataKeys = await users.getMetadataKeys(true);
         const metadataKeyList = Object.keys(metadataKeys);
 
         // Build a list of metadata keys that are NOT cognito attributes
@@ -255,7 +255,7 @@ class raesumCognito{
                 // If no, insert the key into the metadata keys and set the cognito attribute and writable status accordingly
 
                 // Create insert SQL command
-                sql += "INSERT INTO raesum_user_metadata_keys (datakey, cognito_attribute, cognito_writable) VALUES ('" + i + "', true, " + attrList[i] + ");\n";
+                sql += "INSERT INTO raesum_user_metadata_keys (datakey, cognito_attribute, cognito_writable, active_status) VALUES ('" + i + "', true, " + attrList[i] + ", true);\n";
             }
         }
 

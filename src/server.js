@@ -49,6 +49,8 @@ export async function createApp() {
     logger.info("Clearing Caches",Date.now()-start);
     await raesumCache.deleteSet('raesumServer');
     await raesumCache.deleteSet('cognito');
+    await raesumCache.deleteSet('cache');
+
     logger.info("Clearing Caches Finished",Date.now()-start);
 
 

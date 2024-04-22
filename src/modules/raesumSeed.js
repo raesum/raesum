@@ -93,6 +93,10 @@ class raesumSeed {
         const startup = new raesumStartup();
         const firstUserID = await startup.initialize();
 
+        // Create user metadata keys
+        await this.#createUserMetadataKeys();
+
+
         // Set up user and org counters
         let userCount = 0;
         let orgCount = 0;
@@ -171,21 +175,26 @@ class raesumSeed {
 
         logger.info(`Created ${orgCount} Organizations and ${userCount} Users`, Date.now() - start);
 
-
-        // // Create Users
-        // const loadUsers = await this.#loadSQLSeed('raesum_user.sql');
-        // if(!loadUsers){
-        //     logger.error("Creating Users Failed.", Date.now() - start);
-        //     return false;
-        // }
-        // // Create Audit Log Entries
-        // const loadAuditLog = await this.#loadSQLSeed('raesum_audit_log.sql');
-        // if(!loadAuditLog){
-        //     logger.error("Creating Audit Log Entries Failed.", Date.now() - start);
-        //     return false;
-        // }
-
         return true;
+
+    }
+
+
+    async #createUserMetadataKeys(){
+        const start = Date.now();
+
+        logger.verbose("Creating Seed User metadata keys");
+
+        const userMetadataKeys = ['premiumUser','profileDescription','subscriptionDate'];
+
+        const user = new raesumUser();
+        // loop through the metadata keys and create them
+        for (let i = 0; i < userMetadataKeys.length; i++) {
+            const key = userMetadataKeys[i];
+            await user.setUserMetadataKey(key, faker.lorem.paragraph(2));
+        }
+
+        logger.info(`Created ${userMetadataKeys.length} User metadata keys`, Date.now() - start);
 
     }
 
@@ -219,6 +228,16 @@ class raesumSeed {
             await raesumAudit.create("create", "raesum_user", userID, firstUserID);
             await org.addUserToOrganization(userID, orgID);
             await raesumAudit.create("update", "raesum_organization", userID, orgID);
+
+            // Set user meta data keys
+            // User is premium user if userId is odd
+            const metadataValues = {
+                'premiumUser': userID % 2 === 0 ? false : true,
+                'profileDescription': faker.lorem.paragraphs(1),
+                'subscriptionDate': faker.defaultRefDate()
+            }
+
+            user.setUserMetadataValues(userID, metadataValues);
 
             // If i < admin count, then the user is an admin
             if (i < orgAdminCount) {
@@ -391,7 +410,16 @@ class raesumSeed {
             'raesum_user',
             'raesum_auth_action_type',
             'raesum_auth_object_type',
-            'raesum_organization'
+            'raesum_organization',
+            'raesum_organization_x_user',
+            'raesum_user_x_metadata',
+            'raesum_user_x_metadata',
+            'raesum_auth_role',
+            'raesum_auth_role_x_permission',
+            'raesum_auth_scope_type',
+            'raesum_auth_user_x_organization_x_role',
+            'raesum_auth_role_x_organization_restriction',
+            'raesum_user_metadata_keys',
         ];
 
         for (let i = 0; i < tableList.length; i++) {

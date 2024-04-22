@@ -1,5 +1,5 @@
 
-import {raesumLogger, raesumLoggerRequestFinishMiddleware} from "./modules/raesumLogger.js";
+import {raesumLogger} from "./modules/raesumLogger.js";
 import path from "path";
 import fs from "fs";
 import {fileURLToPath} from "url";
