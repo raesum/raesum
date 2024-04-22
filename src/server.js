@@ -14,6 +14,7 @@ import raesumLoggerRequestFinishMiddleware from "./middleware/raesumRequestLogge
 import raesumHealthRouter from "./routes/raesumHealth.js";
 import raesumAuthRouter from "./routes/raesumAuth.js";
 import raesumCache from "./modules/raesumCache.js";
+import raesumCognito from "./modules/raesumCognito.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -49,6 +50,14 @@ export async function createApp() {
     await raesumCache.deleteSet('raesumServer');
     await raesumCache.deleteSet('cognito');
     logger.info("Clearing Caches Finished",Date.now()-start);
+
+
+    // Test cognito connection and update list of user metadata keys
+    try{
+        await raesumCognito.synchronizeCognitoUserMetadata();
+    }catch(e){
+        logger.critical(`Failed to connect to Cognito or synchronize Cognito User Metadata: ${e}`, Date.now()-start);
+    }
 
 
 

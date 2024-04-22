@@ -9,6 +9,8 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand } from "@aws-sdk/client-cognito-identity";
 import raesumCache from "./raesumCache.js";
+import raesumUser from "../models/raesumUser.js";
+import raesumDB from "./raesumDB.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -16,6 +18,12 @@ const logger = raesumLogger(__filename);
 class raesumCognito{
 
     #cacheObjectType = "cognito";
+
+
+    /**
+     * Gets the cognito client description object and stores it in cache
+     * @return {string} The base url for the cognito login page
+     */
     async buildBaseLoginURL(){
         const start = Date.now();
 
@@ -50,6 +58,11 @@ class raesumCognito{
 
     }
 
+    /**
+     * Gets the cognito user pool description object and stores it in cache
+     * @return {Array} The cognito user pool description object
+     * @throws {Error} if unable to connect to cognito
+     */
     async getCognitoUserPoolDescription(){
         const start = Date.now();
 
@@ -93,6 +106,11 @@ class raesumCognito{
         }
     }
 
+    /**
+     * Gets the cognito client description object and stores it in cache
+     * @return {Array} The cognito client object
+     * @throws {Error} if unable to connect to cognito
+     */
     async getCognitoClientDescription() {
         const start = Date.now();
 
@@ -136,6 +154,10 @@ class raesumCognito{
         }
     }
 
+    /**
+     * Gets a list of all possible callback urls from cognito
+     * @return {Array} An object describing each key and whether it is connected to cognito
+     */
     async getAllowedCallbacks(){
         const start = Date.now();
 
@@ -143,11 +165,116 @@ class raesumCognito{
 
         if(!clientDescription || !clientDescription.UserPoolClient || !clientDescription.UserPoolClient.CallbackURLs){
             logger.error("Unable to get Cognito Client Description", Date.now() - start);
-            return false;
+            return [];
         }else{
             return clientDescription.UserPoolClient.CallbackURLs;
         }
     }
+
+    /*
+*
+ */
+    /**
+     * Check the cognito connection and update any user metadata keys.
+     * @return {boolean} True if successfully run
+     * @throws {Error} if unable to connect to cognito or run commands to describe the user pool
+     */
+    async synchronizeCognitoUserMetadata(){
+        const start = Date.now();
+
+        logger.info("Checking Cognito Connection and updating user metadata keys", Date.now() - start);
+        try{
+            var cognitoClient = await this.getCognitoClientDescription();
+
+        }catch(e){
+            logger.critical("Unable to connect to Cognito: " + e, Date.now() - start);
+            throw new Error("Unable to connect to Cognito: " + e);
+        }
+
+        // Create list of attributes that can be read from Cognito
+        let attrList = {};
+        let attrKeys = [];
+
+        // Loop through the readonly attributes
+        for(let i=0; i<cognitoClient.UserPoolClient.ReadAttributes.length;i++){
+            let attrKeyName = cognitoClient.UserPoolClient.ReadAttributes[i];
+            // Remove all non-alphanumeric characters (allow -_.)
+            attrKeyName = attrKeyName.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+            attrList[attrKeyName] = false;
+            attrKeys.push(attrKeyName);
+        }
+
+        // Loop through the attributes and set them to true if they exist in the writeattributes list
+        for (let key in attrList){
+            if(cognitoClient.UserPoolClient.WriteAttributes.includes(key)){
+                attrList[key] = true;
+            }
+        }
+
+
+        logger.info("Cognito connection successful.", Date.now() - start);
+
+        // Get list of metadata keys
+        const users = new raesumUser();
+        const metadataKeys = await users.getMetadataKeys();
+        const metadataKeyList = Object.keys(metadataKeys);
+
+        // Build a list of metadata keys that are NOT cognito attributes
+        let nonCognitoMetadataKeys = [];
+        for(let i=0; i<metadataKeyList.length;i++){
+            if(!attrKeys.includes(metadataKeyList[i])){
+                nonCognitoMetadataKeys.push(metadataKeyList[i]);
+            }
+        }
+
+        // Set all metadata cognito attributes to false where not in the cognito list
+        const updatesql = "UPDATE raesum_user_metadata_keys SET cognito_attribute = false, cognito_writable = false WHERE datakey = ANY($1);";
+
+        try{
+            const response = await raesumDB.query(updatesql, [nonCognitoMetadataKeys]);
+        }catch(e){
+            logger.critical("Error updating metadata keys: " + e, Date.now() - start);
+            throw new Error("Error updating metadata keys: " + e);
+        }
+
+
+        // Start a transaction to add/update all congito-controlled user metadata keys
+        let sql = "BEGIN TRANSACTION;\n"
+
+        // Loop through the attribute list
+        for(let i in attrList) {
+
+            // Is the attribute in the metadata keys?
+            if(metadataKeyList.includes(i)){
+                // If yes, update they cognito attribute and writable status accordingly
+                // Create update SQL command
+                sql += "UPDATE raesum_user_metadata_keys SET cognito_attribute = true , cognito_writable = " + attrList[i] + " WHERE datakey = '" + i + "';\n";
+
+
+            }else{
+                // If no, insert the key into the metadata keys and set the cognito attribute and writable status accordingly
+
+                // Create insert SQL command
+                sql += "INSERT INTO raesum_user_metadata_keys (datakey, cognito_attribute, cognito_writable) VALUES ('" + i + "', true, " + attrList[i] + ");\n";
+            }
+        }
+
+        // Finish transaction
+        sql += "COMMIT TRANSACTION;"
+
+        try{
+            // Run transaction
+            await raesumDB.query(sql);
+        }catch (e){
+            logger.critical("Error updating metadata keys: " + e, Date.now() - start);
+            throw new Error("Error updating metadata keys: " + e);
+        }
+
+        logger.info("Cognito connection successful and user metadata keys updated", Date.now() - start);
+        return true;
+
+    }
+
 }
 
 const singleInstance = new raesumCognito();

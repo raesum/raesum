@@ -222,6 +222,39 @@ create table raesum_auth_role_x_organization_restriction
 create index raesum_auth_role_x_organization_restriction_role_id_index
     on raesum_auth_role_x_organization_restriction (role_id);
 
+create table raesum_user_metadata_keys
+(
+    id                serial
+        constraint raesum_user_metadata_keys_pk
+            primary key,
+    datakey           varchar(256)          not null
+        constraint raesum_user_metadata_keys_pk_2
+            unique,
+    cognito_attribute boolean default false not null,
+    cognito_writable  boolean default false not null,
+    description varchar(4096)
+);
+
+create index raesum_user_metadata_keys_datakey_cognito_attribute_index
+    on raesum_user_metadata_keys (datakey asc, cognito_attribute desc);
+
+create table raesum_user_x_metadata
+(
+    key_id  integer
+        constraint raesum_user_x_metadata_raesum_user_metadata_keys_id_fk
+            references raesum_user_metadata_keys,
+    user_id bigint
+        constraint raesum_user_x_metadata_raesum_user_id_fk
+            references raesum_user,
+    value   varchar(4096),
+    constraint raesum_user_x_metadata_pk
+        primary key (user_id, key_id)
+);
+
+create index raesum_user_x_metadata_key_id_index
+    on raesum_user_x_metadata (key_id);
+
+
 
 
 COMMIT;

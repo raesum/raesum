@@ -397,6 +397,31 @@ class raesumUser {
         }
     }
 
+    /**
+     * Gets a list of all possible user metadata keys
+     * @return {object} An object describing each key and whether it is connected to cognito
+     */
+    async getMetadataKeys(){
+        const start = Date.now();
+
+        // Create a query to get all the metadata keys
+        const sql = "SELECT * FROM raesum_user_metadata_keys";
+
+        // Run the query
+        const response = await raesumDB.query(sql);
+
+        // Loop through results to build object
+        let keys = {};
+        for(let i=0; i<response.rows.length; i++){
+            keys[response.rows[i]['datakey']] = response.rows[i];
+        }
+
+        // Return object
+        logger.verbose(`Returning ${response.rows.length} metadata keys`, Date.now() - start)
+        return keys;
+    }
+
+
 
 }
 
