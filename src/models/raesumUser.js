@@ -402,7 +402,7 @@ class raesumUser {
     }
 
     /**
-     * Gets a list of all possible user metadata key objects
+     * Gets a list of all possible user metadata key objects. This function will also put several objects and arrays into cache used by other functions.
      * @param  {Boolean} show_inactive Include inactive keys in the list
      * @return {object} An object describing each key and whether it is connected to cognito
      */
@@ -447,12 +447,22 @@ class raesumUser {
         await raesumCache.set(listCacheKey, keyList);
 
         let keyIndex = [];
+        let cognitoKeys = {};
         keyList.forEach((key) => {
             keyIndex[key] = keys[key].id;
+
+            // If the key is a cognito key, add it to the cognitoKey list
+            if(keys[key].cognito_attribute){
+                cognitoKeys[key] = keys[key].cognito_writable;
+            }
         });
 
         const indexCacheKey = "raesumUserMetadataKeyIndex";
         await raesumCache.set(indexCacheKey, keyIndex);
+
+        const cognitocacheKey = "raesumUserMetadataCognitoKeyStatus";
+        await raesumCache.set(cognitocacheKey, cognitoKeys);
+
 
         // Return object
         logger.verbose(`Returning ${response.rows.length} metadata keys`, Date.now() - start);
@@ -510,6 +520,33 @@ class raesumUser {
         logger.verbose(`Returning cached metadata key list`, Date.now() - start)
         return cachedKeys;
     }
+
+    /**
+     * Gets a list of all cognito keys and their writable status
+     * @return {Object} An object with two arrays of keys - cognito keys and writable cognito keys
+     */
+    async getMetadataCognitoKeyStatus() {
+        const start = Date.now();
+
+
+        // Check to see if list is already in cache
+        const cacheKey = "raesumUserMetadataCognitoKeyStatus";
+        let cognitoKeys = await raesumCache.get(cacheKey);
+
+        // If not in cache, build the list (which will cache it)
+        if (!cognitoKeys) {
+            const keys = await this.getMetadataKeys(true);
+            const keyList = Object.keys(keys);
+            raesumUserMetadataCognitoKeyStatuses = [];
+            // If the key is a cognito key, add it to the cognitoKey list
+            if(keys[key].cognito_attribute){
+                cognitoKeys[key] = keys[key].cognito_writable;
+            }
+        }
+        logger.verbose(`Returning list of keys controlled by cognito`, Date.now() - start)
+        return cognitoKeys;
+    }
+
 
 
     /**
@@ -731,10 +768,16 @@ class raesumUser {
         // Get the list of user metadata values
         const validKeys = await this.getMetadataKeyList(activeStatus);
         const keyIndex = await this.getMetadataKeyIndex();
+        const cognitoKeys = await this.getMetadataCognitoKeyStatus();
+        const readOnlyCognitoKeys = Object.keys(cognitoKeys).filter(key => !cognitoKeys[key]);
+
         let keyList = Object.keys(values);
 
         // Filter the keylist for valid keys
         keyList = keyList.filter(key => validKeys.includes(key));
+
+        // Remove any read-only cognito keys listed in readOnlyCognitoKeys
+        keyList = keyList.filter(key => !readOnlyCognitoKeys.includes(key));
 
         // Check to see if there are existing metadata values
         const existingValues = await this.getUserMetadataValues(userId, keyList, activeStatus);
@@ -798,6 +841,11 @@ class raesumUser {
                 throw new Error("Error inserting new user metadata values");
             }
         }
+
+        // Update any cognito controlled keys
+
+            // TO-DO: Update cognito with new values
+
 
         return true;
 

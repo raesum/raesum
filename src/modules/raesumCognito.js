@@ -175,7 +175,7 @@ class raesumCognito{
 *
  */
     /**
-     * Check the cognito connection and update any user metadata keys.
+     * Check the cognito connection and update any user metadata keys. (Does NOT sync the individual values of the user metadata)
      * @return {boolean} True if successfully run
      * @throws {Error} if unable to connect to cognito or run commands to describe the user pool
      */
