@@ -234,7 +234,7 @@ class raesumSeed {
             const metadataValues = {
                 'premiumUser': userID % 2 === 0 ? false : true,
                 'profileDescription': faker.lorem.paragraphs(1),
-                'subscriptionDate': faker.defaultRefDate()
+                'subscriptionDate': faker.date.anytime().toString()
             }
 
             user.setUserMetadataValues(userID, metadataValues);
