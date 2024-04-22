@@ -23,7 +23,7 @@ Raesum is derived from the Icelandic word for "starting up" or "beginning". It i
 * AWS Cognito
 * Optional: AWS Secrets Manager
 * Optional: Redis
-* 
+  
 # How to Use
 
 - [Quick Start](/documentation/quickStart.md)
