@@ -6,6 +6,16 @@
     "proxyInUse": "false",
     "proxyPort": 443
   },
+  "login": {
+    "jwt":true,
+    "useSessionCookie":true
+  },
+  "session":{
+    "type":"memory",
+    "appName":"raesum",
+    "secret":"changeThisFromDefault",
+    "sessionMaximumAgeSeconds": 864000
+  },
   "cors": {
     "allowedOrigins": []
   },
@@ -30,6 +40,18 @@
         "idleTimeout": 1000,
         "connectionTimeout": 1000,
         "maxUses": 7500
+      }
+    },
+    "session":{
+      "redis": {
+        "host": null,
+        "port": 6379,
+        "connectTimeout": 10000,
+        "databaseNumber": 1,
+        "credentials": {
+          "username": null,
+          "password": null
+        }
       }
     },
     "cache": {
@@ -62,7 +84,7 @@
     "cognito": {
       "cognitoClientId": null,
       "userPoolId": null,
-      "tokenExpiration": 3600000,
+      "tokenExpiration": 3600000
     }
   },
   "cloudBasedSecrets": [

@@ -4,7 +4,7 @@ import Redis from 'ioredis';
 import {raesumLogger} from "./raesumLogger.js";
 import {fileURLToPath} from "url";
 import {conditionallyParseJSON} from "../utils/stringUtils.js";
-
+import raesumServer from "./raesumServer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -91,28 +91,7 @@ class raesumeCacheRedis{
             logger.error("Redis Configuration not set");
             return false;
         }else{
-            // List of excluded config keys
-            const excludedKeys = ["credentials","lazyConnect","retryStrategy","tls"];
-            // Create new config object
-            // The TLS override exists to allow for self-signed certs (and AWS support)
-            let redisConfig = {
-                lazyConnect: true,
-                tls: {
-                    checkServerIdentity: () => undefined,
-                }
-            };
-
-            // Loop through each config key to build new config object if defined and not null
-            for(const key in redisConfigSet){
-                if(!excludedKeys.includes(key) && redisConfigSet[key] != undefined && redisConfigSet[key] != null){
-                    redisConfig[key] = redisConfigSet[key];
-                }
-            }
-            // Get username and password from config if set
-            if(redisConfigSet.credentials != undefined && redisConfigSet.credentials.username != undefined && redisConfigSet.credentials.password != undefined){
-                redisConfig.username = redisConfigSet.credentials.username;
-                redisConfig.password = redisConfigSet.credentials.password;
-            }
+            const redisConfig = await createRedisConfig.createRedisConfig(redisConfigSet);
 
             // Create new redis instance with new config object
             this.#redisInstance = new Redis(redisConfig);

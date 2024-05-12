@@ -16,6 +16,7 @@ import raesumAuthRouter from "./routes/raesumAuth.js";
 import raesumCache from "./modules/raesumCache.js";
 import raesumCognito from "./modules/raesumCognito.js";
 import raesumConfig from "./modules/raesumConfig.js";
+import raesumServer from "./modules/raesumServer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -44,7 +45,11 @@ export async function createApp() {
 
     logger.info("Running Raesum startup tasks complete. Proceeding to security initialization", Date.now()-start);
 
-
+    // Check configuration for potential security or stability issues
+    const configCheck = await raesumServer.serverSettingsSafetyChecks();
+    if(!configCheck){
+        logger.warning("Raesum configuration failed safety checks.", Date.now()-start);
+    }
 
     // Clear caches
     logger.info("Clearing Caches",Date.now()-start);
@@ -63,7 +68,15 @@ export async function createApp() {
     }
 
 
-    // Configure sessions
+
+
+    // Initialize Sessions
+
+        // If proxy in use set the trust proxy flag
+        const proxyPortInUse = await raesumConfig.get('server.proxyInUse');
+        if(proxyPortInUse){
+            app.set('trust proxy', 1);
+        }
 
 
     // Initialize Security with Helmet
