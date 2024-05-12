@@ -59,7 +59,7 @@ export const raesumCognitoAuthRequired = async (req, res, next) => {
 
 
     try{
-        await cognitoExpress.validate(accessTokenFromClient);
+        const response = await cognitoExpress.validate(accessTokenFromClient);
 
         res.locals.user = response;
 

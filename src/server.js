@@ -15,6 +15,7 @@ import raesumHealthRouter from "./routes/raesumHealth.js";
 import raesumAuthRouter from "./routes/raesumAuth.js";
 import raesumCache from "./modules/raesumCache.js";
 import raesumCognito from "./modules/raesumCognito.js";
+import raesumConfig from "./modules/raesumConfig.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -62,6 +63,12 @@ export async function createApp() {
     }
 
 
+    // Configure sessions
+
+
+    // Initialize Security with Helmet
+
+
 
     // Add timing decorator for requests
     app.use((req, res, next) => {
@@ -69,12 +76,6 @@ export async function createApp() {
         res.locals['start'] = start;
         next();
     });
-
-
-    // Initialize Security
-
-
-
 
     // Add unless to the logger middleware
     raesumLoggerRequestFinishMiddleware.unless = unless;

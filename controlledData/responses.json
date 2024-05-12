@@ -30,7 +30,7 @@
   "notLoggedInError": {
     "title": "Not Logged In",
     "message": "You are not logged in",
-    "description": "Login is required to access this route. Error: {0}",
+    "description": "Login is required to access this route.",
     "code": 401,
     "keycode": 5
   },
@@ -54,5 +54,12 @@
     "description": "User's token haas expired and needs to be renewed.",
     "code": 401,
     "keycode": 8
+  },
+  "loggedIn": {
+    "title": "Logged In",
+    "message": "User {0} is logged in.",
+    "description": "User is logged in.",
+    "code": 200,
+    "keycode": 9
   }
 }

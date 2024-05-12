@@ -3,6 +3,7 @@ import {fileURLToPath} from "url";
 import raesumCognito from "../modules/raesumCognito.js";
 import raesumConfig from "../modules/raesumConfig.js";
 import raesumServer from "../modules/raesumServer.js";
+import raesumResponses from "../modules/raesumResponses.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -42,7 +43,7 @@ class raesumUserController {
         }
 
         // If the requested redirect is NOT allowed set the redirect to the login success API url or if redirect_uri is missing from the req.params
-        if (!allowedCallbacksUpper.includes(req.query.redirect_uri.toUpperCase()) || !req.query.redirect_uri) {
+        if (!req.query.redirect_uri || !allowedCallbacksUpper.includes(req.query.redirect_uri.toUpperCase())) {
 
             // If the server's url is in the allowed redirects, default to it
             let raesumServerURL = await raesumServer.buildBaseServerURL();
@@ -74,7 +75,21 @@ class raesumUserController {
     async logout(req, res, next) {
     }
 
-    async loginSuccess(req, res, next) {
+    async loggedIn(req, res, next) {
+
+        const start = Date.now();
+
+        // Get the cognitoUserID from the req.locals
+        const cognitoUserID = res.locals.user.sub;
+
+        // Get the response for being logged in
+        let message = await raesumResponses.get("loggedIn",[cognitoUserID]);
+
+        logger.debug(`User ${req.locals.user.sub} is logged in`, Date.now() - start);
+
+        return res.status(message.httpResponse).json(message);
+
+
     }
 
 }
