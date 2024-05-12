@@ -17,6 +17,9 @@ import raesumCache from "./modules/raesumCache.js";
 import raesumCognito from "./modules/raesumCognito.js";
 import raesumConfig from "./modules/raesumConfig.js";
 import raesumServer from "./modules/raesumServer.js";
+import raesumSession from "./modules/raesumSession.js";
+import session from 'express-session';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -78,6 +81,21 @@ export async function createApp() {
             app.set('trust proxy', 1);
         }
 
+        // Start the session and exclude paths
+        const raesumSessionInstance = new raesumSession();
+        const raesumSessionConfig = await raesumSessionInstance.createSessionConfig();
+        
+        const theSession = session(raesumSessionConfig);
+        theSession.unless = unless;
+
+
+        // Start session and exclude certain urls
+        app.use(theSession.unless({
+            path: [
+                "/health"
+                ]
+        }));
+      
 
     // Initialize Security with Helmet
 

@@ -1,16 +1,17 @@
-import raesumConfig from "./modules/raesumConfig.js";
+import raesumConfig from "./raesumConfig.js";
 import RedisStore from "connect-redis";
-import session from "express-session";
 import Redis from 'ioredis';
-import {raesumLogger} from "./modules/raesumLogger.js";
+import {raesumLogger} from "./raesumLogger.js";
+import { fileURLToPath } from 'url';
 
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
 
 
-// Configure sessions
-
+class raesumSession{
+    // Configure sessions
+    async createSessionConfig(){
         // Get session configuration
         const sessionConfig = await raesumConfig.get('session');
         const serverConfig = await raesumConfig.get('server');
@@ -26,9 +27,9 @@ const logger = raesumLogger(__filename);
                 httpOnly: true,
                 secure: false,
                 maxAge: sessionConfig.sessionMaximumAgeSeconds * 1000,
-              },
+            },
             unset: 'destroy',
-          }
+        }
 
         // If server protocol is https, set the secure flag
         if(serverConfig.protocol == "https"){
@@ -42,7 +43,6 @@ const logger = raesumLogger(__filename);
             const redisConfigSet = await raesumConfig.get("connections.cache.redis");
             if(redisConfigSet == undefined){
                 logger.error("Redis Configuration not set");
-                return false;
             }else{
                 const redisConfig = await createRedisConfig.createRedisConfig(redisConfigSet);
                 const redisClient = Redis.createClient(redisConfig);
@@ -57,13 +57,15 @@ const logger = raesumLogger(__filename);
                 });
 
                 // Add the session store to the session configuration object
-                sess.store = new RedisStore({
+                sessionConfiguration.store = new RedisStore({
                     client: redisClient,
-                  });
+                });
             }
+        
         }
+        return sessionConfiguration;
+    }
+}
 
 
-
-export const sessionManager = session(sess);
-export const sessConf = sess;
+export default raesumSession;
