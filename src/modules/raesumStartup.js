@@ -13,7 +13,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const logger = raesumLogger(__filename);
 
-const metadata = new raesumMetadata();
 
 class raesumStartup {
 
@@ -26,7 +25,7 @@ class raesumStartup {
         logger.info("Checking to see if Raesum needs to be initialized", Date.now() - start);
 
         // Get metadata initialized
-        const initializationStatus = await metadata.getByKey("initialized");
+        const initializationStatus = await raesumMetadata.getByKey("initialized");
 
         let firstUserID = null;
 
@@ -87,17 +86,16 @@ class raesumStartup {
             }
 
             // Set the metadata value of whether this is a production-type database
-            await metadata.set("isProductionDatabase", productionDB);
+            await raesumMetadata.set("isProductionDatabase", productionDB);
 
 
             try {
                 // Create the default organization
-                const org = new raesumOrganization();
-                const firstOrgID = await org.initRaesum();
+
+                const firstOrgID = await raesumOrganization.initRaesum();
 
                 // Create the default users
-                const users = new raesumUser();
-                firstUserID = await users.initRaesum(firstOrgID);
+                firstUserID = await raesumUser.initRaesum(firstOrgID);
 
                 // Force Reload of Global Roles to Database (these depend on the default orgs existing)
                 await raesumAuthorization.loadGlobalRolesToDatabase();
@@ -109,7 +107,7 @@ class raesumStartup {
 
 
             // Set the initialized metadata
-            metadata.set("initialized", true);
+            await raesumMetadata.set("initialized", true);
         }
 
         return firstUserID;

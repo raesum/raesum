@@ -7,7 +7,7 @@ import config from "config";
 import { fileURLToPath } from 'url';
 import { unless } from "express-unless";
 import raesumDB from "./modules/raesumDB.js";
-import {raesumCognitoAuthRequired} from "./middleware/cognitoAuthentication.js";
+import raesumAuth from "./middleware/cognitoAuthentication.js";
 import {raesumLogger} from "./modules/raesumLogger.js";
 import raesumStartup from "./modules/raesumStartup.js";
 import raesumLoggerRequestFinishMiddleware from "./middleware/raesumRequestLogger.js";
@@ -120,18 +120,24 @@ export async function createApp() {
         })
     );
 
-    // Add unless to the Cognito required middleware
-    raesumCognitoAuthRequired.unless = unless;
 
-    // Add Authentication Required Middleware
-    app.use(
-        raesumCognitoAuthRequired.unless({
-            path: [
-                "/health",
-                "/auth/login"
-            ]
-        })
-    )
+
+    // List of paths to exclude from authentication
+    const excludePaths = {
+        path: [
+            "/health",
+            "/auth/login"
+        ]
+    };
+
+        logger.info("JWT Authentication is enabled", Date.now()-start);
+
+        // Add unless to the Cognito required middleware
+        raesumAuth.cognitoAuth.unless = unless;
+
+        // Add Authentication Required Middleware
+        app.use(raesumAuth.cognitoAuth.unless(excludePaths))
+
 
     // Routes
     app.use('/health', raesumHealthRouter);

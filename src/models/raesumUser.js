@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
 
 
-class raesumUser {
+class raesumUserObject {
     // Create User
     /**
      * Creates a new user
@@ -49,8 +49,8 @@ class raesumUser {
         }
 
         // Check if the organization exists
-        const organization = new raesumOrganization();
-        const org = await organization.getById(currentOrganizationId);
+
+        const org = await raesumOrganization.getById(currentOrganizationId);
 
         // If the organization does not exist, throw error
         if (!org) {
@@ -102,7 +102,7 @@ class raesumUser {
         }
 
         // Upsert user to organization_x_user table
-        const addedToOrg = await organization.addUserToOrganization(newUserID, currentOrganizationId);
+        const addedToOrg = await raesumOrganization.addUserToOrganization(newUserID, currentOrganizationId);
 
         if (addedToOrg) {
             logger.info(`User created with ID: ${newUserID}`, Date.now() - start);
@@ -852,6 +852,41 @@ class raesumUser {
     }
 
 
+
+    /**
+     * Copies user and metadata from AWS Cognito pool to Raesum. This will also CREATE users.
+     * @param  {String} external_id The ID of the user in the external (AWS Cognito) system
+     * @return {Number} The internal raesum user ID
+     * @throw {Error} If the external_id not found in AWS
+     * @throw {Error} If the user create process fails
+     */
+
+    async syncUserFromCognitoToRaesum(external_id) {
+        // If external_id is not a string, throw error
+        if (typeof external_id !== 'string' || external_id.length < 1) {
+            throw new Error("External ID must be a non-empty string");
+            }
+
+            // Get the user from AWS
+
+            // Get metadata from aws
+
+            // Get the user from raesum
+
+                // If no user is found, create the user
+
+            // Get possible metadata keys in raesum that are active
+
+            // For each key from aws
+
+                // If active in raesum, add it to a values list
+
+            // Run bulk key set
+
+    }
+
+
 }
 
+const raesumUser = new raesumUserObject();
 export default raesumUser;

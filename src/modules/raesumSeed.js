@@ -22,7 +22,6 @@ const __dirname = path.dirname(__filename);
 const logger = raesumLogger(__filename);
 
 const migrator = new raesumMigrate();
-const metadata = new raesumMetadata();
 
 class raesumSeed {
 
@@ -43,7 +42,7 @@ class raesumSeed {
             return false;
         }
 
-        const isProductionDatabase = await metadata.getByKey("isProductionDatabase");
+        const isProductionDatabase = await raesumMetadata.getByKey("isProductionDatabase");
         try {
             if (isProductionDatabase) {
                 logger.critical("Database is a production database. Production databases CANNOT be seeded.", Date.now() - start);
@@ -60,7 +59,7 @@ class raesumSeed {
     async seedDB() {
         const start = Date.now();
 
-        const isProductionDatabase = await metadata.getByKey("isProductionDatabase");
+        const isProductionDatabase = await raesumMetadata.getByKey("isProductionDatabase");
         try {
             if (isProductionDatabase) {
                 logger.error("Database is a production database. Production databases CANNOT be seeded.", Date.now() - start);
@@ -114,7 +113,7 @@ class raesumSeed {
         const clientTypeOrgList = [];
         const agencyTypeOrgCount = Math.ceil(4 * seedScale);
         const agencyTypeOrgList = [];
-        const org = new raesumOrganization();
+        
 
         // Create 'Client' Type Organizations
         logger.info("Creating Seed Organizations: Client Type", Date.now() - start);
@@ -122,7 +121,7 @@ class raesumSeed {
             const orgType = "client";
 
             const orgName = faker.company.name();
-            const orgID = await org.create(orgName + orgCount, true);
+            const orgID = await raesumOrganization.create(orgName + orgCount, true);
             clientTypeOrgList.push(orgID);
 
             // Create Audit Log Entry
@@ -143,7 +142,7 @@ class raesumSeed {
             const orgType = "agency";
 
             const orgName = faker.company.name();
-            const orgID = await org.create(orgName, true);
+            const orgID = await raesumOrganization.create(orgName, true);
             agencyTypeOrgList.push(orgID);
 
             // Create Audit Log Entry
@@ -176,7 +175,7 @@ class raesumSeed {
         // Randomly Deactivate a client organization
         const deactivateIndex = Math.floor(Math.random() * clientTypeOrgList.length);
         const deactivateOrgID = clientTypeOrgList[deactivateIndex];
-        await org.setActivationStatus(deactivateOrgID, false);
+        await raesumOrganization.setActivationStatus(deactivateOrgID, false);
         await raesumAudit.create("set_status", "raesum_organization", deactivateOrgID, firstUserID);
 
         logger.info(`Created ${orgCount} Organizations and ${userCount} Users`, Date.now() - start);
@@ -193,11 +192,10 @@ class raesumSeed {
 
         const userMetadataKeys = ['premiumUser','profileDescription','subscriptionDate'];
 
-        const user = new raesumUser();
         // loop through the metadata keys and create them
         for (let i = 0; i < userMetadataKeys.length; i++) {
             const key = userMetadataKeys[i];
-            await user.setUserMetadataKey(key, faker.lorem.paragraph(2));
+            await raesumUser.setUserMetadataKey(key, faker.lorem.paragraph(2));
         }
 
         logger.info(`Created ${userMetadataKeys.length} User metadata keys`, Date.now() - start);
@@ -209,8 +207,7 @@ class raesumSeed {
 
         logger.verbose("Creating Seed Users for Org: " + orgID);
 
-        const user = new raesumUser();
-        const org = new raesumOrganization();
+
         const seedScale = await raesumConfig.get("developmentAndTesting.seed.scaleFactor");
 
         // Get the roles for the seeding
@@ -230,11 +227,11 @@ class raesumSeed {
 
             // TO-DO: Add user to cognito if useCognito has been set to true
 
-            const userID = await user.createUser(external_id, userName + "_" + orgID + "_" + i, orgID, true);
+            const userID = await raesumUser.createUser(external_id, userName + "_" + orgID + "_" + i, orgID, true);
             usersInOrg.push(userID);
             // Create Audit Log Entry
             await raesumAudit.create("create", "raesum_user", userID, firstUserID);
-            await org.addUserToOrganization(userID, orgID);
+            await raesumOrganization.addUserToOrganization(userID, orgID);
             await raesumAudit.create("update", "raesum_organization", userID, orgID);
 
             // Set user meta data keys
@@ -245,7 +242,7 @@ class raesumSeed {
                 'subscriptionDate': faker.date.anytime().toString()
             }
 
-            user.setUserMetadataValues(userID, metadataValues);
+            raesumUser.setUserMetadataValues(userID, metadataValues);
 
             // If i < admin count, then the user is an admin
             if (i < orgAdminCount) {
@@ -275,7 +272,7 @@ class raesumSeed {
                 // For each admin user
                 for (let a = 0; a < clientAdmins.length; a++) {
                     // Add user to org
-                    await org.addUserToOrganization(clientAdmins[a], clientOrgs[i]);
+                    await raesumOrganization.addUserToOrganization(clientAdmins[a], clientOrgs[i]);
 
                     // Add org role to user
                     await raesumAuthorization.addUserToRoleByKey(clientAdmins[a], baseUser, clientOrgs[i]);
@@ -304,11 +301,9 @@ class raesumSeed {
         logger.debug("Seeding User Audit Logs: " + userID, Date.now() - start);
 
         // Get the User and allowed orgs
-        const users = new raesumUser();
-        const organizations = new raesumOrganization();
-        const user = await users.getUserById(userID);
+        const user = await raesumUser.getUserById(userID);
         const userRoles = await raesumAuthorization.getRolesForOrg(userID);
-        const orgUsers = await organizations.getUsers(user.current_organization_id);
+        const orgUsers = await raesumOrganization.getUsers(user.current_organization_id);
 
         // Determine number of sessions
         const sessionCount = Math.ceil(Math.random() * 3) + 2;
@@ -441,7 +436,7 @@ class raesumSeed {
         }
 
         // Set initialized to false as user data has been erased
-        await metadata.set("initialized", false);
+        await raesumMetadata.set("initialized", false);
 
         logger.info("Tables Truncated", Date.now() - start);
 

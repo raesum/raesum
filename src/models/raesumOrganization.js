@@ -5,9 +5,8 @@ import raesumUser from "./raesumUser.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
-const user = new raesumUser();
 
-class raesumOrganization {
+class raesumOrganizationObject {
 
     /**
      * Initializes the Raesum system. It will create the first user based on the system settings. It should only be used on the initial system setup and/or during seeding.
@@ -124,7 +123,6 @@ class raesumOrganization {
 
         }
 
-        const users = new raesumUser();
         // If deactivating, move users to another org or deactivate
             if(activeStatus === false){
 
@@ -135,7 +133,7 @@ class raesumOrganization {
                 for(let i=0; i<orgUsers.length; i++) {
 
                     // For each user, check if they are part of another org
-                    const userOrgs = await users.getOrganizations(orgUsers[i].id);
+                    const userOrgs = await raesumUser.getOrganizations(orgUsers[i].id);
                     if(userOrgs.length > 1) {
 
                         // If they are part of another org, move them to that org
@@ -146,7 +144,7 @@ class raesumOrganization {
                         // If they are not part of another org, deactivate them if they are active
                         if(orgUsers[i].active_status === true){
                             logger.verbose(`Deactivating user: ${orgUsers[i].id}`, Date.now() - start);
-                            await users.setActivationStatus(orgUsers[i].id, false);
+                            await raesumUser.setActivationStatus(orgUsers[i].id, false);
                         }
                     }
 
@@ -189,7 +187,7 @@ class raesumOrganization {
 
         // Check if user exists
         try {
-            const userResult = await user.getUserById(userID);
+            const userResult = await raesumUser.getUserById(userID);
             if (userResult.length === 0) {
                 logger.warning(`Cannot add user: ${userID} to org: ${orgID}. User not found`, Date.now() - start);
                 throw new Error("User not found");
@@ -260,7 +258,7 @@ class raesumOrganization {
 
         // Check if user exists
         try {
-            const userResult = await user.getUserById(userID);
+            const userResult = await raesumUser.getUserById(userID);
             if (userResult.length === 0) {
                 logger.warning(`Cannot remove user: ${userID} from org: ${orgID}. User not found`, Date.now() - start);
                 throw new Error("User not found");
@@ -341,4 +339,6 @@ class raesumOrganization {
 
 }
 
+
+const raesumOrganization = new raesumOrganizationObject();
 export default raesumOrganization;

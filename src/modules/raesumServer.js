@@ -6,7 +6,6 @@ import raesumMetadata from "../models/raesumMetadata.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
-const metadata = new raesumMetadata();
 
 class raesumServer{
 
@@ -86,7 +85,7 @@ class raesumServer{
 
         // Get the server configuration
         const serverConfig = await raesumConfig.get('server');
-        const isProductionDatabase = await metadata.getByKey("isProductionDatabase");
+        const isProductionDatabase = await raesumMetadata.getByKey("isProductionDatabase");
         const cacheConfig = await raesumConfig.get('cache');
         const sessionConfig = await raesumConfig.get('session');
         const loginConfig = await raesumConfig.get('login');

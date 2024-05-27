@@ -21,8 +21,7 @@ async function setup(){
     const redisTestEnabled = config.get("developmentAndTesting.integrationTestEnabled.redis");
 
     // Check to see if it's a production database
-    const metadata = new raseumMetadata();
-    let productionDB = await metadata.getByKey("isProductionDatabase");
+    let productionDB = await raseumMetadata.getByKey("isProductionDatabase");
 
     logger.debug("Database type is production: " + productionDB, Date.now() - start);
 

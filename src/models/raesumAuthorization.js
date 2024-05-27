@@ -3,6 +3,7 @@ import {fileURLToPath} from "url";
 import raesumDB from "../modules/raesumDB.js";
 import path from "path";
 import fs from "fs";
+import raesumUser from "./raesumUser.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -330,8 +331,8 @@ class raesumAuthorizationObject {
             } else {
                 logger.debug("User is not the owner of the object. Getting user org to determine if org-level access is allowed", Date.now() - start);
                 // Get current user's org
-                const user = new raesumUser();
-                const userOrg = await user.getOrgID(userID);
+
+                const userOrg = await raesumUser.getOrgID(userID);
 
                 // If the user's current org and the object's org match then look for scopes 2, 3
                 if (userOrg == orgID) {
@@ -584,8 +585,7 @@ class raesumAuthorizationObject {
         // If the orgID is not submitted
         if (typeof orgID != "number" || orgID < 1) {
             logger.debug("OrgID not submitted. Getting current orgID for user", Date.now() - start);
-            const user = new raesumUser();
-            orgID = await user.getOrgID(userID);
+            orgID = await raesumUser.getOrgID(userID);
         }
 
         const query = ` SELECT allowedRole.id as role_id, oxu.user_id, oxu.org_id
@@ -691,8 +691,7 @@ class raesumAuthorizationObject {
         // If the orgID is not submitted
         if (typeof orgID != "number" || orgID < 1) {
             logger.debug("OrgID not submitted. Getting current orgID for user", Date.now() - start);
-            const user = new raesumUser();
-            orgID = await user.getOrgID(userID);
+            orgID = await raesumUser.getOrgID(userID);
         }
 
         // Remove the user from the role

@@ -5,7 +5,7 @@ import raesumDB from "../modules/raesumDB.js";
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
 
-class raseumMetadata{
+class raseumMetadataObject{
 
     /**
      * Sets a metadata value
@@ -104,4 +104,6 @@ class raseumMetadata{
 
 }
 
+
+const raseumMetadata = new raseumMetadataObject();
 export default raseumMetadata;
