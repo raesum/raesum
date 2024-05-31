@@ -92,7 +92,7 @@ export async function createApp() {
         // Start session and exclude certain urls
         app.use(theSession.unless({
             path: [
-                "/health"
+                "/api/v1/health"
                 ]
         }));
       
@@ -115,7 +115,7 @@ export async function createApp() {
     app.use(
         raesumLoggerRequestFinishMiddleware.unless({
             path: [
-                "/health"
+                "/api/v1/health"
                 ]
         })
     );
@@ -125,8 +125,8 @@ export async function createApp() {
     // List of paths to exclude from authentication
     const excludePaths = {
         path: [
-            "/health",
-            "/auth/login"
+            "/api/v1/health",
+            "/api/v1/auth/login"
         ]
     };
 
@@ -140,8 +140,8 @@ export async function createApp() {
 
 
     // Routes
-    app.use('/health', raesumHealthRouter);
-    app.use('/auth', raesumAuthRouter);
+    app.use('/api/v1/health', raesumHealthRouter);
+    app.use('/api/v1/auth', raesumAuthRouter);
 
 
 

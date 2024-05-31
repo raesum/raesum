@@ -157,7 +157,6 @@ class raesumAuth {
 
     }
 
-
     async raesumCognitoJWTAuth (req, res, next) {
         const start = Date.now();
         logger.debug(`Checking to see if user has logged in.`, Date.now() - start);
