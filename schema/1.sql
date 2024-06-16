@@ -27,8 +27,6 @@ create table raesum_organization
     created_at    timestamp default now()
 );
 
-alter table raesum_organization
-    owner to seneca;
 
 create index raesum_organization__active_status
     on raesum_organization (active_status, id);
@@ -53,8 +51,6 @@ create table raesum_user
     created_at              timestamp default now()
 );
 
-alter table raesum_user
-    owner to seneca;
 
 create index raesum_user__index_created_at
     on raesum_user (created_at);
@@ -83,8 +79,6 @@ create table raesum_organization_x_user
         primary key (user_id, org_id)
 );
 
-alter table raesum_organization_x_user
-    owner to seneca;
 
 create index raesum_organization_x_user_org_id_index
     on raesum_organization_x_user (org_id);
@@ -101,8 +95,6 @@ create table raesum_auth_action_type
     description text
 );
 
-alter table raesum_auth_action_type
-    owner to seneca;
 
 create index raesum_auth_action_type__index_string_key
     on raesum_auth_action_type (string_key, id);
@@ -117,8 +109,6 @@ create table raesum_auth_object_type
     description text
 );
 
-alter table raesum_auth_object_type
-    owner to seneca;
 
 create index raesum_auth_object_type__index_string_key
     on raesum_auth_object_type (string_key, id);
