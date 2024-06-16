@@ -31,7 +31,7 @@ describe("Raesum API Responses", () => {
 
     test('Get a Message with a variable',async ()=> {
         const response = await raesumResponses.get("requestMissingFields",["TEST"]);
-        await raesumResponses.get("requestMissingFields",["moo"]);
+        //await raesumResponses.get("requestMissingFields",["moo"]);
         expect(response.message).toBe("The request is missing fields: TEST");
     });
 

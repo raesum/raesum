@@ -61,5 +61,26 @@
     "description": "User is logged in.",
     "code": 200,
     "keycode": 9
+  },
+  "loginTypeNotAllowed": {
+    "title": "Not Logged In",
+    "message": "This login type is now allowed.",
+    "description": "The login type has been disabled in configuration.",
+    "code": 401,
+    "keycode": 10
+  },
+  "alreadyLoggedInDifferentType": {
+    "title": "Already Logged In",
+    "message": "You have already logged in via a different method.",
+    "description": "User is trying to login in via JWT after a session login or vice-versa.",
+    "code": 401,
+    "keycode": 11
+  },
+  "missingHeader": {
+    "title": "Missing Headers",
+    "message": "Missing required header: {0}",
+    "description": "A required header is missing.",
+    "code": 401,
+    "keycode": 12
   }
 }

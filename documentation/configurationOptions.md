@@ -38,6 +38,19 @@ This section controls how the raseum server operates.
 
 - `allowedOrigins` (array) - An array of strings that represent the allowed origins for CORS. Default: []
 
+### initialization
+
+This section is used when the server is started for the FIRST time. It will create the first user in the system which should be a superadmin.
+-`firstUserExternalId` (string) - The cognito id of the first user in the system. The user should already exist in cognito.
+- `firstUserUsername` (string) - The username of the first user in the system.
+- `firstUserRole` (string) - This is the role to assign to the user. It should be a superadmin role but can be overriden. Note: If you don't have a superadmin you will need to MANUALLY create one later if one is needed.
+
+### login
+This section controls what login types/patterns are allowed. One or both may be enabled.
+
+- `jwt` (boolean) - Whether to allow JWT for authentication. Default: true
+- `useSessionCookie` (boolean) - Whether to allow session cookies for authentication. If using this be sure to completely configure the session in a secure way. Default: false
+
 ### Cache
 
 Raesum supports multiple potential cache backends. For a multi-server deployment, it's *STRONGLY* recommended to use Redis. For a single server deployment or local development, the in-memory cache may be sufficient (Redis is still suggested where possible).
@@ -101,11 +114,22 @@ The logging system supports multiple outputs (transports): file, console, and AW
 - `filePath` (string) - The path to the file to log to. This can be either a relative or absolute file path on the server. Default: `logs`
 - `filename` (string) - The name of the file to log to. Default: `app.log`
 
-### IntegrationTestsEnabled
+### developmentAndTesting
 
+#### integrationTestEnabled
 The automated tests may require external resources for certain tests (such as the redis-based cache). This section controls whether these tests are run.
 
 - `redis` (boolean) - Whether to run tests that require a Redis server. The tests will use the appropriate settings in `connections` Default: `true`
+
+#### seed
+This section governs the seeder that is used to populate the database with test data. This is used for both development and automated testing.
+
+- `scaleFactor` (number) - The scale factor to use when generating test data. This is a multiplier that is applied to the base data set. USE WITH CAUTION as a large number can easily overload a test system. Default: `1`
+- `createInCognito` (boolean) - Whether to create the test data in a separate schema. Do not combine this with a high scale factor as it will quickly generate AWS charges. Do not turn this on unless you are SURE it is needed and have appropriate scaleFactor settings. Default: `false`
+- `seedRoles` - Determines the roles to use for different sample users. All three must be valid role keys.
+  - `orgAdmin` (string) - The role key to use for the admin user for a specific organization.
+  - `orgManager` (string) - This role is for an organization 'manager'. It should have fewer powers than the admin user.
+  - `orgUser` (string) - This role is for a standard user in an organization. It should have the fewest powers of the three.
 
 ### AWS
 
@@ -114,3 +138,7 @@ This section contains the settings for AWS services.
 - `region` (string) - The region to use for AWS services. Default: `us-east-1`
 - `accessKeyId` (string) - The access key to use for AWS services. For production systems it is *STRONGLY* recommended to use IAM roles assigned to the application server instead of keys. Default: `null`
 - `secretAccessKey` (string) - The secret access key to use for AWS services. Default: `null`
+- `cognito` - This is the cognito pool configuration. It is used to connect to the cognito pool for user management.
+  - `userPoolId` (string) - The id of the cognito user pool. Default: `null`
+  - `cognitoClientId` (string) - The client id of the cognito user pool. Default: `null`
+  - `tokenExpiration` (number) - The number of seconds that a token is valid for. Default: `3600000`

@@ -42,6 +42,8 @@ class raesumServer{
         // Set cache
         await raesumCache.set(cacheKey, serverURL, 86400, this.#cacheObjectType);
 
+        logger.info("Server URL built: " + serverURL, Date.now() - start);
+
         // Return
         return serverURL;
 

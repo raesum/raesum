@@ -18,7 +18,7 @@ class raesumAuth {
 
     async initCognito(){
         const start = Date.now();
-        logger.info("Initializing Cognito Express", Date.now() - start);
+        logger.info("Initializing Cognito Express Auth", Date.now() - start);
     
         // Create the base aws configuration
         logger.debug("Setting up Cognito - getting base AWS config",Date.now() - start);
@@ -64,7 +64,22 @@ class raesumAuth {
             
             try{
                 const response = await this.cognitoExpress.validate(accessTokenFromClient);
-        
+
+                // Check to see if token is on revoked list
+                    // Build the key
+                    const key = "revokedJWT:" + accessTokenFromClient;
+
+                    // Request key from cache
+                    const cacheResponse = await raesumCache.get(key);
+                    if(cacheResponse){
+                        // JWT is on revoke list
+                            // get token invalid response and send to user
+                            const response = await raesumResponses.get("invalidClientToken");
+                            return res.status(response.code).json(response);
+                    }
+
+
+
                 //res.locals.user = response;
                 cognitoUserID = response.sub;
         
