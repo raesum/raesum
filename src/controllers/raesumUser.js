@@ -4,7 +4,7 @@ import raesumCognito from "../modules/raesumCognito.js";
 import raesumConfig from "../modules/raesumConfig.js";
 import raesumServer from "../modules/raesumServer.js";
 import raesumResponses from "../modules/raesumResponses.js";
-import CognitoExpress from "cognito-express";
+import raesumAudit from "../models/raesumAudit.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -98,7 +98,7 @@ class raesumUserController {
             const message = await raesumResponses.get("missingHeader",["Authorization"]);
 
             // Return the error message
-            return res.status(message.httpResponse).json(message);
+            return res.status(message.code).json(message);
 
         }else if(loginMethods.jwt == true && req.headers.authorization) {
 
@@ -148,6 +148,9 @@ class raesumUserController {
 
     }
 
+
+
+
     async loggedIn(req, res, next) {
 
         const start = Date.now();
@@ -168,7 +171,7 @@ class raesumUserController {
             const message = await raesumResponses.get("loginTypeNotAllowed");
 
              // Return the error message
-             return res.status(message.httpResponse).json(message);
+             return res.status(message.code).json(message);
          }
 
         // Check the session to see if the user has already logged in via JWT
@@ -176,7 +179,7 @@ class raesumUserController {
             // If the user logged in via JWT display response that the already have started a JWT session
             const response = await raesumResponses.get("alreadyLoggedInDifferentType");
 
-            return res.status(message.httpResponse).json(message);
+            return res.status(message.code).json(message);
         }
 
 
@@ -184,27 +187,37 @@ class raesumUserController {
         // If user is not already logged in
         if(req.session.loggedIn == false) {
 
-            // Attempt to exchange the code for valid JWT tokens
+           
+                const jwtResult = await raesumCognito.processJWT(req);
+                const tokenResponse = jwtResult.tokenResponse;
+                const user = jwtResult.user;
 
-            // If tokens returned,
-                // Get the user from Raesum DB
-                // If user is inactive,
-                // Invoke cognito API and set user to inactive
-                // delete the session and return error message
+                if(!jwtResult.success) {
+                    logger.error(`Token exchange failed: ${tokenError.message}`, Date.now() - start);
+                    
+                    // Get user not logged in message
+                    const message = await raesumResponses.get(jwtResult.responseMessageKey);
+                    
+                    // Return message
+                    return res.status(message.code).json(message);
+                }
 
 
-                // save them in the session
-
+                // Save them in the session
+                req.session.jwt = tokenResponse.access_token;
+                req.session.idToken = tokenResponse.id_token;
+                req.session.refreshToken = tokenResponse.refresh_token;
+                req.session.userID = user.id;
                 // Set req.session.cognitoUserID to the cognitoUserID
+                req.session.cognitoUserID = cognitoUserId;
 
                 // Set the flag that user is logged in via cookie
+                req.session.loginType = "sessionCookie";
+                req.session.loggedIn = true;
+
+                logger.info(`User ${cognitoUserId} successfully logged in via session cookie`, Date.now() - start);
 
 
-            // Else get error that user is not logged in
-
-                // Get user not logged in message
-
-                // Return message
 
         }
 
@@ -253,6 +266,7 @@ class raesumUserController {
         delete req.session.post_login_uri;
 
         // Add audit log entry
+                await raesumAudit.create("log_in", "raesum_user", user.id, user.id);
 
 
         // Redirect to post_login_url
@@ -266,12 +280,11 @@ class raesumUserController {
         const start = Date.now();
 
         // If code is not supplied return error
-        if(!req.query.code){
+        if(!req.body.code){
             // Get the error message
-            const message = await raesumResponses.get("misrequestMissingFieldssingCode",['code']);
-
+            const message = await raesumResponses.get("requestMissingFields",['code']);
             // Return the error message
-            return res.status(message.httpResponse).json(message);
+            return res.status(message.code).json(message);
         }
 
         // Get the allowed login types
@@ -283,7 +296,7 @@ class raesumUserController {
             const message = await raesumResponses.get("loginTypeNotAllowed");
 
             // Return the error message
-            return res.status(message.httpResponse).json(message);
+            return res.status(message.code).json(message);
         }
 
         // If the user is already logged in via session cookie, return error
@@ -291,33 +304,63 @@ class raesumUserController {
             // If the user logged in via JWT display response that the already have started a JWT session
             const response = await raesumResponses.get("alreadyLoggedInDifferentType");
 
-            return res.status(message.httpResponse).json(message);
+            return res.status(message.code).json(message);
         }
-
+        try {
         // Attempt to exchange the code for valid JWT tokens
+            const jwtResult = await raesumCognito.processJWT(req);
+            console.log("JWTRES",jwtResult);
 
-        // If tokens returned,
-            // Get the user from Raesum DB
-                // If user is inactive,
-                // Invoke cognito API and set user to inactive
-                // delete the session and return error message
+            const tokenResponse = jwtResult.tokenResponse;
+            const user = jwtResult.user;
 
-            // Set req.session.cognitoUserID to the cognitoUserID
+            if(!jwtResult.success) {
+                    logger.error(`Token exchange failed: ${tokenError.message}`, Date.now() - start);
+                    
+                    // Get user not logged in message
+                    const message = await raesumResponses.get(jwtResult.responseMessageKey);
+                    
+                    // Return message
+                    return res.status(message.code).json(message);
+                }
 
-            // Set the flag that user is logged in via JWT
+            // // Set req.session.cognitoUserID to the cognitoUserID
+            // req.session.cognitoUserID = cognitoUserId;
+
+            // // Set the flag that user is logged in via JWT
+            req.session.loginType = "jwt";
+            req.session.loggedIn = true;
+
 
             // Build the response object
-            // Get the success message
-
-            // Add JWT to the response object
+            const response = {
+                success: true,
+                data: {
+                    access_token: tokenResponse.access_token,
+                    id_token: tokenResponse.id_token,
+                    refresh_token: tokenResponse.refresh_token,
+                    expires_in: tokenResponse.expires_in,
+                    token_type: tokenResponse.token_type,
+                }
+            };
 
             // Add audit log entry
+            await raesumAudit.create("log_in", "raesum_user", user.id, user.id);
+            const message = await raesumResponses.get("loggedIn",[user.id]);
+            logger.info(`User ${user.id} successfully logged in via JWT`, Date.now() - start);
 
             // Return the response object
+            return res.status(message.code).json(response);
 
-        // Else get login error message
-
+        } catch (tokenError) {
+            logger.error(`Token exchange failed: ${tokenError.message}`, Date.now() - start);
+            
+            // Get login error message
+            const message = await raesumResponses.get("invalidCredentials");
+            
             // Return the response object
+            return res.status(message.code).json(message);
+        }
 
     }
 

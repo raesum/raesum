@@ -82,5 +82,26 @@
     "description": "A required header is missing.",
     "code": 401,
     "keycode": 12
+  },
+  "unableToCreateEditUser":{
+    "title": "User Cannot Be Modified",
+    "message": "Your user account cannot be accessed at this time.",
+    "description": "User account creation or editing has failed.",
+    "code": 500,
+    "keycode": 14
+  },
+  "internalServerError":{
+    "title": "Internal Server Error",
+    "message": "The server has experienced an unexpected error.",
+    "description": "General internal server error that doesn't match up to anything more specific.",
+    "code": 500,
+    "keycode": 15
+  },
+  "invalidCredentials": {
+    "title": "Invalid Credentials",
+    "message": "These credentials were not recognized",
+    "description": "The code provided was not recognized as a valid authorization code.",
+    "code": 401,
+    "keycode": 16
   }
 }

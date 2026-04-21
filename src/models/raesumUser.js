@@ -194,7 +194,7 @@ class raesumUserObject {
     }
 
     /**
-     * Gets a user by the external ID. It wraps the getUserById
+     * Gets a user by the external ID. It wraps the getUserById. In practice, this is the AWS Cognito user ID.
      * @param  {String} external_id The ID of the user in the external (AWS Cognito) system
      * @return {Object} The user object
      * @throw {Error} If the external_id is not a string

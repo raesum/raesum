@@ -5,12 +5,20 @@ import raesumConfig from "../modules/raesumConfig.js";
 import {
         CognitoIdentityProviderClient,
         DescribeUserPoolClientCommand,
-        DescribeUserPoolCommand
+        DescribeUserPoolCommand,
+        InitiateAuthCommand,
+        AdminInitiateAuthCommand,
+        RespondToAuthChallengeCommand
 } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand } from "@aws-sdk/client-cognito-identity";
 import raesumCache from "./raesumCache.js";
 import raesumUser from "../models/raesumUser.js";
 import raesumDB from "./raesumDB.js";
+import jwt from 'jsonwebtoken';
+import jwks from 'jwks-rsa';
+import raesumServer from "../modules/raesumServer.js";
+import raesumAudit from "../models/raesumAudit.js";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -274,6 +282,209 @@ class raesumCognito{
 
     }
 
+    /**
+     * Exchanges an authorization code for JWT tokens using OAuth2 flow
+     * @param {string} code - The authorization code from Cognito
+     * @param {string} redirectUri - The redirect URI used in the original request
+     * @return {Object} Token response containing id_token, access_token, refresh_token, expires_in
+     * @throws {Error} if unable to exchange code for tokens
+     */
+    async exchangeCodeForTokens(code, redirectUri) {
+        const start = Date.now();
+
+        try {
+            // Get required configuration
+            const clientId = await raesumConfig.get('aws.cognito.cognitoClientId');
+            const region = await raesumConfig.get('aws.region');
+            const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
+
+            // Build the token endpoint URL
+            let tokenEndpoint;
+            const userPoolDescription = await this.getCognitoUserPoolDescription();
+            
+            if (userPoolDescription.UserPool.CustomDomain) {
+                tokenEndpoint = `https://${userPoolDescription.UserPool.CustomDomain.Domain}/oauth2/token`;
+            } else {
+                tokenEndpoint = `https://${userPoolDescription.UserPool.Domain}.auth.${region}.amazoncognito.com/oauth2/token`;
+            }
+
+            // Prepare the request body
+            const params = new URLSearchParams();
+            params.append('grant_type', 'authorization_code');
+            params.append('client_id', clientId);
+            params.append('code', code);
+            params.append('redirect_uri', redirectUri);
+
+            // Make the token request
+            const response = await fetch(tokenEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params.toString()
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                logger.error(`Token exchange failed: ${response.status} ${errorText}`, Date.now() - start);
+                throw new Error(`Token exchange failed: ${response.status} ${errorText}`);
+            }
+
+            const tokenData = await response.json();
+            
+            logger.info('Successfully exchanged authorization code for JWT tokens', Date.now() - start);
+            
+            return {
+                id_token: tokenData.id_token,
+                access_token: tokenData.access_token,
+                refresh_token: tokenData.refresh_token,
+                expires_in: tokenData.expires_in,
+                token_type: tokenData.token_type
+            };
+
+        } catch (error) {
+            logger.error(`Error exchanging code for tokens: ${error.message}`, Date.now() - start);
+            throw new Error(`Failed to exchange authorization code for tokens: ${error.message}`);
+        }
+    }
+
+    /**
+     * Validates a JWT token and returns the payload
+     * @param {string} token - The JWT token to validate
+     * @return {Object} The decoded token payload
+     * @throws {Error} if token is invalid
+     */
+    async validateJWTToken(token) {
+        const start = Date.now();
+
+        try {
+
+
+            // Get the user pool and region for building the JWKS URL
+            const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
+            const region = await raesumConfig.get('aws.region');
+
+            // Build the JWKS URL
+            const jwksUrl = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`;
+
+            // Create JWKS client
+            const client = jwks({
+                jwksUri: jwksUrl,
+                cache: true,
+                cacheMaxEntries: 5,
+                cacheMaxAge: 600000 // 10 minutes
+            });
+
+            // Get the signing key
+            const decodedToken = jwt.decode(token, { complete: true });
+            const kid = decodedToken.header.kid;
+            const key = await client.getSigningKey(kid);
+            const signingKey = key.getPublicKey();
+
+            // Verify the token
+            const verifiedToken = jwt.verify(token, signingKey, {
+                algorithms: ['RS256']
+            });
+
+            logger.info('JWT token validated successfully', Date.now() - start);
+            return verifiedToken;
+
+        } catch (error) {
+            logger.error(`JWT token validation failed: ${error.message}`, Date.now() - start);
+            throw new Error(`Invalid JWT token: ${error.message}`);
+        }
+    }
+
+
+        /**
+     * Utility function that will attempt to exchange code for user data AND will create a user that exists in cognito but not in Raesum's user database
+     * @param  {Object} req Uses the request from the express route
+     * @return {Object} Returns an object with the following structure {success: boolean, responseMessageKey: string, user: object, jwt: object}
+     */
+    async processJWT(req){
+            const start = Date.now();
+
+        // Attempt to exchange the code for valid JWT tokens
+        try {
+
+            // Get the redirect URI from allowed callbacks
+            logger.verbose("Is the current server URL allowed in the callbacks", Date.now() - start);
+
+            const allowedCallbacks = await this.getAllowedCallbacks();
+            let raesumServerURL = await raesumServer.buildBaseServerURL();
+            raesumServerURL += "/api/v1/auth/loggedIn";
+
+            // Confirm that the raesum server is in the allowed callbacks
+            if (!allowedCallbacks.includes(raesumServerURL)) {
+                logger.error("No allowed callbacks found for token exchange", Date.now() - start);
+                return {"success": false, "responseMessageKey": "internalServerError", "user": null, "jwt": null}
+            }
+
+             // Exchange the authorization code for JWT tokens
+             logger.verbose("Exchanging authorization code for JWT tokens", Date.now() - start);
+            const tokenResponse = await this.exchangeCodeForTokens(req.body.code, raesumServerURL);
+
+            // Validate the ID token to get user information
+            logger.verbose("Validating ID token to get user information", Date.now() - start);
+            const tokenPayload = await this.validateJWTToken(tokenResponse.id_token);
+
+            // Extract Cognito user ID from token
+            const cognitoUserId = tokenPayload.sub;
+            const email = tokenPayload.email;
+            const username = tokenPayload['cognito:username'];
+
+            // Get the user from Raesum DB
+            let user = null;
+            try{
+                logger.verbose("Getting user from Raesum DB", Date.now() - start);
+                user = await raesumUser.getUserByExternalID(cognitoUserId); 
+            }
+            catch(e){
+                logger.info(`User ${cognitoUserId} does not exist in Raesum DB`, Date.now() - start);
+            }
+
+            // If user is inactive,
+            if (user && user.active_status === false) {
+                logger.warning(`User ${cognitoUserId} is inactive in Raesum DB`, Date.now() - start);
+
+                // Invoke cognito API and set user to inactive
+                // TODO: Implement Cognito user deactivation if needed
+                
+                // Delete the session
+                req.session.destroy();
+
+                // Return error message
+                return {"success": false, "responseMessageKey": "invalidUserPool", "user": null, "tokenResponse": null, "tokenPayload": null}
+            }
+
+                        // If user doesn't exist in Raesum DB, create them
+            if (!user) {
+                logger.verbose("User doesn't exist in Raesum DB, starting new user creation", Date.now() - start);
+                try {
+                    const newUserDefaults = await raesumConfig.get("newUserDefaults");
+
+                    logger.verbose("New User Defaults: " + JSON.stringify(newUserDefaults), Date.now() - start);
+                    const newUser = await raesumUser.createUser(cognitoUserId,
+                        username,
+                        newUserDefaults.currentOrganizationId,
+                        newUserDefaults.activeStatus
+                    );
+
+                    await raesumAudit.create("create", "raesum_user", newUser, newUser);
+                    logger.info(`Created new user in Raesum DB for Cognito user ${newUser}`, Date.now() - start);
+
+                } catch (createError) {
+                    logger.error(`Failed to create user in Raesum DB: ${createError.message}`, Date.now() - start);
+                    return {"success": false, "responseMessageKey": "unableToCreateEditUser", "user": null, "tokenResponse": null, "tokenPayload": null}
+                }
+            }
+
+            return {"success": true, "responseMessageKey": null, "user": user, "tokenResponse": tokenResponse, "tokenPayload": tokenPayload}
+        }catch(error){
+            logger.error("Error exchanging code for JWT tokens", Date.now() - start);
+            return {"success": false, "responseMessageKey": "internalServerError", "tokenResponse": null, "tokenPayload": null}
+        }
+    }
 }
 
 const singleInstance = new raesumCognito();

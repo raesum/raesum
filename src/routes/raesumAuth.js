@@ -5,6 +5,6 @@ const raesumAuthRouter = express.Router();
 raesumAuthRouter.get('/login', raesumUser.login);
 raesumAuthRouter.get('/loggedIn', raesumUser.loggedIn);
 raesumAuthRouter.get('/logout', raesumUser.logout);
-raesumAuthRouter.get('/getJWT', raesumUser.getJWT);
+raesumAuthRouter.post('/getJWT', raesumUser.getJWT);
 
 export default raesumAuthRouter;

@@ -21,7 +21,7 @@ AWS Cognito's primary role is authentication NOT authorization in Raesum. Raesum
 
 1. Ensure that session cookies are enabled as a login type in the Raesum configuration.
 2. Ensure that sessions have been *SECURELY* configured in the Raesum configuration.
-3. Configure the raesum api server is running in /api/ of the web application on the same domain as the web application.
+3. Configure the raesum api server is running in /api/ of the web application on the EXACT same domain/subdomain as the web application.
 4. Redirect the user to /api/v1/login?redirect_uri=URL_ENCODED_REDIRECT_URI&post_login_uri=URL_ENCODED_POST_LOGIN_URI
    - (optional) The post_login_uri is the URI that the user is starting the login process from. 
      - This can be used to support login from any page on a web application. It will default to "/" if not set.

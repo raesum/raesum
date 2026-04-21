@@ -126,11 +126,24 @@ export async function createApp() {
     const excludePaths = {
         path: [
             "/api/v1/health",
-            "/api/v1/auth/login"
+            "/api/v1/auth/login",
+            "/api/v1/auth/getJWT"
         ]
     };
 
-        logger.info("JWT Authentication is enabled", Date.now()-start);
+    // Check login methods
+            const loginMethods = await raesumConfig.get('login');
+
+            if(loginMethods.jwt == true){
+                logger.info("JWT Authentication is enabled", Date.now()-start);
+            }else{
+                logger.info("JWT Authentication is disabled", Date.now()-start);
+            }
+            if(loginMethods.useSessionCookie == true){
+                logger.info("Session Cookie Authentication is enabled", Date.now()-start);
+            }else{
+                logger.info("Session Cookie Authentication is disabled", Date.now()-start);
+            }
 
         // Add unless to the Cognito required middleware
         raesumAuth.cognitoAuth.unless = unless;

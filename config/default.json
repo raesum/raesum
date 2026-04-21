@@ -110,5 +110,9 @@
         "baseUser": "raesumMinimalUser"
       }
     }
+  },
+  "newUserDefaults":{
+    "activeStatus": true,
+    "currentOrganizationId": 1
   }
 }
