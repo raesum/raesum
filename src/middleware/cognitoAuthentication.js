@@ -5,6 +5,7 @@ import raesumResponses from "../modules/raesumResponses.js";
 import {raesumLogger} from "../modules/raesumLogger.js";
 import {fileURLToPath} from "url";
 import raesumUser from "../models/raesumUser.js";
+import raesumCache from "../modules/raesumCache.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -67,7 +68,7 @@ class raesumAuth {
 
                 // Check to see if token is on revoked list
                     // Build the key
-                    const key = "revokedJWT:" + accessTokenFromClient;
+                    const key = "revokedJWT|" + accessTokenFromClient;
 
                     // Request key from cache
                     const cacheResponse = await raesumCache.get(key);
@@ -87,7 +88,7 @@ class raesumAuth {
                 next();
             }catch(e){
                 // Something has malfunctioned or a user is sending an invalid header
-                logger.warning("User has sent an authorization header but has failed validation with error: " + error, Date.now() - start);
+                logger.warning("User has sent an authorization header but has failed validation with error: " + e, Date.now() - start);
         
                 if(e.name === "TokenExpiredError"){
                     // get token expired response and send to user
@@ -203,7 +204,7 @@ class raesumAuth {
             next();
         }catch(e){
             // Something has malfunctioned or a user is sending an invalid header
-            logger.warning("User has sent an authorization header but has failed validation with error: " + error, Date.now() - start);
+            logger.warning("User has sent an authorization header but has failed validation with error: " + e, Date.now() - start);
     
             if(e.name === "TokenExpiredError"){
                 // get token expired response and send to user
