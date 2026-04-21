@@ -83,6 +83,7 @@
     "secretAccessKey": null,
     "cognito": {
       "cognitoClientId": null,
+      "cognitoClientSecret": null,
       "userPoolId": null,
       "tokenExpiration": 3600000
     }

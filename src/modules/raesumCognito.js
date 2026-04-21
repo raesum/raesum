@@ -11,6 +11,7 @@ import { CognitoIdentityClient, GetIdCommand } from "@aws-sdk/client-cognito-ide
 import raesumCache from "./raesumCache.js";
 import raesumUser from "../models/raesumUser.js";
 import raesumDB from "./raesumDB.js";
+import fetch from "node-fetch";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -272,6 +273,55 @@ class raesumCognito{
         logger.info("Cognito connection successful and user metadata keys updated", Date.now() - start);
         return true;
 
+    }
+
+    /**
+     * Exchanges an authorization code for Cognito tokens via the OAuth2 token endpoint.
+     * @param {string} code The authorization code from Cognito's callback
+     * @param {string} redirectUri The redirect_uri used in the original login request
+     * @return {Object} Token response containing id_token, access_token, refresh_token, expires_in
+     * @throws {Error} If the exchange fails or Cognito returns an error
+     */
+    async exchangeCodeForTokens(code, redirectUri) {
+        const start = Date.now();
+
+        const loginBaseURL = await this.buildBaseLoginURL();
+        const tokenEndpoint = loginBaseURL + "/oauth2/token";
+
+        const clientId = await raesumConfig.get('aws.cognito.cognitoClientId');
+        const clientSecret = await raesumConfig.get('aws.cognito.cognitoClientSecret');
+
+        const params = new URLSearchParams({
+            grant_type: 'authorization_code',
+            client_id: clientId,
+            code: code,
+            redirect_uri: redirectUri
+        });
+
+        const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+
+        if (clientSecret) {
+            const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+            headers['Authorization'] = `Basic ${credentials}`;
+        }
+
+        logger.verbose("Exchanging authorization code for tokens", Date.now() - start);
+
+        const response = await fetch(tokenEndpoint, {
+            method: 'POST',
+            headers,
+            body: params.toString()
+        });
+
+        const tokenData = await response.json();
+
+        if (!response.ok) {
+            logger.error(`Token exchange failed: ${tokenData.error}`, Date.now() - start);
+            throw new Error(`Token exchange failed: ${tokenData.error || response.status}`);
+        }
+
+        logger.info("Token exchange successful", Date.now() - start);
+        return tokenData;
     }
 
 }

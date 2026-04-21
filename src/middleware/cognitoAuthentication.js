@@ -5,6 +5,7 @@ import raesumResponses from "../modules/raesumResponses.js";
 import {raesumLogger} from "../modules/raesumLogger.js";
 import {fileURLToPath} from "url";
 import raesumUser from "../models/raesumUser.js";
+import raesumCache from "../modules/raesumCache.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -66,16 +67,11 @@ class raesumAuth {
                 const response = await this.cognitoExpress.validate(accessTokenFromClient);
 
                 // Check to see if token is on revoked list
-                    // Build the key
-                    const key = "revokedJWT:" + accessTokenFromClient;
-
-                    // Request key from cache
-                    const cacheResponse = await raesumCache.get(key);
+                    const revokedKey = "revokedToken" + accessTokenFromClient;
+                    const cacheResponse = await raesumCache.get(revokedKey, "auth");
                     if(cacheResponse){
-                        // JWT is on revoke list
-                            // get token invalid response and send to user
-                            const response = await raesumResponses.get("invalidClientToken");
-                            return res.status(response.code).json(response);
+                        const response = await raesumResponses.get("invalidClientToken");
+                        return res.status(response.code).json(response);
                     }
 
 
@@ -87,8 +83,8 @@ class raesumAuth {
                 next();
             }catch(e){
                 // Something has malfunctioned or a user is sending an invalid header
-                logger.warning("User has sent an authorization header but has failed validation with error: " + error, Date.now() - start);
-        
+                logger.warning("User has sent an authorization header but has failed validation with error: " + e, Date.now() - start);
+
                 if(e.name === "TokenExpiredError"){
                     // get token expired response and send to user
                     const response = await raesumResponses.get("tokenExpired");
@@ -136,6 +132,7 @@ class raesumAuth {
                     req.session.loggedIn = true;
                     req.session.cognitoUserID = cognitoUserID;
                     res.locals.user = userProfile;
+                    loggedIn = true;
                 }else{
                     // Else, 
                         // delete the session
@@ -146,15 +143,8 @@ class raesumAuth {
 
 
             }catch{
-                // If no profile is found, 
-                    // Use the externalID to get the user's profile data from AWS
-                        // If found in AWS
-                            //create user profile
-                            // get user profile
-                            req.session.loggedIn = true;
-                            req.session.cognitoUserID = cognitoUserID;
-                            res.locals.user = userProfile;
-                        // Else assume it's inactive and delete the session
+                // User not found in Raesum — cannot authenticate
+                logger.warning(`User with cognitoUserID ${cognitoUserID} not found in Raesum`, Date.now() - start);
             }
         }
 
@@ -203,30 +193,25 @@ class raesumAuth {
             next();
         }catch(e){
             // Something has malfunctioned or a user is sending an invalid header
-            logger.warning("User has sent an authorization header but has failed validation with error: " + error, Date.now() - start);
-    
+            logger.warning("User has sent an authorization header but has failed validation with error: " + e, Date.now() - start);
+
             if(e.name === "TokenExpiredError"){
-                // get token expired response and send to user
                 const response = await raesumResponses.get("tokenExpired");
                 return res.status(response.code).json(response);
             }
             if(e.name === "TokenNotFound"){
-                // get token invalid response and send to user
                 const response = await raesumResponses.get("invalidClientToken");
                 return res.status(response.code).json(response);
             }
             if(e.name === "InvalidTokenUse"){
-                // get not authorized response and send to user
                 const response = await raesumResponses.get("invalidClientToken");
                 return res.status(response.code).json(response);
             }
             if(e.name === "InvalidUserPool"){
-                // get not authorized response and send to user
                 const response = await raesumResponses.get("invalidUserPool");
                 return res.status(response.code).json(response);
-            } 
-    
-            // get not logged with error in response and send to user
+            }
+
             let response = await raesumResponses.get("notLoggedInError",[e]);
             return res.status(response.code).json(response);
         }

@@ -82,5 +82,12 @@
     "description": "A required header is missing.",
     "code": 401,
     "keycode": 12
+  },
+  "loggedOut": {
+    "title": "Logged Out",
+    "message": "You have been logged out.",
+    "description": "User has been successfully logged out.",
+    "code": 200,
+    "keycode": 13
   }
 }
