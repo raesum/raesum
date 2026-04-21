@@ -7,11 +7,11 @@ http:
   method: POST
   url: "{{host}}/api/v1/auth/getJWT"
   body:
-    type: multipart-form
-    data:
-      - name: code
-        type: text
-        value: e204c4dc-48b3-4bc4-8763-b68512932059
+    type: json
+    data: |-
+      {
+        "code":"959f71a6-43bb-4461-acac-a9fb39e56648"
+      }
   auth: inherit
 
 settings:

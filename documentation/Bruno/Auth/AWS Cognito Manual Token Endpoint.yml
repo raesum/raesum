@@ -4,8 +4,10 @@ info:
   seq: 3
 
 http:
-  method: GET
+  method: POST
   url: https://raesum-dev.auth.us-east-1.amazoncognito.com/oauth2/token
+  body:
+    type: form-urlencoded
   auth: inherit
 
 settings:
