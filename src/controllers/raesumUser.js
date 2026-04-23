@@ -86,67 +86,116 @@ class raesumUserController {
     async logout(req, res, next) {
         const start = Date.now();
 
-        // Get allowed login types
-        const loginMethods = await raesumConfig.get('login');
+        try {
+            // Get allowed login types
+            const loginMethods = await raesumConfig.get('login');
 
-        // If login type is JWT && JWT not included
-        let accessTokenFromClient = null;
-        if(loginMethods.jwt == true && !req.headers.authorization){
+            // Get access token from header or session
+            let accessTokenFromClient = null;
+            let refreshTokenFromClient = null;
+            let userId = null;
 
-            logger.warning("Unable to logout JWT not found in header",Date.now()-start);
+            if(loginMethods.jwt == true && !req.headers.authorization && !req.session.jwt){
+                logger.warning("Unable to logout - JWT not found in header or session",Date.now()-start);
+                const message = await raesumResponses.get("missingHeader",["Authorization"]);
+                return res.status(message.code).json(message);
+            }
 
-            // Get the error message
-            const message = await raesumResponses.get("missingHeader",["Authorization"]);
+            // Get JWT from header (Authorization: Bearer token)
+            if(req.headers.authorization){
+                accessTokenFromClient = req.headers.authorization.replace('Bearer ', '');
+            } else if(req.session.jwt){
+                accessTokenFromClient = req.session.jwt;
+                refreshTokenFromClient = req.session.refreshToken;
+                userId = req.session.userID;
+            }
 
-            // Return the error message
-            return res.status(message.code).json(message);
+            if(!accessTokenFromClient){
+                logger.error("Unable to logout - JWT not found in session or header but was expected",Date.now()-start);
+                const response = await raesumResponses.get("notLoggedIn");
+                return res.status(response.httpResponse).json(response);
+            }
 
-        }else if(loginMethods.jwt == true && req.headers.authorization) {
+            // Calculate remaining time on JWT
+            const tokenExpiration = raesumCognito.getTokenExpiration(accessTokenFromClient);
+            const currentTime = Date.now();
+            const remainingTime = Math.max(0, tokenExpiration - currentTime);
 
-            // Get the JWT from request
-            accessTokenFromClient = req.headers.authorization;
+            // Check if token revocation is enabled in cognito configuration
+            const enableTokenRevocation = await raesumConfig.get('aws.cognito.enableTokenRevocation') || true;
 
-        }else if(req.session.jwt){
+            // Revoke the token via cognito if enabled
+            if(enableTokenRevocation){
+                try {
+                    // Perform global sign out to invalidate all tokens
+                    await raesumCognito.globalSignOut(accessTokenFromClient);
 
-            // Get JWT from session
-            accessTokenFromClient = req.session.jwt;
+                    // Revoke refresh token if available
+                    if(refreshTokenFromClient){
+                        await raesumCognito.revokeRefreshToken(refreshTokenFromClient);
+                    }
 
-        }else{
+                    logger.info("Successfully revoked tokens in Cognito for userId"+userId, Date.now() - start);
+                } catch (revokeError) {
+                    logger.warning(`Failed to revoke token in Cognito for userID ${userId}: ${revokeError.message}`, Date.now() - start);
+                    // Continue with logout even if Cognito revocation fails
+                }
+            }
 
-            // Log error that JWT not found in session
-            logger.error("Unable to logout JWT not found in session or header but was expected",Date.now()-start);
+            // Add JWT to revoked list in cache
+            try {
+                // Build cache key using the JWT token hash
+                const cacheKey = `revokedJWT|${accessTokenFromClient.substring(0, 50)}`;
+                
+                // Add key to cache with remaining time as TTL
+                await raesumCache.set(cacheKey, true, Math.ceil(remainingTime / 1000), 'revoked_tokens');
+                
+                logger.info(`Added JWT to revoked list in cache with TTL: ${Math.ceil(remainingTime / 1000)} seconds`, Date.now() - start);
+            } catch (cacheError) {
+                logger.warning(`Failed to add JWT to revoked cache for userID ${userId}: ${cacheError.message}`, Date.now() - start);
+                // Continue with logout even if cache fails
+            }
 
-            // Get the error message
-            const response = await raesumResponses.get("notLoggedIn");
-            return res.status(response.httpResponse).json(response);
+            // Add audit log entry before destroying session
+            if(userId){
+                await raesumAudit.create("log_out", "raesum_user", userId, userId);
+            }
+
+            // Delete the session
+            try {
+                req.session.destroy((err) => {
+                    if(err){
+                        logger.error(`Failed to destroy session for userID ${userId}: ${err.message}`, Date.now() - start);
+                    } else {
+                        logger.info("Successfully destroyed session for userID "+userId, Date.now() - start);
+                    }
+                });
+            } catch (sessionError) {
+                logger.warning(`Session destruction error for userID ${userId}: ${sessionError.message}`, Date.now() - start);
+                // Continue even if session destruction fails
+            }
+
+            // Get the logout success message
+            const message = await raesumResponses.get("loggedOut");
+
+            // Return success message
+            return res.status(message.code).json({
+                success: true,
+                message: message.message,
+                timestamp: new Date().toISOString()
+            });
+
+        } catch (error) {
+            logger.error(`Logout process failed: ${error.message}`, Date.now() - start);
+            
+            // Return error message
+            const message = await raesumResponses.get("internalServerError");
+            return res.status(message.code).json({
+                success: false,
+                message: message.message,
+                error: error.message
+            });
         }
-
-
-
-
-        // Extract the JWT
-
-        // Calculate remaining time on JWT
-
-        // If EnableTokenRevocation on cognito
-
-            // Revoke the token via cognito
-
-        // Add JWT to revoked list in cache
-            // Build cache key
-
-            // Calculate the time between now and token expiration
-
-            // Add key to cache with remaining time as TTL
-
-
-        // Delete the session
-
-
-        // Get the logout message
-
-        // Return message
-
     }
 
 

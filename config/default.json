@@ -84,7 +84,8 @@
     "cognito": {
       "cognitoClientId": null,
       "userPoolId": null,
-      "tokenExpiration": 3600000
+      "tokenExpiration": 3600000,
+      "enableTokenRevocation":true
     }
   },
   "cloudBasedSecrets": [
@@ -96,6 +97,7 @@
     "firstUserRole": "raesumAdmin"
   },
   "developmentAndTesting": {
+    "developmentMode":false,
     "integrationTestEnabled": {
       "redis": false,
       "aws": false,

@@ -46,5 +46,11 @@
     "name": "Change Organization",
     "string_key": "change_organization",
     "description": "User can switch their organization to another allowed organization"
+  },
+  {
+    "id": 9,
+    "name": "Log Out",
+    "string_key": "log_out",
+    "description": "User has logged out (this ONLY should apply to audit logs. Never to permissions)"
   }
 ]

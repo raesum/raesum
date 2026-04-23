@@ -162,7 +162,6 @@ class raesumAuth {
             }
 
         }
-            console.log("M2OO",req.session)
 
         if (!req.session.loggedIn){
             

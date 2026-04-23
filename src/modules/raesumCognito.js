@@ -8,7 +8,9 @@ import {
         DescribeUserPoolCommand,
         InitiateAuthCommand,
         AdminInitiateAuthCommand,
-        RespondToAuthChallengeCommand
+        RespondToAuthChallengeCommand,
+        RevokeTokenCommand,
+        GlobalSignOutCommand
 } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand } from "@aws-sdk/client-cognito-identity";
 import raesumCache from "./raesumCache.js";
@@ -487,6 +489,90 @@ class raesumCognito{
             return {"success": false, "responseMessageKey": "internalServerError", "tokenResponse": null, "tokenPayload": null}
         }
     }
+
+    /**
+     * Revokes a refresh token in Cognito
+     * @param {string} refreshToken - The refresh token to revoke
+     * @return {boolean} True if successful
+     * @throws {Error} if unable to revoke token
+     */
+    async revokeRefreshToken(refreshToken) {
+        const start = Date.now();
+
+        try {
+            // Get required configuration
+            const clientId = await raesumConfig.get('aws.cognito.cognitoClientId');
+            const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
+
+            // Initialize the cognito client
+            const awsCognitoConfig = await buildAWSClientConfig();
+            const client = new CognitoIdentityProviderClient(awsCognitoConfig);
+
+            // Build the revoke token command
+            const command = new RevokeTokenCommand({
+                UserPoolId: userPoolId,
+                ClientId: clientId,
+                Token: refreshToken
+            });
+
+            // Execute the command
+            await client.send(command);
+
+            logger.info('Successfully revoked refresh token in Cognito', Date.now() - start);
+            return true;
+
+        } catch (error) {
+            logger.error(`Failed to revoke refresh token: ${error.message}`, Date.now() - start);
+            throw new Error(`Failed to revoke refresh token: ${error.message}`);
+        }
+    }
+
+    /**
+     * Performs global sign out for a user (invalidates all tokens)
+     * @param {string} accessToken - The access token
+     * @return {boolean} True if successful
+     * @throws {Error} if unable to sign out
+     */
+    async globalSignOut(accessToken) {
+        const start = Date.now();
+
+        try {
+            // Initialize the cognito client
+            const awsCognitoConfig = await buildAWSClientConfig();
+            const client = new CognitoIdentityProviderClient(awsCognitoConfig);
+
+            // Build the global sign out command
+            const command = new GlobalSignOutCommand({
+                AccessToken: accessToken
+            });
+
+            // Execute the command
+            await client.send(command);
+
+            logger.info('Successfully performed global sign out in Cognito', Date.now() - start);
+            return true;
+
+        } catch (error) {
+            logger.error(`Failed to perform global sign out: ${error.message}`, Date.now() - start);
+            throw new Error(`Failed to perform global sign out: ${error.message}`);
+        }
+    }
+
+    /**
+     * Extracts the expiration time from a JWT token
+     * @param {string} token - The JWT token
+     * @return {number} Expiration timestamp in milliseconds
+     */
+    getTokenExpiration(token) {
+        try {
+            const decoded = jwt.decode(token);
+            return decoded.exp * 1000; // Convert to milliseconds
+        } catch (error) {
+            logger.error(`Failed to decode token for expiration: ${error.message}`);
+            return Date.now() + 3600000; // Default to 1 hour from now
+        }
+    }
+
 }
 
 const singleInstance = new raesumCognito();
