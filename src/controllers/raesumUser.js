@@ -5,6 +5,7 @@ import raesumConfig from "../modules/raesumConfig.js";
 import raesumServer from "../modules/raesumServer.js";
 import raesumResponses from "../modules/raesumResponses.js";
 import raesumAudit from "../models/raesumAudit.js";
+import raesumUser from "../models/raesumUser.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -154,7 +155,7 @@ class raesumUserController {
     async loggedIn(req, res, next) {
 
         const start = Date.now();
-
+        logger.verbose("Session login callback received, starting processing", Date.now() - start);
         // If the code param is not supplied, redirect to the login page
         if (!req.query.code) {
             logger.warning("No code supplied. Redirecting to login", Date.now() - start);
@@ -167,6 +168,7 @@ class raesumUserController {
 
         // If session cookie logins are not allowed
          if(loginMethods.useSessionCookie == false) {
+            logger.verbose("Session based logins not allowed", Date.now() - start);
              // Get the error message login type not allowed
             const message = await raesumResponses.get("loginTypeNotAllowed");
 
@@ -177,6 +179,8 @@ class raesumUserController {
         // Check the session to see if the user has already logged in via JWT
         if(req.session.loginType == "jwt"){
             // If the user logged in via JWT display response that the already have started a JWT session
+            logger.verbose("JWT Login type is being used. Ignoring session login.", Date.now() - start);
+
             const response = await raesumResponses.get("alreadyLoggedInDifferentType");
 
             return res.status(message.code).json(message);
@@ -185,102 +189,111 @@ class raesumUserController {
 
 
         // If user is not already logged in
-        if(req.session.loggedIn == false) {
+        if(!req.session.loggedIn) {
+            logger.verbose("User is not already logged in but is using session login", Date.now() - start);
 
-           
-                const jwtResult = await raesumCognito.processJWT(req);
-                const tokenResponse = jwtResult.tokenResponse;
-                const user = jwtResult.user;
+            let user = null;
+            let tokenResponse = null;
+            let tokenPayload = null;
 
-                if(!jwtResult.success) {
-                    logger.error(`Token exchange failed: ${tokenError.message}`, Date.now() - start);
-                    
-                    // Get user not logged in message
-                    const message = await raesumResponses.get(jwtResult.responseMessageKey);
-                    
-                    // Return message
-                    return res.status(message.code).json(message);
+                if(req.session.loggedIn == false || !req.session.userID) {
+
+                        // Process the supplied code into JWT
+                        const jwtResult = await raesumCognito.processJWT(req);
+                        tokenResponse = jwtResult.tokenResponse;
+                        tokenPayload = jwtResult.tokenPayload;
+                        user = jwtResult.user;
+
+                        if(jwtResult.success !== true) {                    
+                            // Get user not logged in message
+                            const message = await raesumResponses.get(jwtResult.responseMessageKey);
+                            
+                            // Return message
+                            return res.status(message.code).json(message);
+                        }
+
+
+                        // Save them in the session
+                        req.session.jwt = tokenResponse.access_token;
+                        req.session.idToken = tokenResponse.id_token;
+                        req.session.refreshToken = tokenResponse.refresh_token;
+                        req.session.userID = user.id;
+                        // Set req.session.cognitoUserID to the cognitoUserID
+                        req.session.cognitoUserID = tokenPayload.sub;
+
+                        // Set the flag that user is logged in via cookie
+                        req.session.loginType = "sessionCookie";
+                        req.session.loggedIn = true;
+
+                        logger.info(`User ${tokenPayload.sub} successfully logged in via session cookie`, Date.now() - start);
+
+
+                }else{
+                    user = await raesumUser.getUserById(req.session.userID);
                 }
 
-
-                // Save them in the session
-                req.session.jwt = tokenResponse.access_token;
-                req.session.idToken = tokenResponse.id_token;
-                req.session.refreshToken = tokenResponse.refresh_token;
-                req.session.userID = user.id;
-                // Set req.session.cognitoUserID to the cognitoUserID
-                req.session.cognitoUserID = cognitoUserId;
-
-                // Set the flag that user is logged in via cookie
-                req.session.loginType = "sessionCookie";
-                req.session.loggedIn = true;
-
-                logger.info(`User ${cognitoUserId} successfully logged in via session cookie`, Date.now() - start);
-
-
-
-        }
-
-
-        // Set the post_login_url to the default
-        let post_login_url = "/";
-
-        // If there is a post_login_uri
-        if(req.session.post_login_uri){
-            console.verbose("Post Login URI: " + req.session.post_login_uri,Date.now()-start);
-
-            // Is post_login_url an absolute url?
-            let isAbsoluteRegex = new RegExp('^(?:[a-z]+:)?//', 'i');
-            if(isAbsoluteRegex.test(req.session.post_login_uri)) {
-
-                try{
-                    const testURL = new URL(req.session.post_login_uri);
-
-                    // Extract domain from post_login_uri
-                    const testDomain = testURL.hostname;
-
-                    // Get list of allowed origins
-                    let allowedDomains = await raesumConfig.get('allowedOrigins');
-
-                    // Add raesum domain to allowed origins
-                    const raesumURL = await raesumServer.buildBaseServerURL();
-                    const raesumDomain = new URL(raesumURL).hostname;
-
-                    allowedDomains.push(raesumDomain);
-
-                    // If extracted domain is in allowed list then set post_login_url
-                    if(allowedDomains.includes(testDomain)) {
-                        post_login_url = req.session.post_login_uri;
-                    }
-                }catch(e){
-                    logger.error("Error parsing post_login_uri it seemed to be a full uri but failed to parse.",Date.now()-start);
-                }
-
-            }else{
-                // Path is relative
-                post_login_url = req.session.post_login_uri
-            }
-        }
-
-        // Delete post_login_url from session
-        delete req.session.post_login_uri;
-
-        // Add audit log entry
+                // Add audit log entry
                 await raesumAudit.create("log_in", "raesum_user", user.id, user.id);
 
+            }
 
-        // Redirect to post_login_url
-        return res.redirect(301,post_login_url);
+            // Set the post_login_url to the default
+            let post_login_url = "/";
+
+            // If there is a post_login_uri
+            if(req.session.post_login_uri){
+                console.verbose("Post Login URI: " + req.session.post_login_uri,Date.now()-start);
+
+                // Is post_login_url an absolute url?
+                let isAbsoluteRegex = new RegExp('^(?:[a-z]+:)?//', 'i');
+                if(isAbsoluteRegex.test(req.session.post_login_uri)) {
+
+                    try{
+                        const testURL = new URL(req.session.post_login_uri);
+
+                        // Extract domain from post_login_uri
+                        const testDomain = testURL.hostname;
+
+                        // Get list of allowed origins
+                        let allowedDomains = await raesumConfig.get('allowedOrigins');
+
+                        // Add raesum domain to allowed origins
+                        const raesumURL = await raesumServer.buildBaseServerURL();
+                        const raesumDomain = new URL(raesumURL).hostname;
+
+                        allowedDomains.push(raesumDomain);
+
+                        // If extracted domain is in allowed list then set post_login_url
+                        if(allowedDomains.includes(testDomain)) {
+                            post_login_url = req.session.post_login_uri;
+                        }
+                    }catch(e){
+                        logger.error("Error parsing post_login_uri it seemed to be a full uri but failed to parse.",Date.now()-start);
+                    }
+
+                }else{
+                    // Path is relative
+                    post_login_url = req.session.post_login_uri
+                }
+
+            }
+            // Delete post_login_url from session
+            delete req.session.post_login_uri;
 
 
-    }
 
+
+            // Redirect to post_login_url
+            return res.redirect(301,post_login_url);
+
+
+}
 
     async getJWT(req,res,next){
         const start = Date.now();
 
         // If code is not supplied return error
-        if(!req.body.code){
+        if(!req.query.code){
             // Get the error message
             const message = await raesumResponses.get("requestMissingFields",['code']);
             // Return the error message
@@ -309,7 +322,6 @@ class raesumUserController {
         try {
         // Attempt to exchange the code for valid JWT tokens
             const jwtResult = await raesumCognito.processJWT(req);
-            console.log("JWTRES",jwtResult);
 
             const tokenResponse = jwtResult.tokenResponse;
             const user = jwtResult.user;

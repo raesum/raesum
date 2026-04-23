@@ -62,7 +62,7 @@ class raesumAuth {
 
         // Process the JWT token if it exists and login method is allowed
         if(allowedLoginMethods.jwt == true && accessTokenFromClient){
-            
+            logger.verbose("JWT Login Enabled and authorization header set", Date.now() - start);
             try{
                 const response = await this.cognitoExpress.validate(accessTokenFromClient);
 
@@ -122,6 +122,7 @@ class raesumAuth {
         // If session cookies are allowed, check to see if user has loggedIn flag on session AND a cognitoUserID
         if(allowedLoginMethods.useSessionCookie == true && req.session.loggedIn && req.session.cognitoUserID){
             cognitoUserID = req.session.cognitoUserID
+            logger.verbose(`Sessions Login Enabled and CognitoUserID found: ${cognitoUserID}`, Date.now() - start);
         }
 
         if(cognitoUserID){
@@ -129,6 +130,8 @@ class raesumAuth {
             // Get the user profile from Raesum
 
             try{
+                logger.verbose(`Authentication Middleware - Checking Raesum User Profile for CognitoUserID: ${cognitoUserID}`, Date.now() - start);
+
                 const userProfile = await raesumUser.getUserByExternalID(cognitoUserID);
                
 
@@ -157,14 +160,14 @@ class raesumAuth {
                             res.locals.user = userProfile;
                         // Else assume it's inactive and delete the session
             }
+
         }
+            console.log("M2OO",req.session)
 
-
-        if (!loggedIn){
+        if (!req.session.loggedIn){
             
             // get not logged in response and send to user
             let response = await raesumResponses.get("notLoggedIn");
-    
             return res.status(response.code).json(response);
         }
 

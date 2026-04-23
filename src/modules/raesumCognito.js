@@ -422,7 +422,7 @@ class raesumCognito{
 
              // Exchange the authorization code for JWT tokens
              logger.verbose("Exchanging authorization code for JWT tokens", Date.now() - start);
-            const tokenResponse = await this.exchangeCodeForTokens(req.body.code, raesumServerURL);
+            const tokenResponse = await this.exchangeCodeForTokens(req.query.code, raesumServerURL);
 
             // Validate the ID token to get user information
             logger.verbose("Validating ID token to get user information", Date.now() - start);
@@ -472,6 +472,8 @@ class raesumCognito{
 
                     await raesumAudit.create("create", "raesum_user", newUser, newUser);
                     logger.info(`Created new user in Raesum DB for Cognito user ${newUser}`, Date.now() - start);
+
+                user = await raesumUser.getUserByExternalID(cognitoUserId); 
 
                 } catch (createError) {
                     logger.error(`Failed to create user in Raesum DB: ${createError.message}`, Date.now() - start);

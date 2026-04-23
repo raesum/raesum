@@ -13,9 +13,9 @@ AWS Cognito's primary role is authentication NOT authorization in Raesum. Raesum
 1. Ensure that JWT is enabled as a login type in the Raesum configuration.
 2. Configure the web app as a valid redirect in Cognito configuration.
 3. Redirect the user to /api/v1/login?redirect_uri=URL_ENCODED_REDIRECT_URI
-   - The redirect_uri is the URI that the user will be redirected to after they have logged in from the AWS UI. It will default to `/api/v1/loggedIn` if not set. It is recommended to pass the web application's URI here.
+   - The redirect_uri is the URI that the user will be redirected to after they have logged in from the AWS UI. It will default to `/api/v1/loggedIn` if not set. It is recommended to pass the web application's URI here. If no URI is passed, it will redirect to "/" on successful login.
 4. After the user logs in, they will be redirected back to the web application with the query string paramater `code`
-5. Post a request to /api/v1/getJWT with the code. The JWT will be returned in the response.
+5. Submit a GET a request to /api/v1/getJWT with the code as a query string. The JWT will be returned in the response.
 
 ### Login from web app on same domain using session cookies
 
