@@ -3,6 +3,7 @@ import {fileURLToPath} from "url";
 import raesumConfig from "../modules/raesumConfig.js";
 import raesumCache from "./raesumCache.js";
 import raesumMetadata from "../models/raesumMetadata.js";
+import raesumCognito from "./raesumCognito.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -170,6 +171,39 @@ class raesumServer{
             noErrors = false;
         }
 
+        // Check Cognito OAuth scope configuration when token revocation is enabled
+        try {
+            const cognitoConfig = await raesumConfig.get('aws.cognito');
+            if(cognitoConfig && cognitoConfig.enableTokenRevocation === true){
+                logger.info("Token revocation is enabled, checking OAuth scope configuration", Date.now() - start);
+                
+                try {
+                    // Get Cognito client description to check allowed OAuth scopes
+                    const clientDescription = await raesumCognito.getCognitoClientDescription();
+                    
+                    if(clientDescription && clientDescription.UserPoolClient){
+                        const allowedOAuthScopes = clientDescription.UserPoolClient.AllowedOAuthScopes || [];
+                        const adminScope = "aws.cognito.signin.user.admin";
+                        
+                        if(!allowedOAuthScopes.includes(adminScope)){
+                            logger.critical(`Token revocation is enabled but required OAuth scope '${adminScope}' is not in the allowed OAuth scopes list in Cognito. This will prevent proper token management and user administration.`, Date.now() - start);
+                            logger.critical(`Current allowed OAuth scopes: ${allowedOAuthScopes.join(', ')}`, Date.now() - start);
+                            logger.critical(`Please add '${adminScope}' to the allowed OAuth scopes in your Cognito User Pool Client configuration.`, Date.now() - start);
+                            noErrors = false;
+                        } else {
+                            logger.info(`Required OAuth scope '${adminScope}' is properly configured in Cognito`, Date.now() - start);
+                        }
+                    } else {
+                        logger.warning("Unable to retrieve Cognito client description for OAuth scope validation", Date.now() - start);
+                    }
+                } catch (cognitoError) {
+                    logger.warning(`Failed to validate Cognito OAuth scopes: ${cognitoError.message}`, Date.now() - start);
+                    logger.warning("This may indicate a configuration issue with your Cognito settings", Date.now() - start);
+                }
+            }
+        } catch (configError) {
+            logger.warning(`Failed to check Cognito configuration for OAuth scope validation: ${configError.message}`, Date.now() - start);
+        }
 
         if(noErrors){
             logger.info("Server settings safety checks passed", Date.now() - start);

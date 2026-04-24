@@ -26,7 +26,10 @@ class raesumUserController {
         // Get the login URL from Cognito
         let loginURL = await raesumCognito.buildBaseLoginURL();
         const clientID = await raesumConfig.get('aws.cognito.cognitoClientId')
-        loginURL += "/login?client_id=" + clientID + "&response_type=code"
+        
+        // Request admin scope for user management capabilities
+        const scope = "aws.cognito.signin.user.admin";
+        loginURL += "/login?client_id=" + clientID + "&response_type=code&scope=" + encodeURIComponent(scope)
 
 
         // Get cognito's allowed redirect URL from the environment
