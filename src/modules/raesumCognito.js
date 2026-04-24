@@ -522,10 +522,23 @@ class raesumCognito{
                 // Build cache key using the JWT token hash
                 const cacheKey = `revokedJWT|${accessToken.substring(0, 50)}`;
                 
-                // Add key to cache with remaining time as TTL
-                await raesumCache.set(cacheKey, true, Math.ceil(remainingTime / 1000), 'revoked_tokens');
+                // Check if AWS token revocation is enabled
+                const enableTokenRevocation = await raesumConfig.get('aws.cognito.enableTokenRevocation') || true;
+                let cacheTTL;
                 
-                logger.info(`Added JWT to revoked list in cache with TTL: ${Math.ceil(remainingTime / 1000)} seconds`, Date.now() - start);
+                if (enableTokenRevocation) {
+                    // Use token's remaining time when AWS revocation is enabled
+                    cacheTTL = Math.ceil(remainingTime / 1000);
+                    logger.verbose(`Using token remaining time for cache TTL: ${cacheTTL} seconds (AWS revocation enabled)`, Date.now() - start);
+                } else {
+                    // Use 1 year when AWS revocation is disabled
+                    cacheTTL = 365 * 24 * 60 * 60; // 1 year in seconds
+                    logger.verbose(`Using 1 year cache TTL: ${cacheTTL} seconds (AWS revocation disabled)`, Date.now() - start);
+                }
+                
+                await raesumCache.set(cacheKey, true, cacheTTL, 'revoked_tokens');
+                
+                logger.info(`Added JWT to revoked list in cache with TTL: ${cacheTTL} seconds`, Date.now() - start);
             } catch (cacheError) {
                 logger.warning(`Failed to add JWT to revoked cache: ${cacheError.message}`, Date.now() - start);
                 // Continue with logout even if cache fails
