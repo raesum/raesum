@@ -170,6 +170,7 @@ class raesumServer{
             noErrors = false;
         }
 
+
         if(noErrors){
             logger.info("Server settings safety checks passed", Date.now() - start);
         }

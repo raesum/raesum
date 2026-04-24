@@ -88,7 +88,6 @@ class raesumStartup {
             // Set the metadata value of whether this is a production-type database
             await raesumMetadata.set("isProductionDatabase", productionDB);
 
-
             try {
                 // Create the default organization
 
@@ -138,6 +137,7 @@ class raesumStartup {
 
     }
 
+    
 }
 
 export default raesumStartup;

@@ -130,10 +130,6 @@ class raesumUserController {
                     // Perform global sign out to invalidate all tokens
                     await raesumCognito.globalSignOut(accessTokenFromClient);
 
-                    // Revoke refresh token if available
-                    if(refreshTokenFromClient){
-                        await raesumCognito.revokeRefreshToken(refreshTokenFromClient);
-                    }
 
                     logger.info("Successfully revoked tokens in Cognito for userId"+userId, Date.now() - start);
                 } catch (revokeError) {
@@ -142,20 +138,7 @@ class raesumUserController {
                 }
             }
 
-            // Add JWT to revoked list in cache
-            try {
-                // Build cache key using the JWT token hash
-                const cacheKey = `revokedJWT|${accessTokenFromClient.substring(0, 50)}`;
-                
-                // Add key to cache with remaining time as TTL
-                await raesumCache.set(cacheKey, true, Math.ceil(remainingTime / 1000), 'revoked_tokens');
-                
-                logger.info(`Added JWT to revoked list in cache with TTL: ${Math.ceil(remainingTime / 1000)} seconds`, Date.now() - start);
-            } catch (cacheError) {
-                logger.warning(`Failed to add JWT to revoked cache for userID ${userId}: ${cacheError.message}`, Date.now() - start);
-                // Continue with logout even if cache fails
-            }
-
+            
             // Add audit log entry before destroying session
             if(userId){
                 await raesumAudit.create("log_out", "raesum_user", userId, userId);

@@ -490,42 +490,6 @@ class raesumCognito{
         }
     }
 
-    /**
-     * Revokes a refresh token in Cognito
-     * @param {string} refreshToken - The refresh token to revoke
-     * @return {boolean} True if successful
-     * @throws {Error} if unable to revoke token
-     */
-    async revokeRefreshToken(refreshToken) {
-        const start = Date.now();
-
-        try {
-            // Get required configuration
-            const clientId = await raesumConfig.get('aws.cognito.cognitoClientId');
-            const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
-
-            // Initialize the cognito client
-            const awsCognitoConfig = await buildAWSClientConfig();
-            const client = new CognitoIdentityProviderClient(awsCognitoConfig);
-
-            // Build the revoke token command
-            const command = new RevokeTokenCommand({
-                UserPoolId: userPoolId,
-                ClientId: clientId,
-                Token: refreshToken
-            });
-
-            // Execute the command
-            await client.send(command);
-
-            logger.info('Successfully revoked refresh token in Cognito', Date.now() - start);
-            return true;
-
-        } catch (error) {
-            logger.error(`Failed to revoke refresh token: ${error.message}`, Date.now() - start);
-            throw new Error(`Failed to revoke refresh token: ${error.message}`);
-        }
-    }
 
     /**
      * Performs global sign out for a user (invalidates all tokens)
@@ -538,6 +502,7 @@ class raesumCognito{
 
         try {
             // Initialize the cognito client
+            logger.verbose("Initializing awsCognito client for global sign out", Date.now() - start);
             const awsCognitoConfig = await buildAWSClientConfig();
             const client = new CognitoIdentityProviderClient(awsCognitoConfig);
 
@@ -547,7 +512,25 @@ class raesumCognito{
             });
 
             // Execute the command
+            logger.verbose("Sending client command for global sign out", Date.now() - start);
             await client.send(command);
+
+
+            // Add JWT to revoked list in cache
+            logger.verbose("Adding JWT to internal cached revokelist", Date.now() - start);
+            try {
+                // Build cache key using the JWT token hash
+                const cacheKey = `revokedJWT|${accessToken.substring(0, 50)}`;
+                
+                // Add key to cache with remaining time as TTL
+                await raesumCache.set(cacheKey, true, Math.ceil(remainingTime / 1000), 'revoked_tokens');
+                
+                logger.info(`Added JWT to revoked list in cache with TTL: ${Math.ceil(remainingTime / 1000)} seconds`, Date.now() - start);
+            } catch (cacheError) {
+                logger.warning(`Failed to add JWT to revoked cache: ${cacheError.message}`, Date.now() - start);
+                // Continue with logout even if cache fails
+            }
+
 
             logger.info('Successfully performed global sign out in Cognito', Date.now() - start);
             return true;
