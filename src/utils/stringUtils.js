@@ -1,9 +1,22 @@
+export const isJson = (item) => {
+    if (typeof item === "object" && item !== null) {
+        return true;
+    }
+    item = typeof item !== "string" ? JSON.stringify(item) : item;
+    try {
+        item = JSON.parse(item);
+    } catch (e) {
+        return false;
+    }
+    return false;
+};
+
 export const conditionallyParseJSON = (jsonCandidate) => {
     if (typeof jsonCandidate == "undefined" || jsonCandidate == "") {
         jsonCandidate = "{}";
     }
 
-    if (this.isJson(jsonCandidate)) {
+    if (isJson(jsonCandidate)) {
         return jsonCandidate;
     }
 
@@ -18,17 +31,5 @@ export const conditionallyParseJSON = (jsonCandidate) => {
     return output;
 };
 
-export const isJson = (item) => {
-    if (typeof item === "object" && item !== null) {
-        return true;
-    }
-    item = typeof item !== "string" ? JSON.stringify(item) : item;
-    try {
-        item = JSON.parse(item);
-    } catch (e) {
-        return false;
-    }
-    return false;
-};
 
 

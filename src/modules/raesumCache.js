@@ -45,6 +45,7 @@ class raesumeCacheMemory{
 
 
         // Set the key and return true/false on success/fail
+        logger.debug(`Memory Cache Setting key: ${key}`);
         const returnStatus = await this.#nodeCacheInstance.set(key,value,ttl);
 
         return returnStatus;
@@ -53,6 +54,7 @@ class raesumeCacheMemory{
     async delete(key){
 
         // Delete the key and return true/false on success/fail (assume that no keys deleted is a fail)
+        logger.debug(`Memory Cache Deleting key: ${key}`);
         const returnStatus = await this.#nodeCacheInstance.del(key);
 
         if(returnStatus>0){
@@ -64,11 +66,14 @@ class raesumeCacheMemory{
 
 
     async deleteKeysStartingWith(partialKey){
+        logger.debug(`Memory Cache Deleting keys starting with: ${partialKey}, found ${keys.length} keys`);
+
         // Get all keys that start with the partialKey
         let keys = await this.#nodeCacheInstance.keys();
 
         //Filter the key list where the key starts with the partial key
         keys = keys.filter((key) => key.startsWith(partialKey));
+
 
         // Delete all keys that start with the partial key
         for(const key of keys){
@@ -85,13 +90,14 @@ class raesumeCacheRedis{
     #redisRunning = false;
 
     async init(){
+        const start = Date.now();
 
         const redisConfigSet = await raesumConfig.get("connections.cache.redis");
         if(redisConfigSet == undefined){
-            logger.error("Redis Configuration not set");
+            logger.error("Redis Configuration not set", Date.now() - start);
             return false;
         }else{
-            const redisConfig = await createRedisConfig.createRedisConfig(redisConfigSet);
+            const redisConfig = await raesumServer.createRedisConfig(redisConfigSet);
 
             // Create new redis instance with new config object
             this.#redisInstance = new Redis(redisConfig);
@@ -99,11 +105,12 @@ class raesumeCacheRedis{
 
             // On connect log entry and store redis instance in class
             this.#redisInstance.on("connect",()=>{
-                logger.info("Redis Connected for Cache");
+                logger.info("Redis Connected for Cache", Date.now() - start);
             });
+
             // On error log entry and store redis instance in class
             this.#redisInstance.on("error",(err)=>{
-                logger.error("Redis Error for Cache: ",err);
+                logger.error("Redis Error for Cache: " + err, Date.now() - start);
                 this.#redisRunning = false;
             });
 
@@ -115,11 +122,12 @@ class raesumeCacheRedis{
     async reset(){
         if(this.#redisRunning){
             // Get the key prefix
-            const prefix = raesumConfig.get("cache.prefix");
+            const prefix = await raesumConfig.get("cache.prefix");
 
             // Get all redis keys that start with prefix
             const keys = await this.#redisInstance.keys(prefix+"*");
 
+            logger.debug("Deleting Keys from Redis Cache that start with: "+prefix+". as part of the reset process");
             // Delete all keys that start with prefix
             for(const key of keys){
                 await this.#redisInstance.del(key);
@@ -136,8 +144,15 @@ class raesumeCacheRedis{
         if(this.#redisRunning){
             logger.debug("Getting Key from Redis Cache: "+key);
             // Get the key and return the value (return undefined if key does not exist)
-            let returnVal = await this.#redisInstance.get(key);
-            return conditionallyParseJSON(returnVal);
+            let returnVal;
+            try{
+                returnVal = await this.#redisInstance.get(key);
+                return conditionallyParseJSON(returnVal);
+            }catch(e){
+                logger.error("Error getting key from Redis Cache: "+key+" - "+e);
+                return undefined;
+            }
+
         }else{
             logger.debug("Unable to find key from Redis Cache: "+key);
             return undefined;
@@ -146,9 +161,17 @@ class raesumeCacheRedis{
 
     async set(key,value,ttl){
         if(this.#redisRunning){
+            logger.debug("Setting Key in Redis Cache: "+key);
             // Set the key and return true/false on success/fail
-            const returnVal = await this.#redisInstance.set(key,JSON.stringify(value),"EX",ttl);
-            return returnVal;
+
+            try{
+                const returnVal = await this.#redisInstance.set(key,JSON.stringify(value),"EX",ttl);
+                return returnVal;
+            }catch(e){
+                logger.error("Error setting key in Redis Cache: "+key+" - "+e);
+                return undefined;
+            }
+
         }else{
             return undefined;
         }
@@ -157,6 +180,8 @@ class raesumeCacheRedis{
     async delete(key){
         if(this.#redisRunning){
             // Delete the key and return true/false on success/fail
+            logger.debug("Deleting Key from Redis Cache: "+key);
+
             const returnVal = await this.#redisInstance.del(key);
             if(returnVal > 0){
                 return true;
@@ -170,11 +195,16 @@ class raesumeCacheRedis{
 
     async deleteKeysStartingWith(partialKey){
         if(this.#redisRunning){
+
+            logger.debug("Deleting Keys from Redis Cache that start with: "+partialKey);
+
             // Get all keys that start with the partialKey
             let keys = await this.#redisInstance.keys(partialKey+"*");
 
             // Delete all keys that start with the partialKey
-            await this.#redisInstance.del(keys);
+            for(const key of keys){
+                await this.#redisInstance.del(key);
+            }
             return true;
         }else{
             return false;
@@ -208,12 +238,13 @@ class raesumCachePool{
             logger.info('Building Cache Configuration', Date.now() - start);
 
             // Get the type of cache to use
-            const candidateType = raesumConfig.get("cache.type");
+            const candidateType = await raesumConfig.get("cache.type");
 
             // If the cache type is in the allowed types, set the type
             if(this.#allowedCacheTypes.includes(candidateType)) {
                 this.#cacheType = candidateType;
             }
+
             logger.info(`Cache Type: ${this.#cacheType}`, Date.now() - start);
 
             // If type is redis, create new instance of redis cache object
@@ -227,7 +258,7 @@ class raesumCachePool{
             // Run the init of the object
             logger.info(`Initializing Cache Type: ${this.#cacheType}`, Date.now() - start);
             const cacheInitSuccess = await this.#cachePoolInstance.init();
-
+            
             // If cache init fails and type is not memory, switch to memory and re-init
             if(!cacheInitSuccess && this.#cacheType != "memory"){
                 logger.warning(`Cache Type: ${this.#cacheType} failed to initialize, switching to memory`, Date.now() - start);
@@ -248,10 +279,13 @@ class raesumCachePool{
 
     async get(key, objectType, orgId=null,userID=null){
         const start = Date.now();
+        logger.debug(`Getting cache key: ${key}`, Date.now() - start);
         const cacheFunctioning = await this.#init();
 
-        if(!cacheFunctioning){return undefined;}
-
+        if(!cacheFunctioning){
+            logger.debug(`Cache is not functioning, returning undefined`, Date.now() - start);
+            return undefined;
+        }
 
         // Create the key
         let cacheKey;
@@ -275,10 +309,25 @@ class raesumCachePool{
 
     }
 
-    async set(key,value,ttl, objectType,orgId=null,userID=null){
+    async set(key, value, ttl, objectType,orgId=null,userID=null){
         const start = Date.now();
+        logger.debug(`Setting cache key: ${key}`, Date.now() - start);
+
         const cacheFunctioning = await this.#init();
-        if(!cacheFunctioning){return undefined;}
+        if(!cacheFunctioning){
+            logger.debug(`Cache is not functioning, returning undefined`, Date.now() - start);
+            return undefined;
+        }
+
+        // Default the TTL if not set
+        if(ttl === undefined){
+            logger.debug("Cache TTL not suppled to set request")
+            // Get the ttl config setting
+            const ttlConfig = await raesumConfig.get(`cache.ttl`);
+            // If the config setting is not available then use 1 hour
+            ttl = ttlConfig || 3600;
+            logger.debug("Cache TTL set to: "+ttl);
+        }
 
         // Create the key
         let cacheKey;
@@ -305,8 +354,10 @@ class raesumCachePool{
     async delete(key, objectType,orgId=null,userID=null){
         const start = Date.now();
         const cacheFunctioning = await this.#init();
-        if(!cacheFunctioning){return undefined;}
-
+        if(!cacheFunctioning){
+            logger.debug(`Cache is not functioning, returning undefined`, Date.now() - start);
+            return undefined;
+        }
         // Create the key
         let cacheKey;
         try{
@@ -405,10 +456,12 @@ class raesumCachePool{
      */
     async deleteSet(objectType,orgId=null, userID=null){
         const start = Date.now();
+
+        logger.verbose("Deleting cache set", {objectType, orgId, userID});
         const cacheFunctioning = await this.#init();
 
         if(!cacheFunctioning){return undefined;}
-
+        
         // If the user ID is not a positive int or null, throw an error
         if(userID != null && (isNaN(userID) || userID < 1)){
             throw new Error("Invalid format for userID");
@@ -428,6 +481,7 @@ class raesumCachePool{
         const cacheKey =  `${objectType}:${orgId}:${userID}`;
 
         const result = await this.#cachePoolInstance.deleteKeysStartingWith(cacheKey);
+
         if(result){
             logger.debug(`Cache Key Set Deleted: ${cacheKey} CacheType: ${this.#cacheType}`, Date.now()-start);
             return true;

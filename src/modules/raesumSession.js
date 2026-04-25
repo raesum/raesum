@@ -3,7 +3,7 @@ import RedisStore from "connect-redis";
 import Redis from 'ioredis';
 import {raesumLogger} from "./raesumLogger.js";
 import { fileURLToPath } from 'url';
-
+import raesumServer from "./raesumServer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -46,11 +46,13 @@ class raesumSession{
         // If session type is set to "redis", create a redis store
         if(sessionConfig.type == "redis"){
             const redisConfigSet = await raesumConfig.get("connections.session.redis");
-            if(redisConfigSet == undefined || !redisConfigSet.host){
+            const redisConfig = await raesumServer.createRedisConfig(redisConfigSet);
+
+            if(redisConfig == undefined || !redisConfig.host){
                 logger.error("Redis Configuration not set for sessions, falling back to memory store");
             }else{
                 try {
-                    const redisClient = new Redis(redisConfigSet);
+                    const redisClient = new Redis(redisConfig);
 
                     // On connect log entry and store redis instance in class
                     redisClient.on("connect",()=>{

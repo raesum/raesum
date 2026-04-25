@@ -126,6 +126,7 @@ class raesumCognito{
 
         // Get from cache
         const cacheKey = "cognitoClientDescription";
+
         const cacheValue = await raesumCache.get(cacheKey, 'cognito');
 
         if (cacheValue) {
@@ -226,17 +227,19 @@ class raesumCognito{
 
         // Get list of metadata keys
         const metadataKeys = await raesumUser.getMetadataKeys(true);
-        const metadataKeyList = Object.keys(metadataKeys);
+
 
         // Build a list of metadata keys that are NOT cognito attributes
         let nonCognitoMetadataKeys = [];
-        for(let i=0; i<metadataKeyList.length;i++){
-            if(!attrKeys.includes(metadataKeyList[i])){
-                nonCognitoMetadataKeys.push(metadataKeyList[i]);
+
+        for(let i=0; i<metadataKeys.length;i++){
+            if(!attrKeys.includes(metadataKeys[i])){
+                nonCognitoMetadataKeys.push(metadataKeys[i]);
             }
         }
 
         // Set all metadata cognito attributes to false where not in the cognito list
+        logger.verbose("Updating metadata keys in raesum from cognito", Date.now() - start);
         const updatesql = "UPDATE raesum_user_metadata_keys SET cognito_attribute = false, cognito_writable = false WHERE datakey = ANY($1);";
 
         try{
@@ -254,7 +257,7 @@ class raesumCognito{
         for(let i in attrList) {
 
             // Is the attribute in the metadata keys?
-            if(metadataKeyList.includes(i)){
+            if(metadataKeys.includes(i)){
                 // If yes, update they cognito attribute and writable status accordingly
                 // Create update SQL command
                 sql += "UPDATE raesum_user_metadata_keys SET cognito_attribute = true , cognito_writable = " + attrList[i] + " WHERE datakey = '" + i + "';\n";

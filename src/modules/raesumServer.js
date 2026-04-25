@@ -55,13 +55,14 @@ class raesumServer{
 
         // List of excluded config keys
         const excludedKeys = ["credentials","lazyConnect","retryStrategy","tls"];
+
         // Create new config object
         // The TLS override exists to allow for self-signed certs (and AWS support)
         let redisConfig = {
             lazyConnect: true,
-            tls: {
-                checkServerIdentity: () => undefined,
-            }
+            // tls: {
+            //     checkServerIdentity: () => undefined,
+            // }
         };
 
         // Loop through each config key to build new config object if defined and not null
@@ -71,7 +72,11 @@ class raesumServer{
             }
         }
         // Get username and password from config if set
-        if(redisConfigSet.credentials != undefined && redisConfigSet.credentials.username != undefined && redisConfigSet.credentials.password != undefined){
+        if(redisConfigSet.credentials != undefined 
+            && redisConfigSet.credentials.username != undefined 
+            && redisConfigSet.credentials.password != undefined
+            && redisConfigSet.credentials.username !== null 
+            && redisConfigSet.credentials.password !== null){
             redisConfig.username = redisConfigSet.credentials.username;
             redisConfig.password = redisConfigSet.credentials.password;
         }
@@ -172,14 +177,16 @@ class raesumServer{
         }
 
         // Check Cognito OAuth scope configuration when token revocation is enabled
+        const cognitoConfig = await raesumConfig.get('aws.cognito');
+        // Get Cognito client description to check allowed OAuth scopes
+        const clientDescription = await raesumCognito.getCognitoClientDescription
+        
         try {
-            const cognitoConfig = await raesumConfig.get('aws.cognito');
             if(cognitoConfig && cognitoConfig.enableTokenRevocation === true){
                 logger.info("Token revocation is enabled, checking OAuth scope configuration", Date.now() - start);
                 
                 try {
-                    // Get Cognito client description to check allowed OAuth scopes
-                    const clientDescription = await raesumCognito.getCognitoClientDescription();
+
                     
                     if(clientDescription && clientDescription.UserPoolClient){
                         const allowedOAuthScopes = clientDescription.UserPoolClient.AllowedOAuthScopes || [];
@@ -203,6 +210,37 @@ class raesumServer{
             }
         } catch (configError) {
             logger.warning(`Failed to check Cognito configuration for OAuth scope validation: ${configError.message}`, Date.now() - start);
+        }
+
+        // Check Cognito callback URL configuration
+        try {
+            logger.info("Checking Cognito callback URL configuration", Date.now() - start);
+            
+            // Build the server's callback URL
+            const serverCallbackURL = `${serverConfig.protocol}://${serverConfig.host}/api/v1/auth/loggedIn`;
+            
+            try {
+                
+                if(clientDescription && clientDescription.UserPoolClient){
+                    const allowedCallbacks = clientDescription.UserPoolClient.CallbackURLs || [];
+                    
+                    if(!allowedCallbacks.includes(serverCallbackURL)){
+                        logger.warning(`Server callback URL '${serverCallbackURL}' is not in the allowed callback URLs list in Cognito. Session cookie logins may not work properly.`, Date.now() - start);
+                        logger.warning(`Current allowed callback URLs: ${allowedCallbacks.join(', ')}`, Date.now() - start);
+                        logger.warning(`Please add '${serverCallbackURL}' to the allowed callback URLs in your Cognito User Pool Client configuration.`, Date.now() - start);
+                        // Note: This is a warning, not an error, so noErrors is not set to false
+                    } else {
+                        logger.info(`Server callback URL '${serverCallbackURL}' is properly configured in Cognito`, Date.now() - start);
+                    }
+                } else {
+                    logger.warning("Unable to retrieve Cognito client description for callback URL validation", Date.now() - start);
+                }
+            } catch (cognitoError) {
+                logger.warning(`Failed to validate Cognito callback URLs: ${cognitoError.message}`, Date.now() - start);
+                logger.warning("This may indicate a configuration issue with your Cognito settings", Date.now() - start);
+            }
+        } catch (configError) {
+            logger.warning(`Failed to check Cognito callback URL configuration: ${configError.message}`, Date.now() - start);
         }
 
         if(noErrors){

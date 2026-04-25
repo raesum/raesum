@@ -107,7 +107,7 @@ Any of the connection settings supported by [ioredis](https://www.npmjs.com/pack
 
 The logging system supports multiple outputs (transports): file, console, and AWS CloudWatch (coming soon). Each transport can be enabled separately.
 
-- `level` (string) - The level of logging to use. Options: `critical`,`error`, `warning`, `info`, `debug`, `verbose`. For production systems, the suggested level is `info`. Default: `debug`
+- `level` (string) - The level of logging to use. Options: `critical`,`error`, `warning`, `info`, `verbose`, `debug`. For production systems, the suggested level is `info`. Default: `debug`
 - `logsEnabled` - Determines which log outputs are enabled
   - `console` (boolean) - Whether to log to the console. Default: `true`
   - `file` (boolean) - Whether to log to a file. Default: `true`

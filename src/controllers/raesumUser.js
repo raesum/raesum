@@ -90,36 +90,36 @@ class raesumUserController {
         const start = Date.now();
 
         try {
-            // Get allowed login types
-            const loginMethods = await raesumConfig.get('login');
+        // Get allowed login types
+        const loginMethods = await raesumConfig.get('login');
 
             // Get access token from header or session
-            let accessTokenFromClient = null;
+        let accessTokenFromClient = null;
             let refreshTokenFromClient = null;
             let userId = null;
 
             if(loginMethods.jwt == true && !req.headers.authorization && !req.session.jwt){
                 logger.warning("Unable to logout - JWT not found in header or session",Date.now()-start);
-                const message = await raesumResponses.get("missingHeader",["Authorization"]);
-                return res.status(message.code).json(message);
+            const message = await raesumResponses.get("missingHeader",["Authorization"]);
+            return res.status(message.code).json(message);
             }
 
             // Get JWT from header (Authorization: Bearer token)
             if(req.headers.authorization){
                 accessTokenFromClient = req.headers.authorization.replace('Bearer ', '');
             } else if(req.session.jwt){
-                accessTokenFromClient = req.session.jwt;
+            accessTokenFromClient = req.session.jwt;
                 refreshTokenFromClient = req.session.refreshToken;
                 userId = req.session.userID;
             }
 
             if(!accessTokenFromClient){
                 logger.error("Unable to logout - JWT not found in session or header but was expected",Date.now()-start);
-                const response = await raesumResponses.get("notLoggedIn");
-                return res.status(response.httpResponse).json(response);
-            }
+            const response = await raesumResponses.get("notLoggedIn");
+            return res.status(response.httpResponse).json(response);
+        }
 
-            // Calculate remaining time on JWT
+        // Calculate remaining time on JWT
             const tokenExpiration = raesumCognito.getTokenExpiration(accessTokenFromClient);
             const currentTime = Date.now();
             const remainingTime = Math.max(0, tokenExpiration - currentTime);
@@ -141,13 +141,13 @@ class raesumUserController {
                 }
             }
 
-            
+
             // Add audit log entry before destroying session
             if(userId){
                 await raesumAudit.create("log_out", "raesum_user", userId, userId);
             }
 
-            // Delete the session
+        // Delete the session
             try {
                 req.session.destroy((err) => {
                     if(err){
@@ -224,105 +224,100 @@ class raesumUserController {
 
 
         // If user is not already logged in
-        if(!req.session.loggedIn) {
-            logger.verbose("User is not already logged in but is using session login", Date.now() - start);
+        let user = null;
+        let tokenResponse = null;
+        let tokenPayload = null;
 
-            let user = null;
-            let tokenResponse = null;
-            let tokenPayload = null;
+        if(req.session.loggedIn == false || !req.session.userID) {
 
-                if(req.session.loggedIn == false || !req.session.userID) {
+                // Process the supplied code into JWT
+                const jwtResult = await raesumCognito.processJWT(req);
+                tokenResponse = jwtResult.tokenResponse;
+                tokenPayload = jwtResult.tokenPayload;
+                user = jwtResult.user;
 
-                        // Process the supplied code into JWT
-                        const jwtResult = await raesumCognito.processJWT(req);
-                        tokenResponse = jwtResult.tokenResponse;
-                        tokenPayload = jwtResult.tokenPayload;
-                        user = jwtResult.user;
-
-                        if(jwtResult.success !== true) {                    
-                            // Get user not logged in message
-                            const message = await raesumResponses.get(jwtResult.responseMessageKey);
-                            
-                            // Return message
-                            return res.status(message.code).json(message);
-                        }
-
-
-                        // Save them in the session
-                        req.session.jwt = tokenResponse.access_token;
-                        req.session.idToken = tokenResponse.id_token;
-                        req.session.refreshToken = tokenResponse.refresh_token;
-                        req.session.userID = user.id;
-                        // Set req.session.cognitoUserID to the cognitoUserID
-                        req.session.cognitoUserID = tokenPayload.sub;
-
-                        // Set the flag that user is logged in via cookie
-                        req.session.loginType = "sessionCookie";
-                        req.session.loggedIn = true;
-
-                        logger.info(`User ${tokenPayload.sub} successfully logged in via session cookie`, Date.now() - start);
-
-
-                }else{
-                    user = await raesumUser.getUserById(req.session.userID);
+                if(jwtResult.success !== true) {                    
+                    // Get user not logged in message
+                    const message = await raesumResponses.get(jwtResult.responseMessageKey);
+                    
+                    // Return message
+                    return res.status(message.code).json(message);
                 }
 
-                // Add audit log entry
-                await raesumAudit.create("log_in", "raesum_user", user.id, user.id);
 
-            }
+                // Save them in the session
+                req.session.jwt = tokenResponse.access_token;
+                req.session.idToken = tokenResponse.id_token;
+                req.session.refreshToken = tokenResponse.refresh_token;
+                req.session.userID = user.id;
+                // Set req.session.cognitoUserID to the cognitoUserID
+                req.session.cognitoUserID = tokenPayload.sub;
 
-            // Set the post_login_url to the default
-            let post_login_url = "/";
+                // Set the flag that user is logged in via cookie
+                req.session.loginType = "sessionCookie";
+                req.session.loggedIn = true;
 
-            // If there is a post_login_uri
-            if(req.session.post_login_uri){
-                console.verbose("Post Login URI: " + req.session.post_login_uri,Date.now()-start);
+                logger.info(`User ${tokenPayload.sub} successfully logged in via session cookie`, Date.now() - start);
 
-                // Is post_login_url an absolute url?
-                let isAbsoluteRegex = new RegExp('^(?:[a-z]+:)?//', 'i');
-                if(isAbsoluteRegex.test(req.session.post_login_uri)) {
 
-                    try{
-                        const testURL = new URL(req.session.post_login_uri);
+        }else{
+            user = await raesumUser.getUserById(req.session.userID);
+        }
 
-                        // Extract domain from post_login_uri
-                        const testDomain = testURL.hostname;
 
-                        // Get list of allowed origins
-                        let allowedDomains = await raesumConfig.get('allowedOrigins');
+        // Set the post_login_url to the default
+        let post_login_url = "/";
 
-                        // Add raesum domain to allowed origins
-                        const raesumURL = await raesumServer.buildBaseServerURL();
-                        const raesumDomain = new URL(raesumURL).hostname;
+        // If there is a post_login_uri
+        if(req.session.post_login_uri){
+            console.verbose("Post Login URI: " + req.session.post_login_uri,Date.now()-start);
 
-                        allowedDomains.push(raesumDomain);
+            // Is post_login_url an absolute url?
+            let isAbsoluteRegex = new RegExp('^(?:[a-z]+:)?//', 'i');
+            if(isAbsoluteRegex.test(req.session.post_login_uri)) {
 
-                        // If extracted domain is in allowed list then set post_login_url
-                        if(allowedDomains.includes(testDomain)) {
-                            post_login_url = req.session.post_login_uri;
-                        }
-                    }catch(e){
-                        logger.error("Error parsing post_login_uri it seemed to be a full uri but failed to parse.",Date.now()-start);
+                try{
+                    const testURL = new URL(req.session.post_login_uri);
+
+                    // Extract domain from post_login_uri
+                    const testDomain = testURL.hostname;
+
+                    // Get list of allowed origins
+                    let allowedDomains = await raesumConfig.get('allowedOrigins');
+
+                    // Add raesum domain to allowed origins
+                    const raesumURL = await raesumServer.buildBaseServerURL();
+                    const raesumDomain = new URL(raesumURL).hostname;
+
+                    allowedDomains.push(raesumDomain);
+
+                    // If extracted domain is in allowed list then set post_login_url
+                    if(allowedDomains.includes(testDomain)) {
+                        post_login_url = req.session.post_login_uri;
                     }
-
-                }else{
-                    // Path is relative
-                    post_login_url = req.session.post_login_uri
+                }catch(e){
+                    logger.error("Error parsing post_login_uri it seemed to be a full uri but failed to parse.",Date.now()-start);
                 }
 
+            }else{
+                // Path is relative
+                post_login_url = req.session.post_login_uri
             }
-            // Delete post_login_url from session
-            delete req.session.post_login_uri;
+
+        }
+        // Delete post_login_url from session
+        delete req.session.post_login_uri;
+
+        console.log("req.session",req.session);
+
+        // Add audit log entry
+        await raesumAudit.create("log_in", "raesum_user", user.id, user.id);
 
 
+        // Redirect to post_login_url
+        return res.redirect(301,post_login_url);
 
-
-            // Redirect to post_login_url
-            return res.redirect(301,post_login_url);
-
-
-}
+    }
 
     async getJWT(req,res,next){
         const start = Date.now();

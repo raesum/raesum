@@ -409,6 +409,8 @@ class raesumUserObject {
     async getMetadataKeys(show_inactive = false) {
         const start = Date.now();
 
+        logger.debug("Getting metadata keys", Date.now() - start);
+        
         // Limit show_inactive to boolean
         if (show_inactive !== true) {
             show_inactive = false;
@@ -424,6 +426,7 @@ class raesumUserObject {
 
 
         // Create a query to get all the metadata keys
+        logger.debug("Getting metadata keys from database", Date.now() - start);
         let sql = "SELECT * FROM raesum_user_metadata_keys";
         if (!show_inactive) {
             sql += " WHERE active_status = true";
@@ -432,6 +435,7 @@ class raesumUserObject {
         // Run the query
         const response = await raesumDB.query(sql);
 
+        logger.debug("Got "+response.rows.length+" metadata keys from database", Date.now() - start);
         // Loop through results to build object
         let keys = {};
         for (let i = 0; i < response.rows.length; i++) {
@@ -440,11 +444,18 @@ class raesumUserObject {
 
         // Save to cache
         await raesumCache.set(cacheKey, keys);
+console.log("CC",cacheKey, JSON.stringify(keys));
 
         // Create a list of keys
         const keyList = Object.keys(keys);
         const listCacheKey = "raesumUserMetadataKeys" + show_inactive;
-        await raesumCache.set(listCacheKey, keyList);
+        const cacheResponse = await raesumCache.set(listCacheKey, keyList);
+
+        if(!cacheResponse){
+            logger.error("Failed to save metadata keys to cache", Date.now() - start);
+        }else{
+            logger.debug("Saved "+response.rows.length+" metadata keys to cache", Date.now() - start);
+        }
 
         let keyIndex = [];
         let cognitoKeys = {};
@@ -466,7 +477,7 @@ class raesumUserObject {
 
         // Return object
         logger.verbose(`Returning ${response.rows.length} metadata keys`, Date.now() - start);
-        return keys;
+        return keyList;
     }
 
     /**
