@@ -4,13 +4,16 @@ import {buildAWSClientConfig} from "../utils/awsUtils.js";
 import raesumConfig from "../modules/raesumConfig.js";
 import {
         CognitoIdentityProviderClient,
-        DescribeUserPoolClientCommand,
         DescribeUserPoolCommand,
+        DescribeUserPoolClientCommand,
         InitiateAuthCommand,
         AdminInitiateAuthCommand,
         RespondToAuthChallengeCommand,
         RevokeTokenCommand,
-        GlobalSignOutCommand
+        GlobalSignOutCommand,
+        AdminSetUserSettingsCommand,
+        AdminDisableUserCommand,
+        AdminEnableUserCommand
 } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand } from "@aws-sdk/client-cognito-identity";
 import raesumCache from "./raesumCache.js";
@@ -554,6 +557,48 @@ class raesumCognito{
         } catch (error) {
             logger.error(`Failed to perform global sign out: ${error.message}`, Date.now() - start);
             throw new Error(`Failed to perform global sign out: ${error.message}`);
+        }
+    }
+
+    /**
+     * Sets the enabled status of a user in Cognito
+     * @param {string} username - The Cognito username
+     * @param {boolean} enabled - Whether the user should be enabled
+     * @return {boolean} True if successful
+     * @throws {Error} if unable to update user status
+     */
+    async setUserEnabledStatus(username, enabled) {
+        const start = Date.now();
+
+        try {
+            // Initialize the cognito client
+            logger.verbose(`Initializing AWS Cognito client to ${enabled ? 'enable' : 'disable'} user: ${username}`, Date.now() - start);
+            const awsCognitoConfig = await buildAWSClientConfig();
+            const client = new CognitoIdentityProviderClient(awsCognitoConfig);
+
+            const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
+
+            // Build the appropriate command
+            const command = enabled 
+                ? new AdminEnableUserCommand({
+                    UserPoolId: userPoolId,
+                    Username: username
+                })
+                : new AdminDisableUserCommand({
+                    UserPoolId: userPoolId,
+                    Username: username
+                });
+
+            // Execute the command
+            logger.verbose(`Sending command to ${enabled ? 'enable' : 'disable'} Cognito user: ${username}`, Date.now() - start);
+            await client.send(command);
+
+            logger.info(`Successfully ${enabled ? 'enabled' : 'disabled'} Cognito user: ${username}`, Date.now() - start);
+            return true;
+
+        } catch (error) {
+            logger.error(`Failed to ${enabled ? 'enable' : 'disable'} Cognito user ${username}: ${error.message}`, Date.now() - start);
+            throw new Error(`Failed to ${enabled ? 'enable' : 'disable'} Cognito user: ${error.message}`);
         }
     }
 

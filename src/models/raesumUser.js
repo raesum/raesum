@@ -4,7 +4,7 @@ import raesumConfig from "../modules/raesumConfig.js";
 import raesumOrganization from "./raesumOrganization.js";
 import raesumDB from "../modules/raesumDB.js";
 import raesumCache from "../modules/raesumCache.js";
-
+import raesumCognito from "../modules/raesumCognito.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -13,7 +13,7 @@ const logger = raesumLogger(__filename);
 class raesumUserObject {
     // Create User
     /**
-     * Creates a new user
+     * Creates a new user after the user exists in cognito.
      * @param  {String} external_id The ID of the user in the external (AWS Cognito) system
      * @param  {String} username The username
      * @param  {Number} currentOrganizationId The org the user should be assigned to
@@ -244,10 +244,10 @@ class raesumUserObject {
      * @throw {Error} If the ID is not a number or is less than 1 or is not an integer
      * @throw {Error} If the user is not found
      * @throw {Error} If the activeStatus is not a boolean
+     * @throw {Error} If unable to update Cognito user status
      */
     async setActivationStatus(id, activeStatus) {
         const start = Date.now();
-
 
         // If activeStatus is not boolean, throw error
         if (typeof activeStatus !== 'boolean') {
@@ -269,15 +269,35 @@ class raesumUserObject {
             throw new Error("User not found");
         }
 
-        // Update the user
+        // Update the user in the database first
         try {
             const query = "UPDATE raesum_user SET active_status = $1 WHERE id = $2";
             await raesumDB.query(query, [activeStatus, id]);
-            logger.info(`Activation status set for user with ID: ${id} to: ${activeStatus}`, Date.now() - start);
-            return true;
-        } catch {
-            logger.error("DB Error updating user", Date.now() - start);
+            logger.debug(`Database activation status set for user with ID: ${id} to: ${activeStatus}`, Date.now() - start);
+        } catch (e) {
+            logger.error("DB Error updating user: " + e, Date.now() - start);
             throw new Error("Error updating user");
+        }
+
+        // Update the user status in Cognito
+        try {
+            logger.debug(`Updating Cognito status for user: ${user.username} to: ${activeStatus}`, Date.now() - start);
+            await raesumCognito.setUserEnabledStatus(user.username, activeStatus);
+            logger.info(`Activation status set for user with ID: ${id} to: ${activeStatus} (including Cognito)`, Date.now() - start);
+            return true;
+        } catch (cognitoError) {
+            logger.error(`Failed to update Cognito status for user ${user.username}: ${cognitoError.message}`, Date.now() - start);
+            
+            // Rollback database change if Cognito update fails
+            try {
+                const rollbackQuery = "UPDATE raesum_user SET active_status = $1 WHERE id = $2";
+                await raesumDB.query(rollbackQuery, [!activeStatus, id]);
+                logger.warning(`Rolled back database activation status for user with ID: ${id} due to Cognito failure`, Date.now() - start);
+            } catch (rollbackError) {
+                logger.error(`Failed to rollback database change for user ${id}: ${rollbackError.message}`, Date.now() - start);
+            }
+            
+            throw new Error(`Failed to update user status in Cognito: ${cognitoError.message}`);
         }
     }
 
