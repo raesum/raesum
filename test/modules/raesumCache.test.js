@@ -1,7 +1,7 @@
 import raesumConfig from '../../src/modules/raesumConfig';
 import raesumCache from "../../src/modules/raesumCache.js";
 import config from 'config';
-import {jest} from '@jest/globals'
+import { jest, test, expect } from '@jest/globals';
 
 
 describe("Raesum Cache Redis Mode", () => {
@@ -13,7 +13,8 @@ describe("Raesum Cache Redis Mode", () => {
     const iftest = (redisTestsEnabled) ? test : test.skip;
 
     afterEach(async () => {
-        await raesumCache.cleanup();
+        await raesumCache.reset();
+        // await raesumCache.end();
     });
     // Test redis based cache and base function
     iftest('Get and Set a Key Redis Cache', async () => {
@@ -71,7 +72,7 @@ describe("Raesum Cache Memory Mode", () => {
     });
 
     afterEach(async () => {
-        await raesumCache.cleanup();
+        await raesumCache.reset();
     });
 
     //Test memory based cache and base function
