@@ -82,6 +82,9 @@ class raesumeCacheMemory{
         return true;
     }
 
+    async end(){
+        return true;
+    }
 }
 //
 class raesumeCacheRedis{
@@ -137,6 +140,13 @@ class raesumeCacheRedis{
         }else{
             await this.init();
             return false;
+        }
+    }
+
+    async end(){
+        if(this.#redisRunning){
+            await this.#redisInstance.quit();
+            this.#redisRunning = false;
         }
     }
 
@@ -222,13 +232,19 @@ class raesumCachePool{
 
     // Primarily used for testing - this destroys the cache pool instance and forces a re-init
     async reset(){
-
         if(typeof this.#cachePoolInstance != "undefined") {
-            await this.#cachePoolInstance.reset(); // Clear the cache
+            await this.#cachePoolInstance.reset(); // Clear the cache and close connections
         }
         this.#cachePoolInstance = undefined;
         this.#config = undefined;
         this.#cacheType = "memory"
+    }
+
+    // Close connections
+    async end(){
+        if(typeof this.#cachePoolInstance != "undefined") {
+            await this.#cachePoolInstance.end();
+        }
     }
 
     async #init() {

@@ -71,7 +71,7 @@
     "globalSetup": "<rootDir>/test/setup.js",
     "globalTeardown": "<rootDir>/test/teardown.js",
     "testPathIgnorePatterns": [
-      "/node_modules/"
+      "/node_modules/(?!(jose|node-jwks-rsa)/)"
     ]
   }
 }

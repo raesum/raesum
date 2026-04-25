@@ -11,6 +11,10 @@ describe("Raesum Cache Redis Mode", () => {
     console.log("Redis Tests Enabled: " + redisTestsEnabled);
 
     const iftest = (redisTestsEnabled) ? test : test.skip;
+
+    afterEach(async () => {
+        await raesumCache.cleanup();
+    });
     // Test redis based cache and base function
     iftest('Get and Set a Key Redis Cache', async () => {
         const configMock = jest.spyOn(raesumConfig, "get").mockImplementation((key) => {
@@ -64,6 +68,10 @@ describe("Raesum Cache Redis Mode", () => {
 describe("Raesum Cache Memory Mode", () => {
     beforeEach(async () => {
         await raesumCache.reset();
+    });
+
+    afterEach(async () => {
+        await raesumCache.cleanup();
     });
 
     //Test memory based cache and base function

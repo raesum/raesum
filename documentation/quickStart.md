@@ -9,5 +9,6 @@ To start a Raesum server instance:
 1. Add PostgreSQL connection information to the `local.json` file.
 1. Add the AWS region and connection information to the `local.json` file OR override all secret handling with the setting: `  "cloudBasedSecrets": []`
 1. Run `npm run migrate` to create the database tables
+1. Run `npm run start` or `npm run dev` to trigger initial setup
 1. Optional: Run `npm run seed` to seed the database with test data. Note: this will ERADICATE any existing data. DO NOT run this command on a production database.
 1. Run `npm start` to start the server
