@@ -1,7 +1,7 @@
 import raesumAuthorization from "../../src/models/raesumAuthorization.js";
 import config from 'config';
 import raesumDB from "../../src/modules/raesumDB.js";
-import {jest} from '@jest/globals'
+import {vi, test, expect, describe} from 'vitest'
 
 
 describe("Raesum Authorization System: Actions, Objects, and Scopes", () => {

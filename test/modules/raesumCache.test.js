@@ -1,7 +1,7 @@
 import raesumConfig from '../../src/modules/raesumConfig';
 import raesumCache from "../../src/modules/raesumCache.js";
 import config from 'config';
-import { jest, test, expect } from '@jest/globals';
+import { vi, test, expect, describe, beforeEach, afterEach } from 'vitest';
 
 
 describe("Raesum Cache Redis Mode", () => {
@@ -18,7 +18,7 @@ describe("Raesum Cache Redis Mode", () => {
     });
     // Test redis based cache and base function
     iftest('Get and Set a Key Redis Cache', async () => {
-        const configMock = jest.spyOn(raesumConfig, "get").mockImplementation((key) => {
+        const configMock = vi.spyOn(raesumConfig, "get").mockImplementation((key) => {
             let returnVal;
             if (key == "cache.type") {
                 returnVal = "redis"
@@ -35,7 +35,7 @@ describe("Raesum Cache Redis Mode", () => {
     });
 
     iftest('Delete a Key Redis Cache', async () => {
-        const configMock = jest.spyOn(raesumConfig, "get").mockImplementation((key) => {
+        const configMock = vi.spyOn(raesumConfig, "get").mockImplementation((key) => {
             let returnVal;
             if (key == "cache.type") {
                 returnVal = "redis"
@@ -50,7 +50,7 @@ describe("Raesum Cache Redis Mode", () => {
     });
 
     iftest('Delete a Key that does not exist Redis Cache', async () => {
-        const configMock = jest.spyOn(raesumConfig, "get").mockImplementation((key) => {
+        const configMock = vi.spyOn(raesumConfig, "get").mockImplementation((key) => {
             let returnVal;
             if (key == "cache.type") {
                 returnVal = "redis"
@@ -77,7 +77,7 @@ describe("Raesum Cache Memory Mode", () => {
 
     //Test memory based cache and base function
     test('Get and Set a Key', async () => {
-        const configMock = jest.spyOn(raesumConfig, "get").mockImplementation((key) => {
+        const configMock = vi.spyOn(raesumConfig, "get").mockImplementation((key) => {
             let returnVal;
             if (key == "cache.type") {
                 returnVal = "memory"
@@ -93,7 +93,7 @@ describe("Raesum Cache Memory Mode", () => {
         expect(step2).toBe("testValue");
     });
     test('Delete a Key', async () => {
-        const configMock = jest.spyOn(raesumConfig, "get").mockImplementation((key) => {
+        const configMock = vi.spyOn(raesumConfig, "get").mockImplementation((key) => {
             let returnVal;
             if (key == "cache.type") {
                 returnVal = "memory"
@@ -110,7 +110,7 @@ describe("Raesum Cache Memory Mode", () => {
         expect(step3).toBeTruthy();
     });
     test('Delete a Key that does not exist', async () => {
-        const configMock = jest.spyOn(raesumConfig, "get").mockImplementation((key) => {
+        const configMock = vi.spyOn(raesumConfig, "get").mockImplementation((key) => {
             let returnVal;
             if (key == "cache.type") {
                 returnVal = "memory"

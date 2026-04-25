@@ -1,4 +1,4 @@
-import {jest} from '@jest/globals';
+import {vi, test, expect, describe} from 'vitest';
 import raesumResponses from "../../src/modules/raesumResponses.js";
 import path from "path";
 import fs from "fs";

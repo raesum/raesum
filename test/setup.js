@@ -1,16 +1,19 @@
 import config from 'config';
-import readline  from 'node:readline';
 import raesumSeed from "../src/modules/raesumSeed.js";
 import raseumMetadata from "../src/models/raesumMetadata.js";
 import {fileURLToPath} from "url";
 import path from "path";
 import {raesumLogger} from "../src/modules/raesumLogger.js";
+import raesumDB from "../src/modules/raesumDB.js";
+import raesumCache from "../src/modules/raesumCache.js";
+
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const logger = raesumLogger(__filename, "module");
 
 
-async function setup(){
+export async function setup(){
     const start = Date.now();
     console.log('Setting up ...');
     console.log(`Setting up Raesum Environment: ${process.env.NODE_ENV}`, Date.now() - start);
@@ -56,4 +59,8 @@ async function setup(){
     return true;
 }
 
-export default setup;
+export default async function teardown() {
+  // Close database connections
+    await raesumDB.end();
+    await raesumCache.end();
+}

@@ -1,7 +1,7 @@
 import raesumAudit from "../../src/models/raesumAudit.js";
 import config from 'config';
 import raesumDB from "../../src/modules/raesumDB.js";
-import {jest} from '@jest/globals'
+import {vi, test, expect, describe} from 'vitest'
 
 
 describe("Raesum Audit System", () => {

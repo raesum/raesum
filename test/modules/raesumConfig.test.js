@@ -1,12 +1,12 @@
 import raesumConfig from '../../src/modules/raesumConfig'
 import config from "config";
-import {jest} from '@jest/globals'
+import {vi, test, expect, describe} from 'vitest'
 
 
 
 describe("Raesum Config raesumConfig.getCloudSecretKey", () => {
     test('Single Key Matching',async ()=>{
-        const configMock = jest.spyOn(config,"get").mockImplementation((key)=>{
+        const configMock = vi.spyOn(config,"get").mockImplementation((key)=>{
             let returnVal;
             if(key=="cloudBasedSecrets"){
                 returnVal=[
@@ -23,7 +23,7 @@ describe("Raesum Config raesumConfig.getCloudSecretKey", () => {
     });
 
     test('Multiple Key Matching',async ()=>{
-        const configMock = jest.spyOn(config,"get").mockImplementation(()=>{
+        const configMock = vi.spyOn(config,"get").mockImplementation(()=>{
             return [
                 "connections.primaryDatabase.credentials.username",
                 "connections.primaryDatabase.credentials.password",
@@ -39,7 +39,7 @@ describe("Raesum Config raesumConfig.getCloudSecretKey", () => {
 describe("Raesum Config raesumConfigGet", () => {
 
     test('Single Key Non-cloud',async ()=>{
-        const configMock = jest.spyOn(config,"get").mockImplementation((key)=>{
+        const configMock = vi.spyOn(config,"get").mockImplementation((key)=>{
             let returnVal;
             if(key=="cloudBasedSecrets"){
                 returnVal=[
@@ -67,7 +67,7 @@ describe("Raesum Config raesumConfigGet", () => {
     });
 
     test('Single Key Cloud',async ()=>{
-        const configMock = jest.spyOn(config,"get").mockImplementation((key)=>{
+        const configMock = vi.spyOn(config,"get").mockImplementation((key)=>{
             let returnVal;
             if(key=="cloudBasedSecrets"){
                 returnVal=[
@@ -95,7 +95,7 @@ describe("Raesum Config raesumConfigGet", () => {
     });
 
     test('Parent Key in Cloud',async ()=>{
-        const configMock = jest.spyOn(config,"get").mockImplementation((key)=>{
+        const configMock = vi.spyOn(config,"get").mockImplementation((key)=>{
             let returnVal;
             if(key=="cloudBasedSecrets"){
                 returnVal=[
@@ -120,7 +120,7 @@ describe("Raesum Config raesumConfigGet", () => {
     });
 
     test('Child Keys in Cloud',async ()=>{
-        const configMock = jest.spyOn(config,"get").mockImplementation((key)=>{
+        const configMock = vi.spyOn(config,"get").mockImplementation((key)=>{
             let returnVal;
             if(key=="cloudBasedSecrets"){
                 returnVal=[

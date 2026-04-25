@@ -1,6 +1,6 @@
 import config from 'config';
 import raesumDB from "../../src/modules/raesumDB.js";
-import {jest} from '@jest/globals';
+import {vi, test, expect, describe, afterEach} from 'vitest';
 import raesumMetadata from "../../src/models/raesumMetadata.js";
 
 

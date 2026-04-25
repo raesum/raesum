@@ -1,58 +1,106 @@
+import { vi, test, expect, describe, beforeEach, afterEach } from 'vitest';
 import raesumHealthController from "../../src/controllers/raesumHealth.js";
-import raesumDB from "../../src/modules/raesumDB.js"
-import * as express from "express";
-import config from "config";
-import {jest} from '@jest/globals'
-import { getMockReq, getMockRes } from '@jest-mock/express'
+import raesumDB from "../../src/modules/raesumDB.js";
 
-// Use ES module mock syntax
-jest.unstable_mockModule('../../src/controllers/raesumHealth.js', () => ({
-  default: jest.fn()
-}));
+// Mock Express req, res, next objects
+const createMockReq = () => ({
+  method: 'GET',
+  url: '/health',
+  headers: {},
+  query: {},
+  params: {},
+  body: {}
+});
 
-const req = getMockReq()
-const { res, next, mockClear } = getMockRes()
+const createMockRes = () => {
+  const res = {};
+  res.status = vi.fn().mockReturnThis();
+  res.send = vi.fn().mockReturnThis();
+  res.json = vi.fn().mockReturnThis();
+  res.end = vi.fn().mockReturnThis();
+  return res;
+};
 
+const createMockNext = () => vi.fn();
 
-describe("Testing Health Check", ()=>{
-    afterEach(() => {
-        jest.resetModules();
-        jest.restoreAllMocks();
+describe("Testing Health Check", () => {
+  let req, res, next;
+
+  beforeEach(() => {
+    req = createMockReq();
+    res = createMockRes();
+    next = createMockNext();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('System is Healthy', async () => {
+    const dbMock = vi.spyOn(raesumDB, "query").mockResolvedValue({
+      rows: [
+        {
+          Healthy: 1
+        }
+      ]
     });
-    beforeEach(() => {
-        mockClear() // can also use clearMockRes()
-    })
 
-    test('System is Healthy', async () => {
-
-        const configMock = jest.spyOn(raesumDB,"query").mockImplementation(()=>{
-            return {
-                "rows": [
-                    {
-                        "Healthy": 1
-                    }
-                ]
-            }
-        });
-
-
-        await raesumHealthController(req, res, next);
-        expect(res.status).toHaveBeenCalledWith(200);
+    await raesumHealthController(req, res, next);
+    
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.send).toHaveBeenCalledWith({
+      "title": "Health Check",
+      "message": "Passed",
+      "messageId": 0
     });
-    test('System is Connected to DB but Unhealthy', async () => {
-        const configMock = jest.spyOn(raesumDB,"query").mockImplementation(()=>{
-            return {}
-        });
+    
+    dbMock.mockRestore();
+  });
 
-        await raesumHealthController(req, res, next);
-        expect(res.status).toHaveBeenCalledWith(500);
-    });
-    test('System is Connected to DB but Unhealthy', async () => {
-        const configMock = jest.spyOn(raesumDB,"query").mockImplementation(()=>{
-            throw new Error("Simulating DB Fail")
-        });
+  test('System is Connected to DB but Unhealthy - No rows', async () => {
+    const dbMock = vi.spyOn(raesumDB, "query").mockResolvedValue({});
 
-        await raesumHealthController(req, res, next);
-        expect(res.status).toHaveBeenCalledWith(500);
+    await raesumHealthController(req, res, next);
+    
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.send).toHaveBeenCalledWith({
+      "title": "Health Check",
+      "message": "Failed",
+      "messageId": 0
     });
-})
+    
+    dbMock.mockRestore();
+  });
+
+  test('System is Connected to DB but Unhealthy - Empty rows', async () => {
+    const dbMock = vi.spyOn(raesumDB, "query").mockResolvedValue({
+      rows: []
+    });
+
+    await raesumHealthController(req, res, next);
+    
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.send).toHaveBeenCalledWith({
+      "title": "Health Check",
+      "message": "Failed",
+      "messageId": 0
+    });
+    
+    dbMock.mockRestore();
+  });
+
+  test('System fails to connect to DB', async () => {
+    const dbMock = vi.spyOn(raesumDB, "query").mockRejectedValue(new Error("Simulating DB Fail"));
+
+    await raesumHealthController(req, res, next);
+    
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.send).toHaveBeenCalledWith({
+      "title": "Health Check",
+      "message": "Failed",
+      "messageId": 0
+    });
+    
+    dbMock.mockRestore();
+  });
+});

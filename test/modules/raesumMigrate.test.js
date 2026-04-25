@@ -1,6 +1,6 @@
 import raesumConfig from '../../src/modules/raesumConfig';
 import config from "config";
-import {jest} from '@jest/globals';
+import {vi, test, expect, describe} from 'vitest';
 import raesumMigrate from '../../src/modules/raesumMigrate.js';
 import raesumDB from "../../src/modules/raesumDB.js";
 
@@ -8,7 +8,7 @@ import raesumDB from "../../src/modules/raesumDB.js";
 describe("Raesum Migrate Schema File Validation", () => {
     test('Valid SQL Filenames Set',async ()=>{
         const migrator = new raesumMigrate();
-        const configMock = jest.spyOn(migrator,"getMigrationsFileList").mockImplementation(()=>{
+        const configMock = vi.spyOn(migrator,"getMigrationsFileList").mockImplementation(()=>{
             return [
                 "1.sql",
                 "2.sql"
@@ -22,9 +22,9 @@ describe("Raesum Migrate Schema File Validation", () => {
     test('Invalid SQL Filenames Set: Bad names',async ()=>{
         const migrator = new raesumMigrate();
 
-        const configMock = jest.spyOn(migrator,"getMigrationsFileList").mockImplementation(()=>{
+        const configMock = vi.spyOn(migrator,"getMigrationsFileList").mockImplementation(()=>{
             return [
-                "1.sql",
+                "1.initial.sql",
                 "2.sql"
             ]
         });
@@ -38,10 +38,10 @@ describe("Raesum Migrate Schema File Validation", () => {
     test('Invalid SQL Filenames Set: Gaps',async ()=>{
         const migrator = new raesumMigrate();
 
-        const configMock = jest.spyOn(migrator,"getMigrationsFileList").mockImplementation(()=>{
+        const configMock = vi.spyOn(migrator,"getMigrationsFileList").mockImplementation(()=>{
             return [
                 "1.sql",
-                "2.sql"
+                "3.sql"
             ]
         });
 
