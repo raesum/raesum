@@ -616,8 +616,6 @@ class raesumAuthorizationObject {
                 return true;
             } else {
                 logger.warning(`User ${userID} already in role: ${roleID} for org: ${orgID}, or role, org, or user does not exist`, Date.now() - start);
-                console.log(query, params, result);
-
                 return false;
             }
         } catch (e) {

@@ -29,7 +29,7 @@ async function setup(){
         // If any of the external tests are enabled, then the database cannot be a production database.
         if(dbTestEnabled || awsTestEnabled || redisTestEnabled){
             logger.critical("Cannot run tests on a production database. If this is a test database, disable the primaryDatabase test in the metadata table, otherwise, disable tests that rely on external systems (AWS, redis, etc).", Date.now() - start);
-            process.exit(1);
+            throw new Error("Cannot run tests on production database");
         }
     }
 
@@ -41,14 +41,15 @@ async function setup(){
         const canSeed = await seeder.canSeed();
         if (!canSeed) {
             logger.critical("Cannot Seed Database. Either the database is a production type or needs a migration run. If this is production-type database disable primaryDatabase and redis tests in the configuration or use a non-production database.", Date.now() - start);
-            process.exit(1);
+            throw new Error("Not allowed to seed this database for testing")
         }
 
         // Run seed
         const seederResult = await seeder.seedDB()
         if(!seederResult){
             console.log("Seeding Failed", Date.now() - start);
-            process.exit(1);
+            throw new Error("Allowed but unable to seed database for testing")
+
         }
     }
 

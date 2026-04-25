@@ -27,7 +27,6 @@ class raseumMetadataObject{
             throw new Error("Metadata value must be a string, number, or boolean");
         }
 
-
         const query = "INSERT INTO raesum_metadata (datakey, datavalue) VALUES ($1, $2) ON CONFLICT (datakey) DO UPDATE SET datavalue = $2";
         const result = await raesumDB.query(query, [key, value]);
 
@@ -78,7 +77,7 @@ class raseumMetadataObject{
     /**
      * Deletes metadata value
      * @param  {String} key The ID of the metadata key
-     * @returns {boolean} whether metadata was deleted
+     * @returns {boolean} whether metadata was deleted. False if metadata was not found.
      * @throws {Error} If the metadata key is not a string
      */
     async delete(key){

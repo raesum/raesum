@@ -5,7 +5,10 @@ import config from "config";
 import {jest} from '@jest/globals'
 import { getMockReq, getMockRes } from '@jest-mock/express'
 
-jest.mock('../../src/controllers/raesumHealth.js')
+// Use ES module mock syntax
+jest.unstable_mockModule('../../src/controllers/raesumHealth.js', () => ({
+  default: jest.fn()
+}));
 
 const req = getMockReq()
 const { res, next, mockClear } = getMockRes()

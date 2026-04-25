@@ -419,7 +419,7 @@ class raesumUserObject {
         // Check to see if keys are in cache
         const cacheKey = "raesumUserMetadataKeys" + show_inactive;
         const cachedKeys = await raesumCache.get(cacheKey);
-        if (cachedKeys) {
+        if (cachedKeys && Object.keys(cachedKeys).length > 0) {
             logger.verbose(`Returning cached metadata keys`, Date.now() - start)
             return cachedKeys;
         }
@@ -444,7 +444,6 @@ class raesumUserObject {
 
         // Save to cache
         await raesumCache.set(cacheKey, keys);
-console.log("CC",cacheKey, JSON.stringify(keys));
 
         // Create a list of keys
         const keyList = Object.keys(keys);
@@ -457,7 +456,7 @@ console.log("CC",cacheKey, JSON.stringify(keys));
             logger.debug("Saved "+response.rows.length+" metadata keys to cache", Date.now() - start);
         }
 
-        let keyIndex = [];
+        let keyIndex = {};
         let cognitoKeys = {};
         keyList.forEach((key) => {
             keyIndex[key] = keys[key].id;
@@ -469,6 +468,7 @@ console.log("CC",cacheKey, JSON.stringify(keys));
         });
 
         const indexCacheKey = "raesumUserMetadataKeyIndex";
+
         await raesumCache.set(indexCacheKey, keyIndex);
 
         const cognitocacheKey = "raesumUserMetadataCognitoKeyStatus";
@@ -520,7 +520,7 @@ console.log("CC",cacheKey, JSON.stringify(keys));
         let cachedKeys = await raesumCache.get(listCacheKey);
 
         // If not in cache, build the list (which will cache it)
-        if (!cachedKeys) {
+        if (!cachedKeys || Object.keys(cachedKeys).length === 0) {
             const keys = await this.getMetadataKeys(true);
             const keyList = Object.keys(keys);
             cachedKeys = [];
@@ -739,6 +739,7 @@ console.log("CC",cacheKey, JSON.stringify(keys));
             for (let i = 0; i < response.rows.length; i++) {
                 values[response.rows[i].datakey] = response.rows[i].value;
             }
+
             return values;
 
         } catch (e) {
@@ -808,29 +809,32 @@ console.log("CC",cacheKey, JSON.stringify(keys));
             }
         }
 
-
         // Insert the new keys
-        let sql = "INSERT INTO raesum_user_x_metadata (user_id, key_id, value) VALUES ";
+        let sql = "";
         let valuesArray = [];
         let insertValuesArray = [];
         let i = 1;
 
-        // Loop through the values and build the update query
-        for (let q = 0; q < newKeyList.length; q++) {
+        // If there are new keys
+        if(newKeyList.length > 0){
+            // Loop through the values and build the update query
+            for (let q = 0; q < newKeyList.length; q++) {
 
 
-            // Add insert/update query
-            insertValuesArray.push(`($${i}, $${i + 1}, $${i + 2})`);
-            valuesArray.push(userId);
-            valuesArray.push(keyIndex[newKeyList[q]]);
-            valuesArray.push(values[newKeyList[q]]);
+                // Add insert/update query
+                insertValuesArray.push(`($${i}, $${i + 1}, $${i + 2})`);
+                valuesArray.push(userId);
+                valuesArray.push(keyIndex[newKeyList[q]]);
+                valuesArray.push(values[newKeyList[q]]);
 
-            // Increment iterator
-            i += 3;
+                // Increment iterator
+                i += 3;
 
+            }
+
+            sql += "INSERT INTO raesum_user_x_metadata (user_id, key_id, value) VALUES ";
+            sql += insertValuesArray.join(", ") + ";";
         }
-
-        sql += insertValuesArray.join(", ") + ";";
 
         // Run the update query
         try {
@@ -841,13 +845,13 @@ console.log("CC",cacheKey, JSON.stringify(keys));
 
         // Update the existing keys
         // Loop through the update keys and create an update statement for each
-        for (let q = 0; q < updateKeyList; q++) {
-            sql = `UPDATE raesum_user_x_metadata
+        for (let q = 0; q < updateKeyList.length; q++) {
+            sql += `UPDATE raesum_user_x_metadata
                    SET value = $1
                    WHERE user_id = $2
                      AND key_id = $3;`;
             try {
-                await raesumDB.query(sql, [values[updateKeyList[q]], userId, keyIndex[updateKeyList[q]]]);
+                await raesumDB.query(sql, [values[updateKeyList[q]], userId, updateKeyList[q]]);
             } catch (e) {
                 throw new Error("Error inserting new user metadata values");
             }

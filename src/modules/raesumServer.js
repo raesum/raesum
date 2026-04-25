@@ -81,6 +81,11 @@ class raesumServer{
             redisConfig.password = redisConfigSet.credentials.password;
         }
 
+        // If the databaseNumber property is present, convert it to db
+        if(redisConfigSet.hasOwnProperty("databaseNumber") && redisConfigSet.databaseNumber !== null && typeof redisConfigSet.databaseNumber == "number"){
+            redisConfig.db = redisConfigSet.databaseNumber;
+        }
+
         return redisConfig
     }
 

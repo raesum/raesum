@@ -308,8 +308,6 @@ class raesumUserController {
         // Delete post_login_url from session
         delete req.session.post_login_uri;
 
-        console.log("req.session",req.session);
-
         // Add audit log entry
         await raesumAudit.create("log_in", "raesum_user", user.id, user.id);
 

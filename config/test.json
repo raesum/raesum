@@ -11,6 +11,17 @@
   "connections": {
     "primaryDatabase": {
       "database": "raesum_qa"
+    },
+    "session":{
+      "redis": {
+        "databaseNumber": 3
+      }
+    },
+    "cache": {
+      "redis": {
+        "databaseNumber": 4
+      },
+      "memory": {}
     }
   }
 }

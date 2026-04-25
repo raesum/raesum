@@ -131,6 +131,12 @@ class dbPool {
 
         return client
     }
+
+    async end(){
+        if (this.#dbPoolInstance) {
+            await this.#dbPoolInstance.end();
+        }
+    }
 }
 
 

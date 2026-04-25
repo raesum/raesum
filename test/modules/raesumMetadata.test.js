@@ -13,17 +13,17 @@ describe("Raesum Metadata System", () => {
 
     const iftest = (dbTestsEnabled) ? test : test.skip;
 
-    afterEach(() => {
+    afterEach(async () => {
         // Remove the test values
-        const query = "DELETE FROM raesum_metadata WHERE datakey = $1";
-        raesumDB.query(query, ["testKey"]);
+        const query = "DELETE FROM raesum_metadata WHERE datakey LIKE $1";
+        await raesumDB.query(query, ["testKey%"]);
     });
 
     iftest('Set Metadata', async () => {
 
-        const key = "testKey";
+        const key = "testKey1";
         const value = "testValue";
-        const result = raesumMetadata.set(key, value);
+        const result = await raesumMetadata.set(key, value);
 
         // Query the database to verify that the data is there
         const query = "SELECT * FROM raesum_metadata WHERE datakey = $1";
@@ -37,7 +37,7 @@ describe("Raesum Metadata System", () => {
 
     iftest('Set Metadata with Number Value', async () => {
 
-        const key = "testKey";
+        const key = "testKey2";
         const value = 42;
         const result = await raesumMetadata.set(key, value);
 
@@ -52,7 +52,7 @@ describe("Raesum Metadata System", () => {
 
     iftest('Set Metadata with Boolean Value', async () => {
 
-        const key = "testKey";
+        const key = "testKey3";
         const value = true;
         const result = await raesumMetadata.set(key, value);
 
@@ -60,6 +60,7 @@ describe("Raesum Metadata System", () => {
         const query = "SELECT * FROM raesum_metadata WHERE datakey = $1";
         const queryResult = await raesumDB.query(query, [key]);
         expect(queryResult['rows'].length).toBe(1);
+        console.log("Query Result", queryResult['rows']);
         expect(queryResult['rows'][0]['datavalue']).toBe("true");
 
     });
@@ -67,7 +68,7 @@ describe("Raesum Metadata System", () => {
 
    iftest('Get Metadata', async () => {
 
-       const key = "testKey";
+       const key = "testKey4";
        const value = "testValue";
        await raesumMetadata.set(key, value);
 
@@ -78,7 +79,7 @@ describe("Raesum Metadata System", () => {
 
     iftest('Get Metadata set with boolean', async () => {
 
-        const key = "testKey";
+        const key = "testKey5";
         const value = true;
         await raesumMetadata.set(key, value);
 
@@ -90,7 +91,7 @@ describe("Raesum Metadata System", () => {
 
     iftest('Get Metadata set with float', async () => {
 
-        const key = "testKey";
+        const key = "testKey6";
         const value = 2.2;
         await raesumMetadata.set(key, value);
 
@@ -101,7 +102,7 @@ describe("Raesum Metadata System", () => {
 
     iftest('Get Metadata set with int', async () => {
 
-        const key = "testKey";
+        const key = "testKey7";
         const value = 438731;
         await raesumMetadata.set(key, value);
 
@@ -113,7 +114,7 @@ describe("Raesum Metadata System", () => {
 
     iftest('Delete Metadata', async () => {
 
-        const key = "testKey";
+        const key = "testKey8";
         const value = "testValue";
         await raesumMetadata.set(key, value);
 
@@ -132,9 +133,10 @@ describe("Raesum Metadata System", () => {
 
         const key = "doesNotExist";
 
-        expect(async () => {
-            await raesumMetadata.delete(key);
-        }).rejects.toThrow();
+        const result = await raesumMetadata.delete(key);
+
+        expect(result).toBe(false);
+
 
     });
 

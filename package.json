@@ -60,10 +60,16 @@
     "nodemon": "^3.1.14",
     "prettier": "^3.8.3"
   },
-  "jest": {
-    "transform": {},
+ "jest": {
+    "transform": {
+      "^.+\\.js$": "babel-jest"
+    },
+    "globals": {
+      "NODE_OPTIONS": "--experimental-vm-modules"
+    },
     "testEnvironment": "jest-environment-node",
     "globalSetup": "<rootDir>/test/setup.js",
+    "globalTeardown": "<rootDir>/test/teardown.js",
     "testPathIgnorePatterns": [
       "/node_modules/"
     ]
