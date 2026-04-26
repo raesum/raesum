@@ -384,3 +384,6 @@ Temporary Items
 logs/
 config/local.json
 .env
+
+# openapi/swagger docs
+swagger/documentation.json
