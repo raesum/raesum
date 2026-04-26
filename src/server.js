@@ -13,11 +13,13 @@ import raesumStartup from "./modules/raesumStartup.js";
 import raesumLoggerRequestFinishMiddleware from "./middleware/raesumRequestLogger.js";
 import raesumHealthRouter from "./routes/raesumHealth.js";
 import raesumAuthRouter from "./routes/raesumAuth.js";
+import swaggerRouter from "./routes/swagger.js";
 import raesumCache from "./modules/raesumCache.js";
 import raesumCognito from "./modules/raesumCognito.js";
 import raesumConfig from "./modules/raesumConfig.js";
 import raesumServer from "./modules/raesumServer.js";
 import raesumSession from "./modules/raesumSession.js";
+import raesumMetadata from "./models/raesumMetadata.js";
 import session from 'express-session';
 
 
@@ -128,7 +130,9 @@ export async function createApp() {
             "/api/v1/health",
             "/api/v1/auth/login",
             "/api/v1/auth/loggedIn",
-            "/api/v1/auth/getJWT"
+            "/api/v1/auth/getJWT",
+            "/api/swagger",
+            /\/api\/swagger\/.*/
         ]
     };
 
@@ -156,6 +160,17 @@ export async function createApp() {
     // Routes
     app.use('/api/v1/health', raesumHealthRouter);
     app.use('/api/v1/auth', raesumAuthRouter);
+
+
+    // If the system is not a production environment add a swagger/openapi route
+    const isProductionDatabase = await raesumMetadata.getByKey("isProductionDatabase");
+    
+    if (!isProductionDatabase) {
+        logger.info("Swagger/OpenAPI documentation is enabled", Date.now()-start);
+        app.use('/api/swagger', swaggerRouter);
+    }else{
+        logger.info("Swagger/OpenAPI documentation is disabled in production environment for security reasons.", Date.now()-start);
+    }
 
 
 
