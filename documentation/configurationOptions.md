@@ -50,6 +50,7 @@ This section controls what login types/patterns are allowed. One or both may be 
 
 - `jwt` (boolean) - Whether to allow JWT for authentication. Default: true
 - `useSessionCookie` (boolean) - Whether to allow session cookies for authentication. If using this be sure to completely configure the session in a secure way. Default: false
+- `allowedPostLoginURIs` (array) - An array of strings that represent the allowed post-login URIs. These should be full qualified domain names with protocols (ie `https://example.com`). These are only used for sessionCookie type authentication. Default: []
 
 ### Cache
 

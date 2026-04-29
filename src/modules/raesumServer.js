@@ -19,6 +19,7 @@ class raesumServer{
         const cacheValue = await raesumCache.get(cacheKey, this.#cacheObjectType);
 
         if(cacheValue){
+            logger.debug(`Server URL retrieved from cache: ${cacheValue}`);
             return cacheValue;
         }
 
@@ -222,20 +223,37 @@ class raesumServer{
             logger.info("Checking Cognito callback URL configuration", Date.now() - start);
             
             // Build the server's callback URL
-            const serverCallbackURL = `${serverConfig.protocol}://${serverConfig.host}/api/v1/auth/loggedIn`;
+            const serverCallbackURL = [];
+            
+            // get the allowedLogin types from raesumConfig
+            const allowedLogin = await raesumConfig.get('login');
+            
+
+            // if session login is allowed, add the session callback to the test list
+            if(allowedLogin.session){
+                serverCallbackURL.push(`${serverConfig.protocol}://${serverConfig.host}/api/v1/auth/callbackSession`);
+            }
+            
+            // if JWT login is allowed, add the JWT callback to the test list
+            if(allowedLogin.jwt){
+                serverCallbackURL.push(`${serverConfig.protocol}://${serverConfig.host}/`);
+            }
+            
             
             try {
                 
                 if(clientDescription && clientDescription.UserPoolClient){
                     const allowedCallbacks = clientDescription.UserPoolClient.CallbackURLs || [];
                     
-                    if(!allowedCallbacks.includes(serverCallbackURL)){
-                        logger.warning(`Server callback URL '${serverCallbackURL}' is not in the allowed callback URLs list in Cognito. Session cookie logins may not work properly.`, Date.now() - start);
-                        logger.warning(`Current allowed callback URLs: ${allowedCallbacks.join(', ')}`, Date.now() - start);
-                        logger.warning(`Please add '${serverCallbackURL}' to the allowed callback URLs in your Cognito User Pool Client configuration.`, Date.now() - start);
-                        // Note: This is a warning, not an error, so noErrors is not set to false
-                    } else {
-                        logger.info(`Server callback URL '${serverCallbackURL}' is properly configured in Cognito`, Date.now() - start);
+                    for(const callback of serverCallbackURL){
+                        if(!allowedCallbacks.includes(callback)){
+                            logger.warning(`Server callback URL '${callback}' is not in the allowed callback URLs list in Cognito. Session cookie logins may not work properly.`, Date.now() - start);
+                            logger.warning(`Current allowed callback URLs: ${allowedCallbacks.join(', ')}`, Date.now() - start);
+                            logger.warning(`Please add '${callback}' to the allowed callback URLs in your Cognito User Pool Client configuration.`, Date.now() - start);
+                            // Note: This is a warning, not an error, so noErrors is not set to false
+                        } else {
+                            logger.info(`Server callback URL '${callback}' is in the allowed callback URLs list in Cognito.`, Date.now() - start);
+                        }
                     }
                 } else {
                     logger.warning("Unable to retrieve Cognito client description for callback URL validation", Date.now() - start);

@@ -5,3 +5,9 @@ import raesumOrganization from "../models/raesumOrganization.js";
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
 
+class raesumOrganizationController {
+    
+}
+
+const singleInstance = new raesumOrganizationController();
+export default singleInstance;

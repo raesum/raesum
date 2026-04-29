@@ -13,6 +13,7 @@ import raesumStartup from "./modules/raesumStartup.js";
 import raesumLoggerRequestFinishMiddleware from "./middleware/raesumRequestLogger.js";
 import raesumHealthRouter from "./routes/raesumHealth.js";
 import raesumAuthRouter from "./routes/raesumAuth.js";
+import raesumAuditRouter from "./routes/raesumAudit.js";
 import swaggerRouter from "./routes/swagger.js";
 import raesumCache from "./modules/raesumCache.js";
 import raesumCognito from "./modules/raesumCognito.js";
@@ -129,8 +130,8 @@ export async function createApp() {
         path: [
             "/api/v1/health",
             "/api/v1/auth/login",
-            "/api/v1/auth/loggedIn",
-            "/api/v1/auth/getJWT",
+            "/api/v1/auth/callbackSession",
+            "/api/v1/auth/callbackJWT",
             "/api/swagger",
             /\/api\/swagger\/.*/
         ]
@@ -160,7 +161,7 @@ export async function createApp() {
     // Routes
     app.use('/api/v1/health', raesumHealthRouter);
     app.use('/api/v1/auth', raesumAuthRouter);
-
+    app.use('/api/v1/audit', raesumAuditRouter);
 
     // If the system is not a production environment add a swagger/openapi route
     const isProductionDatabase = await raesumMetadata.getByKey("isProductionDatabase");

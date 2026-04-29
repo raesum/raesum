@@ -103,5 +103,19 @@
     "description": "The code provided was not recognized as a valid authorization code.",
     "code": 401,
     "keycode": 16
+  },
+  "notAuthorized": {
+    "title": "Not Authorized",
+    "message": "This user is not authorized to perform action {0}: {1}",
+    "description": "The user tried to perform an action they do not have permissions for.",
+    "code": 401,
+    "keycode": 16
+  },
+  "requestInvalidFields":{
+    "title": "Request Invalid",
+    "message": "One or more of the requested parameters has invalid values.",
+    "description": "The request was not successful due to invalid values submitted int he request.",
+    "code": 400,
+    "keycode": 17
   }
 }

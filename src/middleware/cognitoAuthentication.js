@@ -133,13 +133,14 @@ class raesumAuth {
                 logger.verbose(`Authentication Middleware - Checking Raesum User Profile for CognitoUserID: ${cognitoUserID}`, Date.now() - start);
 
                 const userProfile = await raesumUser.getUserByExternalID(cognitoUserID);
-               
+               console.log("USER PROFILE",userProfile)
 
                 // Check to see if the user is active in Raesum
                 if(userProfile.active_status){
                     req.session.loggedIn = true;
                     req.session.cognitoUserID = cognitoUserID;
                     res.locals.user = userProfile;
+                    req.user = userProfile;
                 }else{
                     // Else, 
                         // delete the session
@@ -158,6 +159,7 @@ class raesumAuth {
                             req.session.loggedIn = true;
                             req.session.cognitoUserID = cognitoUserID;
                             res.locals.user = userProfile;
+                            req.user = userProfile;
                         // Else assume it's inactive and delete the session
             }
 

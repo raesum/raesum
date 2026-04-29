@@ -79,7 +79,9 @@ class raesumOrganizationObject {
             throw new Error("Organization not found");
         }
         logger.verbose(`Organization found for ID: ${id}`, Date.now() - start);
-        return result.rows[0];
+        let theOrg = result.rows[0];
+        theOrg.id = parseInt(theOrg.id);
+        return theOrg;
     }
 
 

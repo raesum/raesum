@@ -1,11 +1,11 @@
 info:
-  name: Login
+  name: GetLogs
   type: http
   seq: 1
 
 http:
   method: GET
-  url: "{{host}}/api/v1/auth/login"
+  url: "{{host}}/api/v1/audit/getLogs"
   auth: inherit
 
 settings:

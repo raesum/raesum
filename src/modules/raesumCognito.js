@@ -20,7 +20,7 @@ import raesumCache from "./raesumCache.js";
 import raesumUser from "../models/raesumUser.js";
 import raesumDB from "./raesumDB.js";
 import jwt from 'jsonwebtoken';
-import jwks from 'jwks-rsa';
+import { CognitoJwtVerifier } from "aws-jwt-verify";
 import raesumServer from "../modules/raesumServer.js";
 import raesumAudit from "../models/raesumAudit.js";
 
@@ -339,9 +339,9 @@ class raesumCognito{
             }
 
             const tokenData = await response.json();
-            
+
             logger.info('Successfully exchanged authorization code for JWT tokens', Date.now() - start);
-            
+
             return {
                 id_token: tokenData.id_token,
                 access_token: tokenData.access_token,
@@ -366,36 +366,28 @@ class raesumCognito{
         const start = Date.now();
 
         try {
-
-
-            // Get the user pool and region for building the JWKS URL
+            // Get the user pool and region for the verifier
             const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
+            const clientId = await raesumConfig.get('aws.cognito.cognitoClientId');
             const region = await raesumConfig.get('aws.region');
 
-            // Build the JWKS URL
-            const jwksUrl = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`;
+            logger.debug(`Setting up JWT verifier for user pool: ${userPoolId}`, Date.now() - start);
 
-            // Create JWKS client
-            const client = jwks({
-                jwksUri: jwksUrl,
-                cache: true,
-                cacheMaxEntries: 5,
-                cacheMaxAge: 600000 // 10 minutes
+            // Create the Cognito JWT verifier
+            const verifier = CognitoJwtVerifier.create({
+                userPoolId: userPoolId,
+                tokenUse: 'id',
+                clientId: clientId,
+                region: region
             });
 
-            // Get the signing key
-            const decodedToken = jwt.decode(token, { complete: true });
-            const kid = decodedToken.header.kid;
-            const key = await client.getSigningKey(kid);
-            const signingKey = key.getPublicKey();
+            logger.debug(`Verifying token: ${token}`, Date.now() - start);
 
-            // Verify the token
-            const verifiedToken = jwt.verify(token, signingKey, {
-                algorithms: ['RS256']
-            });
+            // Verify the token using aws-jwt-verify
+            const payload = await verifier.verify(token);
 
             logger.info('JWT token validated successfully', Date.now() - start);
-            return verifiedToken;
+            return payload;
 
         } catch (error) {
             logger.error(`JWT token validation failed: ${error.message}`, Date.now() - start);
@@ -420,7 +412,7 @@ class raesumCognito{
 
             const allowedCallbacks = await this.getAllowedCallbacks();
             let raesumServerURL = await raesumServer.buildBaseServerURL();
-            raesumServerURL += "/api/v1/auth/loggedIn";
+            raesumServerURL += "/api/v1/auth/callbackSession";
 
             // Confirm that the raesum server is in the allowed callbacks
             if (!allowedCallbacks.includes(raesumServerURL)) {
@@ -434,6 +426,7 @@ class raesumCognito{
 
             // Validate the ID token to get user information
             logger.verbose("Validating ID token to get user information", Date.now() - start);
+            console.log("tokenResponse", tokenResponse);
             const tokenPayload = await this.validateJWTToken(tokenResponse.id_token);
 
             // Extract Cognito user ID from token

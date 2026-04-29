@@ -28,8 +28,8 @@ class raesumUserController {
         const clientID = await raesumConfig.get('aws.cognito.cognitoClientId')
         
         // Request admin scope for user management capabilities
-        const scope = "aws.cognito.signin.user.admin";
-        loginURL += "/login?client_id=" + clientID + "&response_type=code&scope=" + encodeURIComponent(scope)
+        const scope = "openid+profile+email+aws.cognito.signin.user.admin";
+        loginURL += "/login?client_id=" + clientID + "&response_type=code&scope=" + scope
 
 
         // Get cognito's allowed redirect URL from the environment
@@ -48,6 +48,7 @@ class raesumUserController {
 
 
         if (req.query.post_login_uri && loginMethods.useSessionCookie == true) {
+            // Note this is validated by loggedIn function and the ONLY place it will actually be used
             req.session.post_login_uri = req.query.post_login_uri;
         }
 
@@ -61,14 +62,24 @@ class raesumUserController {
 
             // If the server's url is in the allowed redirects, default to it
             let raesumServerURL = await raesumServer.buildBaseServerURL();
-            raesumServerURL += "/api/v1/auth/loggedIn";
+            
+            // Is session logins enabled?
+            const sessionLoginsEnabled = loginMethods.useSessionCookie == true;
+            
+            if (sessionLoginsEnabled) {
+                raesumServerURL += "/api/v1/auth/callbackSession";
+            } else {
+                raesumServerURL += "/";
+            }
+
+            logger.debug(`raesumServerURL URI for: ${raesumServerURL} with allowed redirects ${allowedCallbacks.join(", ")}`, Date.now() - start);
 
             if (allowedCallbacksUpper.includes(raesumServerURL.toUpperCase())) {
-                logger.warning("Redirect URI not allowed. Redirecting to server URL", Date.now() - start);
+                logger.warning("Login Redirect URI not found or not allowed. Redirecting to server URL", Date.now() - start);
                 loginURL += "&redirect_uri=" + encodeURIComponent(raesumServerURL);
             } else {
                 // else use the first allowed redirect from allowedCallbacks
-                logger.warning("Redirect URI not allowed. Redirecting to the first allowed callback", Date.now() - start);
+                logger.warning("Login Redirect URI not allowed. Redirecting to the first allowed callback", Date.now() - start);
                 loginURL += "&redirect_uri=" + encodeURIComponent(allowedCallbacks[0]);
             }
 
@@ -187,7 +198,7 @@ class raesumUserController {
 
 
 
-    async loggedIn(req, res, next) {
+    async callbackSession(req, res, next) {
 
         const start = Date.now();
         logger.verbose("Session login callback received, starting processing", Date.now() - start);
@@ -230,6 +241,8 @@ class raesumUserController {
 
         if(req.session.loggedIn == false || !req.session.userID) {
 
+            logger.info("User is not logged in, processing JWT and creating session");
+
                 // Process the supplied code into JWT
                 const jwtResult = await raesumCognito.processJWT(req);
                 tokenResponse = jwtResult.tokenResponse;
@@ -249,7 +262,7 @@ class raesumUserController {
                 req.session.jwt = tokenResponse.access_token;
                 req.session.idToken = tokenResponse.id_token;
                 req.session.refreshToken = tokenResponse.refresh_token;
-                req.session.userID = user.id;
+                req.session.userID = parseInt(user.id);
                 // Set req.session.cognitoUserID to the cognitoUserID
                 req.session.cognitoUserID = tokenPayload.sub;
 
@@ -260,9 +273,9 @@ class raesumUserController {
                 logger.info(`User ${tokenPayload.sub} successfully logged in via session cookie`, Date.now() - start);
 
 
-        }else{
-            user = await raesumUser.getUserById(req.session.userID);
         }
+        
+        user = await raesumUser.getUserById(parseInt(user.id));
 
 
         // Set the post_login_url to the default
@@ -294,6 +307,8 @@ class raesumUserController {
                     // If extracted domain is in allowed list then set post_login_url
                     if(allowedDomains.includes(testDomain)) {
                         post_login_url = req.session.post_login_uri;
+                    }else{
+                        post_login_url = raesumURL += "/";
                     }
                 }catch(e){
                     logger.error("Error parsing post_login_uri it seemed to be a full uri but failed to parse.",Date.now()-start);
@@ -317,7 +332,7 @@ class raesumUserController {
 
     }
 
-    async getJWT(req,res,next){
+    async callbackJWT(req,res,next){
         const start = Date.now();
 
         // If code is not supplied return error
@@ -392,8 +407,8 @@ class raesumUserController {
             // Return the response object
             return res.status(message.code).json(response);
 
-        } catch (tokenError) {
-            logger.error(`Token exchange failed: ${tokenError.message}`, Date.now() - start);
+        } catch (e) {
+            logger.error(`Token exchange failed: ${e.message}`, Date.now() - start);
             
             // Get login error message
             const message = await raesumResponses.get("invalidCredentials");

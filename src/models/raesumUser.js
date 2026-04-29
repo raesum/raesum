@@ -124,6 +124,8 @@ class raesumUserObject {
 
         logger.verbose(`Getting user by ID: ${id}`, Date.now() - start);
 
+        id = parseInt(id);
+
         // If the ID is not a number, throw error
         if (isNaN(id) || id < 1 || !Number.isInteger(id)) {
             throw new Error("User ID must be a positive integer");
@@ -135,6 +137,8 @@ class raesumUserObject {
             const query = "SELECT * FROM raesum_user WHERE id = $1";
             const result = await raesumDB.query(query, [id]);
             user = result.rows[0];
+            user.id = parseInt(user.id);
+            user.current_organization_id = parseInt(user.current_organization_id);
         } catch (e) {
             logger.warning("Error getting user by ID: " + e, Date.now() - start);
             throw new Error("Error getting user by ID");
