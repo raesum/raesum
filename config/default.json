@@ -94,7 +94,8 @@
   "initialization": {
     "firstUserExternalId": "cognitoIdentityId",
     "firstUserUsername": "odin",
-    "firstUserRole": "raesumAdmin"
+    "firstUserRole": "raesumAdmin",
+    "firstUserEmail": "odin@raesum.com"
   },
   "developmentAndTesting": {
     "developmentMode":false,
