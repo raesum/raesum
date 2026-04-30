@@ -12,8 +12,7 @@ class raesumAuditController {
 
     async getAuditLogs(req, res, next){
         const start = Date.now();
-console.log("USER USER",req.user);
-console.log("req", req.query);
+
         // Extract user info from request
         const requesterUserID = req.user ? req.user.id : null;
         let orgID = req.user ? req.user.current_organization_id : null;
@@ -25,52 +24,45 @@ console.log("req", req.query);
         let userID = req.query.userId ? parseInt(req.query.userId) : null;
 
         // Check to see if user is allowed to get read the object type audit log for the user's current organization
+        logger.verbose("Checking user authorization for audit log access", Date.now() - start);
         try {
             // First check object-level permissions
-            let isAuthorized = await raesumAuthorization.checkUserPermissionByID(
+            let isAuthorized = await raesumAuthorization.checkUserPermission(
                 requesterUserID, 
-                orgID, 
-                'audit', 
+                'raesum_audit', 
                 'read', 
-                null, 
+                orgID, 
                 null
             );
             
             // If not authorized at object level, check user-specific authorization
             if (!isAuthorized) {
                 logger.verbose("Object-level authorization failed, checking user-specific authorization", Date.now() - start);
-                isAuthorized = await raesumAuthorization.checkUserPermissionByID(
+                isAuthorized = await raesumAuthorization.checkUserPermission(
                     requesterUserID, 
-                    orgID, 
-                    'audit', 
+                    'raesum_audit', 
                     'read', 
-                    null, 
+                    orgID, 
                     requesterUserID
                 );
                 // User can only see their own records, force userID filter
                 userID = requesterUserID;
             }
-            
+
             if (!isAuthorized) {
                 logger.warning(`User ${requesterUserID} not authorized to read audit logs for organization ${orgID}`, Date.now() - start);
-                const notAuthorizedResponse = await raesumResponses.get('auditLogs.notAuthorized');
+                const notAuthorizedResponse = await raesumResponses.get('notAuthorized',['read','raesum_audit']);
                 return res.status(403).json(notAuthorizedResponse);
             }
             
             logger.verbose(`User ${requesterUserID} authorized to read audit logs for organization ${orgID}`, Date.now() - start);
         } catch (error) {
             logger.error("Authorization check failed: " + error, Date.now() - start);
-            const errorResponse = await raesumResponses.get('auditLogs.authorizationError');
+            const errorResponse = await raesumResponses.get('notAuthorized',['read','raesum_audit']);
             return res.status(500).json(errorResponse);
         }
 
-        // Add an audit log entry that the user has run read action on the audit object type with no object id
-        try {
-            await raesumAudit.create('read', 'raesum_audit', null, requesterUserID);
-        } catch (error) {
-            logger.warning("Failed to log audit read action: " + error, Date.now() - start);
-            // Continue with the request even if audit logging fails
-        }
+        logger.verbose("Getting audit logs, authorization allowed", Date.now() - start);
 
         // Extract query parameters
         const {  

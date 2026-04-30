@@ -4,6 +4,7 @@ import raesumDB from "../modules/raesumDB.js";
 import path from "path";
 import fs from "fs";
 import raesumUser from "./raesumUser.js";
+import { json } from "stream/consumers";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -241,17 +242,22 @@ class raesumAuthorizationObject {
         // Convert object type string to ID
         try {
             objectTypeString = await this.convertObjectTypeStringToID(objectTypeString);
+            logger.debug("Permission Converted object type string to ID (" + objectTypeString + ")");
         } catch (e) {
-            throw e;
+            logger.error("Failed to convert object type string (" + objectTypeString + ") to ID: " + e);
+            return false;
         }
 
         // Convert action type string to ID
         try {
             actionString = await this.convertActionStringToID(actionString);
+            logger.debug("Permission Converted action type string to ID  (" + actionString + ")");
         } catch (e) {
-            throw e;
+            logger.error("Failed to convert action string (" + actionString + ") to ID: " + e);
+            return false;
         }
 
+        logger.debug("Checking user permission for user " + userID + " on object type " + objectTypeString + " with action " + actionString + " in organization " + orgID + " for object owner " + objectOwnerUserID);
         return await this.checkUserPermissionByID(userID, objectTypeString, actionString, orgID, objectOwnerUserID);
 
     }
@@ -332,7 +338,8 @@ class raesumAuthorizationObject {
                 logger.debug("User is not the owner of the object. Getting user org to determine if org-level access is allowed", Date.now() - start);
                 // Get current user's org
 
-                const userOrg = await raesumUser.getOrgID(userID);
+                const user = await raesumUser.getUserById(userID);
+                const userOrg = user.current_organization_id;
 
                 // If the user's current org and the object's org match then look for scopes 2, 3
                 if (userOrg == orgID) {
@@ -358,6 +365,7 @@ class raesumAuthorizationObject {
                        LIMIT 1;`;
 
         const denyparams = [orgID, userID, 6, objectTypeId];
+        logger.debug("Checking for deny permission " +  + JSON.stringify(denyparams), Date.now() - start);
         const denyresult = await raesumDB.query(denyquery, denyparams);
 
         if (denyresult.rows.length > 0) {
@@ -373,12 +381,13 @@ class raesumAuthorizationObject {
                                            ON rxp.role_id = uxoxr.role_id
                                                AND uxoxr.org_id = $1
                                                AND uxoxr.user_id = $2
-                       WHERE rxp.scope_id IN $3
+                       WHERE rxp.scope_id = ANY($3)
                          AND action_id = $4
                          AND object_type_id = $5
                        LIMIT 1;`;
 
         const params = [orgID, userID, scopesRequired, actionId, objectTypeId];
+        logger.debug("Checking for permission " + JSON.stringify(params), Date.now() - start);
         const result = await raesumDB.query(query, params);
 
         if (result.rows.length > 0) {

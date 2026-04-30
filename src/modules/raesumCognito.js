@@ -426,7 +426,7 @@ class raesumCognito{
 
             // Validate the ID token to get user information
             logger.verbose("Validating ID token to get user information", Date.now() - start);
-            console.log("tokenResponse", tokenResponse);
+
             const tokenPayload = await this.validateJWTToken(tokenResponse.id_token);
 
             // Extract Cognito user ID from token
