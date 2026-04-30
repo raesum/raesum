@@ -5,6 +5,7 @@ import raesumOrganization from "./raesumOrganization.js";
 import raesumDB from "../modules/raesumDB.js";
 import raesumCache from "../modules/raesumCache.js";
 import raesumCognito from "../modules/raesumCognito.js";
+import raesumAuthorization from "../models/raesumAuthorization.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -137,8 +138,6 @@ class raesumUserObject {
             const query = "SELECT * FROM raesum_user WHERE id = $1";
             const result = await raesumDB.query(query, [id]);
             user = result.rows[0];
-            user.id = parseInt(user.id);
-            user.current_organization_id = parseInt(user.current_organization_id);
         } catch (e) {
             logger.warning("Error getting user by ID: " + e, Date.now() - start);
             throw new Error("Error getting user by ID");
@@ -148,10 +147,14 @@ class raesumUserObject {
         if (!user) {
             logger.warning(`User with ID: ${id} not found`, Date.now() - start);
             throw new Error("User not found");
-        } else {
-            logger.debug(`User with ID: ${id} found`, Date.now() - start);
-            return user;
         }
+
+        // Parse integer fields
+        user.id = parseInt(user.id);
+        user.current_organization_id = parseInt(user.current_organization_id);
+
+        logger.debug(`User with ID: ${id} found`, Date.now() - start);
+        return user;
     }
 
     /**
@@ -315,8 +318,8 @@ class raesumUserObject {
 
 
         // Get the firstUserExternalId from the system settings
-        const firstUserExternalId = await raesumConfig.get("initialization.firstUserExternalId");
         const firstUserUsername = await raesumConfig.get("initialization.firstUserUsername");
+        const firstUserEmail = await raesumConfig.get("initialization.firstUserEmail");
         const firstUserRole = await raesumConfig.get("initialization.firstUserRole");
 
         // If no organizationID is passed, assume orgID 1
@@ -326,13 +329,32 @@ class raesumUserObject {
         }
         logger.debug(`Initializing: Creating Default User for Organization ID: ${organizationID}`, Date.now() - start);
 
+        // Create the user in Cognito first
+        let cognitoUserId;
+        try {
+            logger.verbose(`Creating user in Cognito: ${firstUserUsername}`, Date.now() - start);
+            cognitoUserId = await raesumCognito.createCognitoUser(firstUserUsername, firstUserEmail, true);
+            logger.info(`User created in Cognito with ID: ${cognitoUserId}`, Date.now() - start);
+        } catch (cognitoError) {
+            logger.error(`Failed to create user in Cognito: ${cognitoError.message}`, Date.now() - start);
+            throw new Error(`Failed to create initial user in Cognito: ${cognitoError.message}`);
+        }
 
-        // Create the first user if they don't exist
-        const userID = await this.createUser(firstUserExternalId, firstUserUsername, organizationID, true);
+        // Create the first user in local database with the Cognito user ID as external_id
+        const userID = await this.createUser(cognitoUserId, firstUserUsername, organizationID, true);
 
-        logger.verbose(`User with ID: ${userID} created`, Date.now() - start);
+        logger.info(`User with ID: ${userID} created in local database`, Date.now() - start);
 
-        // TODO: Assign user to super admin role
+        // Assign user to super admin role
+        try{
+            logger.debug(`Assigning user to role: ${firstUserRole} or orgID 1`, Date.now() - start);
+            // If the role is a string, convert it into an id using getRoleByKey
+            await raesumAuthorization.addUserToRoleByKey(userID, firstUserRole);
+        } catch (e) {
+            logger.error(`Failed to assign user to role: ${e}`, Date.now() - start);
+            throw new Error(`Failed to assign user to role: ${e}`);
+        }
+        
 
 
         return userID;

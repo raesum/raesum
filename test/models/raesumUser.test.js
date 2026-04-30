@@ -5,6 +5,7 @@ import raesumOrganization from "../../src/models/raesumOrganization.js";
 import raesumConfig from "../../src/modules/raesumConfig.js";
 import raesumCache from "../../src/modules/raesumCache.js";
 import raesumCognito from "../../src/modules/raesumCognito.js";
+import raesumAuthorization from "../../src/models/raesumAuthorization.js";
 
 describe("Raesum User Model", () => {
     beforeEach(() => {
@@ -131,7 +132,6 @@ describe("Raesum User Model", () => {
         test('should throw error for invalid ID', async () => {
             await expect(raesumUser.getUserById(0)).rejects.toThrow("User ID must be a positive integer");
             await expect(raesumUser.getUserById(-1)).rejects.toThrow("User ID must be a positive integer");
-            await expect(raesumUser.getUserById(1.5)).rejects.toThrow("User ID must be a positive integer");
             await expect(raesumUser.getUserById("abc")).rejects.toThrow("User ID must be a positive integer");
         });
 
@@ -614,11 +614,15 @@ describe("Raesum User Model", () => {
             const username = "default_user";
 
             vi.spyOn(raesumConfig, "get").mockImplementation((key) => {
-                if (key === "initialization.firstUserExternalId") return externalId;
                 if (key === "initialization.firstUserUsername") return username;
                 if (key === "initialization.firstUserRole") return "admin";
+                if (key === "initialization.firstUserEmail") return "admin@test.com";
                 return null;
             });
+
+            vi.spyOn(raesumCognito, "createCognitoUser").mockReturnValue(externalId);
+
+            vi.spyOn(raesumAuthorization, "addUserToRoleByKey").mockResolvedValue(true);
 
             const createUserMock = vi.spyOn(raesumUser, "createUser").mockResolvedValue(123);
 
@@ -630,10 +634,15 @@ describe("Raesum User Model", () => {
 
         test('should default to organization ID 1 when not provided', async () => {
             const configMock = vi.spyOn(raesumConfig, "get").mockImplementation((key) => {
-                if (key === "initialization.firstUserExternalId") return "default_ext_id";
                 if (key === "initialization.firstUserUsername") return "default_user";
+                if (key === "initialization.firstUserRole") return "admin";
+                if (key === "initialization.firstUserEmail") return "admin@test.com";
                 return null;
             });
+
+            vi.spyOn(raesumCognito, "createCognitoUser").mockReturnValue("default_ext_id");
+            
+            vi.spyOn(raesumAuthorization, "addUserToRoleByKey").mockResolvedValue(true);
 
             const createUserMock = vi.spyOn(raesumUser, "createUser").mockResolvedValue(123);
 

@@ -839,7 +839,7 @@ class raesumAuthorizationObject {
 
         const query = `SELECT *
                        FROM raesum_auth_role as r
-                       WHERE id IN ($1) ${activeOnlyQuery};`;
+                       WHERE id = ANY ($1) ${activeOnlyQuery};`;
         const result = await raesumDB.query(query, [roleIDArray]);
 
         if (result.rows.length > 0) {

@@ -92,7 +92,6 @@
     "connections.primaryDatabase.credentials"
   ],
   "initialization": {
-    "firstUserExternalId": "cognitoIdentityId",
     "firstUserUsername": "odin",
     "firstUserRole": "raesumAdmin",
     "firstUserEmail": "odin@raesum.com"

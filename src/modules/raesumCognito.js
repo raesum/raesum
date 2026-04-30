@@ -13,7 +13,9 @@ import {
         GlobalSignOutCommand,
         AdminSetUserSettingsCommand,
         AdminDisableUserCommand,
-        AdminEnableUserCommand
+        AdminEnableUserCommand,
+        AdminCreateUserCommand,
+        AdminGetUserCommand
 } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand } from "@aws-sdk/client-cognito-identity";
 import raesumCache from "./raesumCache.js";
@@ -592,6 +594,119 @@ class raesumCognito{
         } catch (error) {
             logger.error(`Failed to ${enabled ? 'enable' : 'disable'} Cognito user ${username}: ${error.message}`, Date.now() - start);
             throw new Error(`Failed to ${enabled ? 'enable' : 'disable'} Cognito user: ${error.message}`);
+        }
+    }
+
+    /**
+     * Creates a new user in Cognito or returns existing user ID if already present
+     * @param {string} username - The username for the new user
+     * @param {string} email - The email address for the new user
+     * @param {boolean} [suppressMessage=false] - Whether to suppress the welcome message
+     * @return {string} The Cognito user ID (sub) of the created or existing user
+     * @throws {Error} if unable to create user or get user info
+     */
+    async createCognitoUser(username, email, suppressMessage = false) {
+        const start = Date.now();
+
+        // Validate inputs
+        if (typeof username !== 'string' || username.length < 1) {
+            throw new Error("Username must be a non-empty string");
+        }
+        if (typeof email !== 'string' || email.length < 1) {
+            throw new Error("Email must be a non-empty string");
+        }
+
+        // Initialize the cognito client
+        logger.verbose(`Initializing AWS Cognito client for user: ${username}`, Date.now() - start);
+        const awsCognitoConfig = await buildAWSClientConfig();
+        const client = new CognitoIdentityProviderClient(awsCognitoConfig);
+
+        const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
+
+        // First, check if user already exists
+        try {
+            logger.verbose(`Checking if user ${username} already exists in Cognito`, Date.now() - start);
+            const getUserCommand = new AdminGetUserCommand({
+                UserPoolId: userPoolId,
+                Username: username
+            });
+
+            const existingUserResponse = await client.send(getUserCommand);
+            const existingUserId = existingUserResponse.UserAttributes?.find(attr => attr.Name === 'sub')?.Value;
+
+            if (existingUserId) {
+                logger.info(`User ${username} already exists in Cognito with ID: ${existingUserId}`, Date.now() - start);
+                return existingUserId;
+            }
+        } catch (getUserError) {
+            // If UserNotFoundException, proceed to create the user
+            if (getUserError.name === 'UserNotFoundException') {
+                logger.verbose(`User ${username} not found in Cognito, proceeding to create`, Date.now() - start);
+            } else {
+                // Other errors when checking user - log but don't throw, try to create anyway
+                logger.info(`Error checking if user ${username} exists: ${getUserError.message}`, Date.now() - start);
+            }
+        }
+
+        // Create the user
+        try {
+            const createCommand = new AdminCreateUserCommand({
+                UserPoolId: userPoolId,
+                Username: username,
+                UserAttributes: [
+                    {
+                        Name: 'email',
+                        Value: email
+                    },
+                    {
+                        Name: 'email_verified',
+                        Value: 'true'
+                    }
+                ],
+                MessageAction: suppressMessage ? 'SUPPRESS' : undefined,
+                DesiredDeliveryMediums: suppressMessage ? undefined : ['EMAIL']
+            });
+
+            logger.verbose(`Sending AdminCreateUser command for user: ${username}`, Date.now() - start);
+            const response = await client.send(createCommand);
+
+            // Extract the Cognito user ID (sub) from the response
+            const cognitoUserId = response.User?.Attributes?.find(attr => attr.Name === 'sub')?.Value;
+
+            if (!cognitoUserId) {
+                throw new Error("Cognito user created but no sub attribute found in response");
+            }
+
+            logger.info(`Successfully created Cognito user: ${username} with ID: ${cognitoUserId}`, Date.now() - start);
+            return cognitoUserId;
+
+        } catch (createError) {
+            // If user already exists (race condition), try to get them
+            if (createError.name === 'UsernameExistsException') {
+                logger.verbose(`User ${username} already exists (race condition), fetching existing user`, Date.now() - start);
+                try {
+                    const getUserCommand = new AdminGetUserCommand({
+                        UserPoolId: userPoolId,
+                        Username: username
+                    });
+
+                    const existingUserResponse = await client.send(getUserCommand);
+                    const existingUserId = existingUserResponse.UserAttributes?.find(attr => attr.Name === 'sub')?.Value;
+
+                    if (existingUserId) {
+                        logger.info(`Retrieved existing Cognito user: ${username} with ID: ${existingUserId}`, Date.now() - start);
+                        return existingUserId;
+                    } else {
+                        throw new Error("User exists but no sub attribute found");
+                    }
+                } catch (finalError) {
+                    logger.error(`Failed to retrieve existing user ${username}: ${finalError.message}`, Date.now() - start);
+                    throw new Error(`User exists but unable to retrieve: ${finalError.message}`);
+                }
+            }
+
+            logger.error(`Failed to create Cognito user ${username}: ${createError.message}`, Date.now() - start);
+            throw new Error(`Failed to create Cognito user: ${createError.message}`);
         }
     }
 
