@@ -71,6 +71,12 @@ class raesumUserObject {
 
         // If the username is not unique, throw error
         if (user) {
+            // if the username and the external id and the active status match, return the user
+            if (user.username === username && user.external_id === external_id && user.active_status === activeStatus) {
+                logger.warning("Attemted to create user with cognitoID " + external_id + " but user already exists with matching username and cognitoID");
+                return user.id;
+            }
+
             throw new Error("Username is not unique");
         }
 

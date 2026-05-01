@@ -594,7 +594,11 @@ class raesumAuthorizationObject {
         // If the orgID is not submitted
         if (typeof orgID != "number" || orgID < 1) {
             logger.debug("OrgID not submitted. Getting current orgID for user", Date.now() - start);
-            orgID = await raesumUser.getOrgID(userID);
+            // Get the user
+            const user = await raesumUser.getUserById(userID);
+            
+            // set the orgID equal to the user's current org
+            orgID = user.org_id;
         }
 
         const query = ` SELECT allowedRole.id as role_id, oxu.user_id, oxu.org_id
@@ -698,7 +702,8 @@ class raesumAuthorizationObject {
         // If the orgID is not submitted
         if (typeof orgID != "number" || orgID < 1) {
             logger.debug("OrgID not submitted. Getting current orgID for user", Date.now() - start);
-            orgID = await raesumUser.getOrgID(userID);
+            const user = await raesumUser.getUserByID(userID);
+            orgID = user.org_id;
         }
 
         // Remove the user from the role

@@ -275,7 +275,7 @@ class raesumUserController {
 
         }
         
-        user = await raesumUser.getUserById(parseInt(user.id));
+        user = await this.getUserById(parseInt(user.id));
 
 
         // Set the post_login_url to the default
