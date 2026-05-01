@@ -86,6 +86,23 @@
       "userPoolId": null,
       "tokenExpiration": 3600000,
       "enableTokenRevocation":true
+    },
+    "s3": {
+      "public": {
+        "bucketName": "localhost-public",
+        "baseUrl": null,
+        "keyPrefix":null
+      },
+      "quarantine": {
+        "bucketName": "localhost-quarantine",
+        "baseUrl": null,
+        "keyPrefix":null
+      },
+      "private": {
+        "bucketName": "localhost-private",
+        "baseUrl": null,
+        "keyPrefix":null
+      }
     }
   },
   "cloudBasedSecrets": [

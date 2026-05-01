@@ -108,7 +108,7 @@
     "title": "Not Authorized",
     "message": "This user is not authorized to perform action {0}: {1}",
     "description": "The user tried to perform an action they do not have permissions for.",
-    "code": 401,
+    "code": 403,
     "keycode": 16
   },
   "requestInvalidFields":{
@@ -117,5 +117,33 @@
     "description": "The request was not successful due to invalid values submitted int he request.",
     "code": 400,
     "keycode": 17
+  },
+  "fileTypeNotAllowed": {
+    "title": "File Type Not Allowed",
+    "message": "The file type is not allowed or doesn't match the expected type.",
+    "description": "The file type is not allowed or doesn't match the expected type.",
+    "code": 400,
+    "keycode": 18
+  },
+  "fileDimensionsTooLarge": {
+    "title": "File Dimensions Too Large",
+    "message": "The file dimensions are too large.",
+    "description": "The file dimensions are too large.",
+    "code": 400,
+    "keycode": 19
+  },
+  "fileSizeTooLarge": {
+    "title": "File Size Too Large",
+    "message": "The file size is too large.",
+    "description": "The file size is too large.",
+    "code": 400,
+    "keycode": 20
+  },
+  "fileInQuarantine": {
+    "title": "File In Quarantine",
+    "message": "The file is currently being scanned and validated.",
+    "description": "The file is currently in the quarantine system and is being scanned and validated.",
+    "code": 202,
+    "keycode": 21
   }
 }
