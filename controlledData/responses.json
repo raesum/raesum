@@ -117,5 +117,12 @@
     "description": "The request was not successful due to invalid values submitted int he request.",
     "code": 400,
     "keycode": 17
+  },
+    "loggedOut": {
+    "title": "Logged Out",
+    "message": "User is logged in.",
+    "description": "User is logged in.",
+    "code": 200,
+    "keycode": 18
   }
 }

@@ -327,6 +327,7 @@ class raesumUserObject {
         const firstUserUsername = await raesumConfig.get("initialization.firstUserUsername");
         const firstUserEmail = await raesumConfig.get("initialization.firstUserEmail");
         const firstUserRole = await raesumConfig.get("initialization.firstUserRole");
+        const firstUserPassword = await raesumConfig.get("initialization.firstUserPassword");
 
         // If no organizationID is passed, assume orgID 1
         if (!organizationID || isNaN(organizationID) || organizationID < 1) {
@@ -339,7 +340,7 @@ class raesumUserObject {
         let cognitoUserId;
         try {
             logger.verbose(`Creating user in Cognito: ${firstUserUsername}`, Date.now() - start);
-            cognitoUserId = await raesumCognito.createCognitoUser(firstUserUsername, firstUserEmail, true);
+            cognitoUserId = await raesumCognito.createCognitoUser(firstUserUsername, firstUserEmail, firstUserPassword, true);
             logger.info(`User created in Cognito with ID: ${cognitoUserId}`, Date.now() - start);
         } catch (cognitoError) {
             logger.error(`Failed to create user in Cognito: ${cognitoError.message}`, Date.now() - start);
@@ -353,9 +354,9 @@ class raesumUserObject {
 
         // Assign user to super admin role
         try{
-            logger.debug(`Assigning user to role: ${firstUserRole} or orgID 1`, Date.now() - start);
+            logger.info(`Assigning user with ID: ${userID} to role: ${firstUserRole} or orgID 1`, Date.now() - start);
             // If the role is a string, convert it into an id using getRoleByKey
-            await raesumAuthorization.addUserToRoleByKey(userID, firstUserRole);
+            await raesumAuthorization.addUserToRoleByKey(userID, firstUserRole, organizationID);
         } catch (e) {
             logger.error(`Failed to assign user to role: ${e}`, Date.now() - start);
             throw new Error(`Failed to assign user to role: ${e}`);

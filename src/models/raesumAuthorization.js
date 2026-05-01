@@ -598,10 +598,11 @@ class raesumAuthorizationObject {
             const user = await raesumUser.getUserById(userID);
             
             // set the orgID equal to the user's current org
-            orgID = user.org_id;
+            orgID = user.current_organization_id;
         }
 
-        const query = ` SELECT allowedRole.id as role_id, oxu.user_id, oxu.org_id
+        const query = ` INSERT INTO raesum_auth_user_x_organization_x_role
+                        SELECT allowedRole.id as role_id, oxu.user_id, oxu.org_id
                         FROM (SELECT r.id as id, rxor.org_id as org_id
                               FROM raesum_auth_role as r
                                        INNER JOIN raesum_auth_role_x_organization_restriction as rxor

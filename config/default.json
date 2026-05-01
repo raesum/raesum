@@ -94,7 +94,8 @@
   "initialization": {
     "firstUserUsername": "odin",
     "firstUserRole": "raesumAdmin",
-    "firstUserEmail": "odin@raesum.com"
+    "firstUserEmail": "odin@raesum.com",
+    "firstUserPassword": "changeThisFromDefault"
   },
   "developmentAndTesting": {
     "developmentMode":false,

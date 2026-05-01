@@ -1,23 +1,59 @@
-import { Router } from 'express';
-import raesumAuditController from '../controllers/raesumAudit.js';
-
-const router = Router();
+import express from 'express';
+import raesumHealthController from "../controllers/raesumHealth.js";
+const raesumHealthRouter = express.Router();
 
 /**
- * GET /api/v1/audit/logs
- * Get audit logs with optional filtering and sorting
- * 
- * Query Parameters:
- * - organizationId (integer, required): Organization ID to filter logs for
- * - userId (integer, optional): Filter logs for specific user ID
- * - objectTypeID (integer, optional): Filter logs for specific object type ID
- * - actionTypeID (integer, optional): Filter logs for specific action type ID
- * - sortBy (string, optional): Sort field - 'date', 'user_id', 'object_type_id', 'action_type_id' (default: 'date')
- * - sortOrder (string, optional): Sort order - 'ASC' or 'DESC' (default: 'DESC')
- * 
- * Authentication: Required
- * Authorization: Required - User must have 'read' permission on 'audit' object type
+ * @swagger
+ * /api/v1/health:
+ *   get:
+ *     summary: Health check endpoint
+ *     description: Returns the health status of the Raesum application and its dependencies
+ *     tags:
+ *       - Health
+ *     responses:
+ *       200:
+ *         description: Application is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "healthy"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                 version:
+ *                   type: string
+ *                   description: Application version
+ *       503:
+ *         description: Service unavailable - one or more dependencies are unhealthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "unhealthy"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       service:
+ *                         type: string
+ *                         example: "database"
+ *                       error:
+ *                         type: string
+ *                         example: "Connection timeout"
+ *       500:
+ *         description: Internal server error during health check
  */
-router.get('/logs', raesumAuditController.getAuditLogs);
+raesumHealthRouter.get('/', raesumHealthController);
 
-export default router;
+export default raesumHealthRouter;

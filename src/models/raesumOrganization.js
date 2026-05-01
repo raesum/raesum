@@ -15,6 +15,19 @@ class raesumOrganizationObject {
         const start = Date.now();
 
         logger.info("Initializing: Creating Default Organization", Date.now() - start);
+
+        try{
+            // If orgID 1 already exists, don't create it again
+            const existingOrg = await this.getById(1);
+            if (existingOrg) {
+                logger.warning("Default organization already exists, skipping creation", Date.now() - start);
+                return 1;
+            }
+        } catch (e) {
+            logger.info("No default organization found, creating one", Date.now() - start);
+        }
+
+
         // Create the default organization
         return this.create("Default Organization", "This is the default organization for the Raesum system.");
     }

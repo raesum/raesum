@@ -6,6 +6,7 @@ import raesumServer from "../modules/raesumServer.js";
 import raesumResponses from "../modules/raesumResponses.js";
 import raesumAudit from "../models/raesumAudit.js";
 import raesumUser from "../models/raesumUser.js";
+import raesumAuthorization from "../models/raesumAuthorization.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -275,7 +276,7 @@ class raesumUserController {
 
         }
         
-        user = await this.getUserById(parseInt(user.id));
+        user = await raesumUser.getUserById(parseInt(user.id));
 
 
         // Set the post_login_url to the default
@@ -420,7 +421,66 @@ class raesumUserController {
     }
 
 
+    
+    // Gets a user by ID, default to current user if no ID provided
+    async getUserById(req,res,next){
 
+        let userId = null
+
+        // If no user ID is provided, use the current user
+        if (!req.params.userId) {
+            userId = req.user.id;
+        }
+
+            // Use raesum authorization to check to see if this user may access the requested object
+        let isAuthorized = await raesumAuthorization.checkUserPermission(
+                req.user.id, 
+                'raesum_user', 
+                'read', 
+                req.user.current_organization_id, 
+                userId
+            );
+        
+        if (!isAuthorized) {
+            // If not, get the not authorized message and return the rejected request
+            const message = await raesumResponses.get("notAuthorized",["read","raesum_user"]);
+            return res.status(message.code).json(message);
+        }
+
+        // Get the user
+        const user = await raesumUser.getUserById(userId);
+        
+        // Return the user
+        return res.status(200).json(user);
+    }
+
+
+    // Gets a list of user meta data keys
+    async getMetaDataKeys(req,res,news){}
+
+    
+    // Gets all user meta data for a user by ID. default to the current user if no ID provided
+    async getAllUserMetaData(req,res,next){}
+
+
+    // Gets one user meta data by key for a user by ID. default to the current user if no ID provided
+    async getOneUserMetaData(req,res,next){}
+
+
+    // Update one user meta data by key for a user by ID. default to the current user if no ID provided.
+    async setOneUserMetaData(req,res,next){}
+
+
+    // Changes the user activation status. Does nothing to inactive if no status provided and the current user if no ID provided
+    async setUserActivation(req,res,next){}
+
+
+    // Changes the current organization for a user by ID. default to the current user if no ID provided
+    async changeUserOrg(req,res,next){}
+
+
+    // Gets the list of allowed organizations for this user
+    async getAllowedOrgs(req,res,next){}
 
 }
 

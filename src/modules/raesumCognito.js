@@ -601,11 +601,12 @@ class raesumCognito{
      * Creates a new user in Cognito or returns existing user ID if already present
      * @param {string} username - The username for the new user
      * @param {string} email - The email address for the new user
+     * @param {string} initialPassword - The initial password for the new user
      * @param {boolean} [suppressMessage=false] - Whether to suppress the welcome message
      * @return {string} The Cognito user ID (sub) of the created or existing user
      * @throws {Error} if unable to create user or get user info
      */
-    async createCognitoUser(username, email, suppressMessage = false) {
+    async createCognitoUser(username, email, initialPassword, suppressMessage = false) {
         const start = Date.now();
 
         // Validate inputs
@@ -614,6 +615,9 @@ class raesumCognito{
         }
         if (typeof email !== 'string' || email.length < 1) {
             throw new Error("Email must be a non-empty string");
+        }
+        if (typeof initialPassword !== 'string' || initialPassword.length < 1) {
+            throw new Error("Initial password must be a non-empty string");
         }
 
         // Initialize the cognito client
@@ -653,6 +657,7 @@ class raesumCognito{
             const createCommand = new AdminCreateUserCommand({
                 UserPoolId: userPoolId,
                 Username: username,
+                TemporaryPassword: initialPassword,
                 UserAttributes: [
                     {
                         Name: 'email',
