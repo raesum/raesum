@@ -13,6 +13,21 @@ const logger = raesumLogger(__filename);
 
 // amazon-cognito-identity-js
 
+/*
+
+req.user example:
+{
+  id: 1,
+  current_organization_id: 1,
+  external_id: 'a big uuid',
+  username: 'odin',
+  active_status: true,
+  created_at: 2026-05-01T22:22:43.705Z
+}
+
+*/
+
+
 class raesumUserController {
 
     /*
@@ -271,12 +286,21 @@ class raesumUserController {
                 req.session.loginType = "sessionCookie";
                 req.session.loggedIn = true;
 
+                // Update user metadata from Cognito
+                try{
+                    await raesumUser.syncUserFromCognitoToRaesum(tokenPayload.sub);
+                } catch (error) {
+                    logger.warning(`Failed to sync user from Cognito to Raesum: ${error.message}`, Date.now() - start);
+                }
+
                 logger.info(`User ${tokenPayload.sub} successfully logged in via session cookie`, Date.now() - start);
 
 
+        }else{
+            logger.info("User is already logged in via session cookie", Date.now() - start);
         }
         
-        user = await raesumUser.getUserById(parseInt(user.id));
+        user = await raesumUser.getUserById(parseInt(req.session.userID));
 
 
         // Set the post_login_url to the default
@@ -400,6 +424,13 @@ class raesumUserController {
                 }
             };
 
+                            // Update user metadata from Cognito
+            try{
+                    await raesumUser.syncUserFromCognitoToRaesum(tokenPayload.sub);
+            } catch (error) {
+                    logger.warning(`Failed to sync user from Cognito to Raesum: ${error.message}`, Date.now() - start);
+            }
+
             // Add audit log entry
             await raesumAudit.create("log_in", "raesum_user", user.id, user.id);
             const message = await raesumResponses.get("loggedIn",[user.id]);
@@ -424,6 +455,7 @@ class raesumUserController {
     
     // Gets a user by ID, default to current user if no ID provided
     async getUserById(req,res,next){
+        const start = Date.now();
 
         let userId = null
 
@@ -451,16 +483,91 @@ class raesumUserController {
         const user = await raesumUser.getUserById(userId);
         
         // Return the user
+        logger.info(`User ${userId} retrieved`, Date.now() - start);
+
+        // Add audit log entry 
+        await raesumAudit.create("read", "raesum_user", userId, req.user.id);
+        
+
         return res.status(200).json(user);
     }
 
 
     // Gets a list of user meta data keys
-    async getMetaDataKeys(req,res,news){}
+    async getMetaDataKeys(req,res,next){
+        const start = Date.now();
+
+        // Use raesum authorization to check to see if this user may access the requested object
+        let isAuthorized = await raesumAuthorization.checkUserPermission(
+                req.user.id, 
+                'raesum_user', 
+                'read', 
+                req.user.current_organization_id, 
+                null
+            );
+        
+        if (!isAuthorized) {
+            // If not, get the not authorized message and return the rejected request
+            const message = await raesumResponses.get("notAuthorized",["read","raesum_user"]);
+            return res.status(message.code).json(message);
+        }
+
+        // Get the metadata keys
+        const keys = await raesumUser.getMetadataKeys();
+
+        logger.info(`Metadata keys retrieved`, Date.now() - start);
+
+        // Add audit log entry 
+        await raesumAudit.create("read", "raesum_user", userId, req.user.id);
+
+        
+        // Return the keys
+        return res.status(200).json(keys);
+    }
 
     
     // Gets all user meta data for a user by ID. default to the current user if no ID provided
-    async getAllUserMetaData(req,res,next){}
+    async getAllUserMetaData(req,res,next){
+        const start = Date.now();
+
+        let userId = null
+
+        // If no user ID is provided, use the current user
+        if (!req.params.userId) {
+            userId = req.user.id;
+        } else {
+            userId = parseInt(req.params.userId);
+        }
+
+        // Use raesum authorization to check to see if this user may access the requested object
+        let isAuthorized = await raesumAuthorization.checkUserPermission(
+                req.user.id, 
+                'raesum_user', 
+                'read', 
+                req.user.current_organization_id, 
+                userId
+            );
+        
+        if (!isAuthorized) {
+            // If not, get the not authorized message and return the rejected request
+            const message = await raesumResponses.get("notAuthorized",["read","raesum_user"]);
+            return res.status(message.code).json(message);
+        }
+
+        // Get all metadata keys
+        const allKeys = await raesumUser.getMetadataKeyList();
+
+        // Get the metadata values for the user
+        const metadata = await raesumUser.getUserMetadataValues(userId, allKeys);
+        
+        logger.info(`User metadata retrieved for user ${userId}`, Date.now() - start);
+
+        // Add audit log entry 
+        await raesumAudit.create("read", "raesum_user", userId, req.user.id);
+
+        // Return the metadata
+        return res.status(200).json(metadata);
+    }
 
 
     // Gets one user meta data by key for a user by ID. default to the current user if no ID provided
@@ -470,6 +577,50 @@ class raesumUserController {
     // Update one user meta data by key for a user by ID. default to the current user if no ID provided.
     async setOneUserMetaData(req,res,next){}
 
+    // Delete one user meta data by key for a user by ID. default to the current user if no ID provided.
+    async deleteOneUserMetaData(req,res,next){}
+
+
+    // Resync user from Cognito to Raesum. ONLY applies to current user
+    async resyncUserFromCognito(req,res,next){
+        const start = Date.now();
+
+        logger.debug("Attempting resyncing user from Cognito " + req.user.username, Date.now() - start );
+        // Use raesum authorization to check to see if this user may access the requested object
+        let isAuthorized = await raesumAuthorization.checkUserPermission(
+                req.user.id, 
+                'raesum_user', 
+                'update', 
+                req.user.current_organization_id, 
+                req.user.id
+            );
+        if (!isAuthorized) {
+            // If not, get the not authorized message and return the rejected request
+            logger.debug("Resyncing user from Cognito permission denied " + req.user.id, Date.now() - start );
+            const message = await raesumResponses.get("notAuthorized",["update","raesum_user"]);
+            return res.status(message.code).json(message);
+        }
+
+        logger.info("Resyncing user from Cognito " + req.user.username, Date.now() - start);
+
+        try{
+
+console.log(req.user)
+            await raesumUser.syncUserFromCognitoToRaesum(req.user.username);
+            logger.info(`User resynced from Cognito for user ${req.user.external_id}`, Date.now() - start);
+             const message = await raesumResponses.get("success");
+
+            await raesumAudit.create("update", "raesum_user", req.user.id, req.user.id);
+            return res.status(message.code).json(message);
+
+        }
+        catch(error){
+            logger.error(`Error resyncing user from Cognito for user ${req.user.id}: ${error.message}`, error);
+            const message = await raesumResponses.get("error");
+            return res.status(message.code).json(message);
+        }
+
+    }
 
     // Changes the user activation status. Does nothing to inactive if no status provided and the current user if no ID provided
     async setUserActivation(req,res,next){}

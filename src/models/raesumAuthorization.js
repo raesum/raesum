@@ -226,6 +226,7 @@ class raesumAuthorizationObject {
      * @param  {String} actionString The string key of the action
      * @param  {Number} orgID The ID of the organization
      * @param  {Number} objectOwnerUserID The ID of the user who owns the object
+     * @param  {Array} [scopesRequired=[]] An array of scopes required to perform the action
      * @return {Boolean} Whether the user has permission or not
      * @throws {Error} If the user ID is not a positive int
      * @throws {Error} If the object type string is not a string or is not a valid object type

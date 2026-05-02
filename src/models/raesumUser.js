@@ -762,7 +762,7 @@ class raesumUserObject {
      * @throw {Error} If any of the values are not valid (string, boolean, number)
      */
     async getUserMetadataValues(userId, keys, activeStatus = false) {
-
+        const start = Date.now();
         // Throw an error if the userId is not a positive number
         userId = parseInt(userId);
         if (isNaN(userId) || userId < 1 || !Number.isInteger(userId)) {
@@ -776,27 +776,29 @@ class raesumUserObject {
 
         // Remove invalid keys from list
         keys = keys.filter(key => validKeys.includes(key));
-
+console.log("KEYS",keys)
+console.log("userID",userId)
         const sql = `SELECT rumk.datakey, ruxm.value as value
                      FROM raesum_user_x_metadata as ruxm
                               INNER JOIN raesum_user_metadata_keys as rumk on ruxm.key_id = rumk.id
                      WHERE ruxm.user_id = $1
-                       AND rumk.datakey IN ($2)`;
+                       AND rumk.datakey = ANY($2)`;
 
         // Run the query
         try {
             const response = await raesumDB.query(sql, [userId, keys]);
-
+console.log("ROWS",response.rows)
             // Turn results into object and return
             let values = {};
             for (let i = 0; i < response.rows.length; i++) {
                 values[response.rows[i].datakey] = response.rows[i].value;
             }
 
+            logger.info(`Retrieved user metadata values for keys ${keys.join(", ")}`, Date.now() - start);
             return values;
 
         } catch (e) {
-            throw new Error("Error getting user metadata values");
+            throw new Error("Error getting user metadata values", Date.now() - start);
         }
 
 
@@ -812,7 +814,8 @@ class raesumUserObject {
      * @throw {Error} If the user does not exist
      * @throw {Error} If any of the values are not valid (string, boolean, number)
      */
-    async setUserMetadataValues(userId, values, activeStatus = false) {
+    async setUserMetadataValues(userId, values, activeStatus = false, updateCognito = true) {
+        const start = Date.now();
 
         // Get the userID
         try {
@@ -829,6 +832,7 @@ class raesumUserObject {
             }
         }
 
+        logger.debug(`Attempting to update user metadata`, Date.now() - start);
 
         // Get the list of user metadata values
         const validKeys = await this.getMetadataKeyList(activeStatus);
@@ -846,6 +850,7 @@ class raesumUserObject {
 
         // Check to see if there are existing metadata values
         const existingValues = await this.getUserMetadataValues(userId, keyList, activeStatus);
+        
         const existingValuesKeyList = Object.keys(existingValues);
 
         let updateKeyList = [];
@@ -893,7 +898,7 @@ class raesumUserObject {
         try {
             await raesumDB.query(sql, valuesArray);
         } catch (e) {
-            throw new Error("Error inserting new user metadata values");
+            throw new Error("Error inserting new user metadata values", Date.now() - start);
         }
 
         // Update the existing keys
@@ -904,15 +909,18 @@ class raesumUserObject {
                    WHERE user_id = $2
                      AND key_id = $3;`;
             try {
-                await raesumDB.query(sql, [values[updateKeyList[q]], userId, updateKeyList[q]]);
+                await raesumDB.query(sql, [values[updateKeyList[q]], userId, keyIndex[updateKeyList[q]]]);
             } catch (e) {
-                throw new Error("Error inserting new user metadata values");
+                throw new Error("Error updating new user metadata values", Date.now() - start);
             }
         }
 
-        // Update any cognito controlled keys
+        if(updateCognito){
+            // Update any cognito controlled keys. This should be skipped if PULLING values from cognito OR if cognito doesn't allow them to be updated.
 
-            // TO-DO: Update cognito with new values
+                // TO-DO: Update cognito with new values
+        }
+
 
 
         return true;
@@ -923,34 +931,102 @@ class raesumUserObject {
 
     /**
      * Copies user and metadata from AWS Cognito pool to Raesum. This will also CREATE users.
-     * @param  {String} external_id The ID of the user in the external (AWS Cognito) system
+     * @param  {String} username The username of the user in the external (AWS Cognito) system
      * @return {Number} The internal raesum user ID
      * @throw {Error} If the external_id not found in AWS
      * @throw {Error} If the user create process fails
      */
 
-    async syncUserFromCognitoToRaesum(external_id) {
+    async syncUserFromCognitoToRaesum(username) {
+        const start = Date.now();
+
         // If external_id is not a string, throw error
-        if (typeof external_id !== 'string' || external_id.length < 1) {
+        if (typeof username !== 'string' || username.length < 1) {
             throw new Error("External ID must be a non-empty string");
+        }
+
+        // Get the user from AWS
+        logger.verbose(`Getting user from Cognito: ${username}`, Date.now() - start);
+        let cognitoUser;
+        try {
+            cognitoUser = await raesumCognito.getCognitoUser(username);
+        } catch (error) {
+            logger.error(`User ${external_id} not found in AWS Cognito: ${error.message}`, Date.now() - start);
+            throw new Error(`User not found in AWS Cognito: ${error.message}`);
+        }
+
+        // Get metadata from aws (UserAttributes)
+        const userAttributes = cognitoUser.UserAttributes || [];
+        const cognitoMetadata = {};
+        let email = '';
+        let external_id = '';
+
+        userAttributes.forEach(attr => {
+            if (attr.Name === 'sub') {
+                // sub is the external_id, skip
+                external_id = attr.Value;
+            } else if (attr.Name === 'cognito:username' || attr.Name === 'preferred_username') {
+                username = attr.Value;
+            } else {
+                // This is a metadata attribute
+                cognitoMetadata[attr.Name] = attr.Value;
             }
+        });
 
-            // Get the user from AWS
+        if(external_id == ''){
+            logger.error("Cannot continue to sync user metadata to Raesum,external ID is empty", Date.now() - start);
+            throw new Error("External ID is empty");
+        }
 
-            // Get metadata from aws
 
-            // Get the user from raesum
+        // Get the user from raesum
+        let raesumUserId = null;
+        try {
+            const existingUser = await this.getUserByExternalID(external_id);
+            raesumUserId = existingUser.id;
+            logger.verbose(`User ${external_id} found in Raesum with ID: ${raesumUserId}`, Date.now() - start);
+        } catch (error) {
+            // If no user is found, create the user
+            logger.info(`User ${external_id} not found in Raesum, creating new user`, Date.now() - start);
+            try {
+                const newUserDefaults = await raesumConfig.get("newUserDefaults");
+                raesumUserId = await this.createUser(
+                    external_id,
+                    username,
+                    newUserDefaults.currentOrganizationId,
+                    newUserDefaults.activeStatus
+                );
+                logger.info(`Created new user in Raesum for Cognito user ${external_id} with ID: ${raesumUserId}`, Date.now() - start);
+            } catch (createError) {
+                logger.error(`Failed to create user in Raesum: ${createError.message}`, Date.now() - start);
+                throw new Error(`Failed to create user in Raesum: ${createError.message}`);
+            }
+        }
 
-                // If no user is found, create the user
+        // Get possible metadata keys in raesum that are active
+        const activeKeys = await this.getMetadataKeyList(false);
 
-            // Get possible metadata keys in raesum that are active
+        // For each key from aws
+        const valuesToSet = {};
+        for (const key in cognitoMetadata) {
+            // If active in raesum, add it to a values list
+            if (activeKeys.includes(key)) {
+                valuesToSet[key] = cognitoMetadata[key];
+            }
+        }
 
-            // For each key from aws
+        // Run bulk key set
+        if (Object.keys(valuesToSet).length > 0) {
+            try {
+                await this.setUserMetadataValues(raesumUserId, valuesToSet, true, false);
+                logger.info(`Synced ${Object.keys(valuesToSet).length} metadata values for user ${external_id}`, Date.now() - start);
+            } catch (metadataError) {
+                logger.error(`Failed to set metadata values for user ${external_id}: ${metadataError.message}`, Date.now() - start);
+                // Don't throw - we still want to return the user ID even if metadata sync fails
+            }
+        }
 
-                // If active in raesum, add it to a values list
-
-            // Run bulk key set
-
+        return raesumUserId;
     }
 
 

@@ -730,6 +730,39 @@ class raesumCognito{
         }
     }
 
+    /**
+     * Gets a user from Cognito by username
+     * @param {string} username - The username (or sub/cognitoID) of the user
+     * @return {Object} The Cognito user object with UserAttributes array
+     * @throws {Error} if user not found or unable to retrieve
+     */
+    async getCognitoUser(username) {
+        const start = Date.now();
+
+        try {
+            // Initialize the cognito client
+            logger.verbose(`Getting Cognito user: ${username}`, Date.now() - start);
+            const awsCognitoConfig = await buildAWSClientConfig();
+            const client = new CognitoIdentityProviderClient(awsCognitoConfig);
+
+            const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
+
+            const getUserCommand = new AdminGetUserCommand({
+                UserPoolId: userPoolId,
+                Username: username
+            });
+
+            const response = await client.send(getUserCommand);
+
+            logger.info(`Successfully retrieved Cognito user: ${username}`, Date.now() - start);
+            return response;
+
+        } catch (error) {
+            logger.error(`Failed to get Cognito user ${username}: ${error.message}`, Date.now() - start);
+            throw new Error(`Failed to get Cognito user: ${error.message}`);
+        }
+    }
+
 }
 
 const singleInstance = new raesumCognito();

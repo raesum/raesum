@@ -133,7 +133,6 @@ class raesumAuth {
                 logger.verbose(`Authentication Middleware - Checking Raesum User Profile for CognitoUserID: ${cognitoUserID}`, Date.now() - start);
 
                 const userProfile = await raesumUser.getUserByExternalID(cognitoUserID);
-               console.log("USER PROFILE",userProfile)
 
                 // Check to see if the user is active in Raesum
                 if(userProfile.active_status){

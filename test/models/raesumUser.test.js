@@ -641,7 +641,7 @@ describe("Raesum User Model", () => {
             });
 
             vi.spyOn(raesumCognito, "createCognitoUser").mockReturnValue("default_ext_id");
-            
+
             vi.spyOn(raesumAuthorization, "addUserToRoleByKey").mockResolvedValue(true);
 
             const createUserMock = vi.spyOn(raesumUser, "createUser").mockResolvedValue(123);
@@ -650,6 +650,221 @@ describe("Raesum User Model", () => {
 
             expect(result).toBe(123);
             expect(createUserMock).toHaveBeenCalledWith("default_ext_id", "default_user", 1, true);
+        });
+    });
+
+    describe("syncUserFromCognitoToRaesum", () => {
+        const mockExternalId = '123e4567-e89b-12d3-a456-426614174000';
+        const mockUsername = 'testuser';
+        const mockUserId = 42;
+
+        test('should throw error if external_id is not a string', async () => {
+            await expect(raesumUser.syncUserFromCognitoToRaesum(123)).rejects.toThrow('External ID must be a non-empty string');
+            await expect(raesumUser.syncUserFromCognitoToRaesum(null)).rejects.toThrow('External ID must be a non-empty string');
+            await expect(raesumUser.syncUserFromCognitoToRaesum('')).rejects.toThrow('External ID must be a non-empty string');
+        });
+
+        test('should throw error if user not found in Cognito', async () => {
+            vi.spyOn(raesumCognito, "getCognitoUser").mockRejectedValue(new Error('User not found'));
+
+            await expect(raesumUser.syncUserFromCognitoToRaesum(mockExternalId))
+                .rejects.toThrow('User not found in AWS Cognito');
+        });
+
+        test('should return existing user ID if user already exists in Raesum', async () => {
+            vi.spyOn(raesumCognito, "getCognitoUser").mockResolvedValue({
+                UserAttributes: [
+                    { Name: 'sub', Value: mockExternalId },
+                    { Name: 'cognito:username', Value: mockUsername },
+                    { Name: 'custom_department', Value: 'Engineering' }
+                ]
+            });
+
+            vi.spyOn(raesumUser, "getUserByExternalID").mockResolvedValue({
+                id: mockUserId,
+                external_id: mockExternalId,
+                username: mockUsername
+            });
+
+            vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue(['custom_department']);
+            vi.spyOn(raesumUser, "setUserMetadataValues").mockResolvedValue(true);
+
+            const result = await raesumUser.syncUserFromCognitoToRaesum(mockExternalId);
+
+            expect(result).toBe(mockUserId);
+            expect(raesumCognito.getCognitoUser).toHaveBeenCalledWith(mockExternalId);
+        });
+
+        test('should create new user if not found in Raesum', async () => {
+            vi.spyOn(raesumCognito, "getCognitoUser").mockResolvedValue({
+                UserAttributes: [
+                    { Name: 'sub', Value: mockExternalId },
+                    { Name: 'cognito:username', Value: mockUsername }
+                ]
+            });
+
+            vi.spyOn(raesumUser, "getUserByExternalID").mockRejectedValue(new Error("User not found"));
+
+            vi.spyOn(raesumConfig, "get").mockImplementation((key) => {
+                if (key === "newUserDefaults") {
+                    return {
+                        currentOrganizationId: 1,
+                        activeStatus: true
+                    };
+                }
+                return null;
+            });
+
+            vi.spyOn(raesumOrganization, "getById").mockResolvedValue({ id: 1, name: "Test Org" });
+
+            const createUserMock = vi.spyOn(raesumUser, "createUser").mockResolvedValue(mockUserId);
+            vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue([]);
+
+            const result = await raesumUser.syncUserFromCognitoToRaesum(mockExternalId);
+
+            expect(result).toBe(mockUserId);
+            expect(createUserMock).toHaveBeenCalledWith(mockExternalId, mockUsername, 1, true);
+        });
+
+        test('should use external_id as username fallback if username not found in Cognito', async () => {
+            vi.spyOn(raesumCognito, "getCognitoUser").mockResolvedValue({
+                UserAttributes: [
+                    { Name: 'sub', Value: mockExternalId }
+                ]
+            });
+
+            vi.spyOn(raesumUser, "getUserByExternalID").mockRejectedValue(new Error("User not found"));
+
+            vi.spyOn(raesumConfig, "get").mockImplementation((key) => {
+                if (key === "newUserDefaults") {
+                    return {
+                        currentOrganizationId: 1,
+                        activeStatus: true
+                    };
+                }
+                return null;
+            });
+
+            vi.spyOn(raesumOrganization, "getById").mockResolvedValue({ id: 1 });
+
+            const createUserMock = vi.spyOn(raesumUser, "createUser").mockResolvedValue(mockUserId);
+            vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue([]);
+
+            await raesumUser.syncUserFromCognitoToRaesum(mockExternalId);
+
+            expect(createUserMock).toHaveBeenCalledWith(mockExternalId, mockExternalId, 1, true);
+        });
+
+        test('should sync metadata from Cognito to Raesum for active keys only', async () => {
+            vi.spyOn(raesumCognito, "getCognitoUser").mockResolvedValue({
+                UserAttributes: [
+                    { Name: 'sub', Value: mockExternalId },
+                    { Name: 'cognito:username', Value: mockUsername },
+                    { Name: 'custom_department', Value: 'Engineering' },
+                    { Name: 'custom_inactive_key', Value: 'should_not_sync' },
+                    { Name: 'custom_valid_key', Value: 'should_sync' }
+                ]
+            });
+
+            vi.spyOn(raesumUser, "getUserByExternalID").mockResolvedValue({
+                id: mockUserId,
+                external_id: mockExternalId,
+                username: mockUsername
+            });
+
+            vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue([
+                'custom_department',
+                'custom_valid_key'
+            ]);
+
+            const setMetadataMock = vi.spyOn(raesumUser, "setUserMetadataValues").mockResolvedValue(true);
+
+            const result = await raesumUser.syncUserFromCognitoToRaesum(mockExternalId);
+
+            expect(result).toBe(mockUserId);
+            expect(setMetadataMock).toHaveBeenCalledWith(
+                mockUserId,
+                {
+                    custom_department: 'Engineering',
+                    custom_valid_key: 'should_sync'
+                },
+                true
+            );
+        });
+
+        test('should handle metadata sync failure gracefully', async () => {
+            vi.spyOn(raesumCognito, "getCognitoUser").mockResolvedValue({
+                UserAttributes: [
+                    { Name: 'sub', Value: mockExternalId },
+                    { Name: 'cognito:username', Value: mockUsername },
+                    { Name: 'custom_key', Value: 'value' }
+                ]
+            });
+
+            vi.spyOn(raesumUser, "getUserByExternalID").mockResolvedValue({
+                id: mockUserId,
+                external_id: mockExternalId,
+                username: mockUsername
+            });
+
+            vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue(['custom_key']);
+            vi.spyOn(raesumUser, "setUserMetadataValues").mockRejectedValue(new Error('Database error'));
+
+            const result = await raesumUser.syncUserFromCognitoToRaesum(mockExternalId);
+
+            expect(result).toBe(mockUserId);
+        });
+
+        test('should throw error if user creation fails', async () => {
+            vi.spyOn(raesumCognito, "getCognitoUser").mockResolvedValue({
+                UserAttributes: [
+                    { Name: 'sub', Value: mockExternalId },
+                    { Name: 'cognito:username', Value: mockUsername }
+                ]
+            });
+
+            vi.spyOn(raesumUser, "getUserByExternalID").mockRejectedValue(new Error("User not found"));
+
+            vi.spyOn(raesumConfig, "get").mockImplementation((key) => {
+                if (key === "newUserDefaults") {
+                    return {
+                        currentOrganizationId: 1,
+                        activeStatus: true
+                    };
+                }
+                return null;
+            });
+
+            vi.spyOn(raesumOrganization, "getById").mockResolvedValue({ id: 1 });
+            vi.spyOn(raesumUser, "createUser").mockRejectedValue(new Error('Database constraint violation'));
+
+            await expect(raesumUser.syncUserFromCognitoToRaesum(mockExternalId))
+                .rejects.toThrow('Failed to create user in Raesum');
+        });
+
+        test('should skip metadata sync if no matching active keys', async () => {
+            vi.spyOn(raesumCognito, "getCognitoUser").mockResolvedValue({
+                UserAttributes: [
+                    { Name: 'sub', Value: mockExternalId },
+                    { Name: 'cognito:username', Value: mockUsername },
+                    { Name: 'custom_key_from_cognito', Value: 'value' }
+                ]
+            });
+
+            vi.spyOn(raesumUser, "getUserByExternalID").mockResolvedValue({
+                id: mockUserId,
+                external_id: mockExternalId,
+                username: mockUsername
+            });
+
+            vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue(['different_key']);
+
+            const setMetadataMock = vi.spyOn(raesumUser, "setUserMetadataValues");
+
+            const result = await raesumUser.syncUserFromCognitoToRaesum(mockExternalId);
+
+            expect(result).toBe(mockUserId);
+            expect(setMetadataMock).not.toHaveBeenCalled();
         });
     });
 });
