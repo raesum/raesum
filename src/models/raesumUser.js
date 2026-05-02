@@ -776,8 +776,7 @@ class raesumUserObject {
 
         // Remove invalid keys from list
         keys = keys.filter(key => validKeys.includes(key));
-console.log("KEYS",keys)
-console.log("userID",userId)
+
         const sql = `SELECT rumk.datakey, ruxm.value as value
                      FROM raesum_user_x_metadata as ruxm
                               INNER JOIN raesum_user_metadata_keys as rumk on ruxm.key_id = rumk.id
@@ -787,7 +786,7 @@ console.log("userID",userId)
         // Run the query
         try {
             const response = await raesumDB.query(sql, [userId, keys]);
-console.log("ROWS",response.rows)
+
             // Turn results into object and return
             let values = {};
             for (let i = 0; i < response.rows.length; i++) {
