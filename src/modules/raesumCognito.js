@@ -16,7 +16,8 @@ import {
         AdminEnableUserCommand,
         AdminCreateUserCommand,
         AdminGetUserCommand,
-        AdminUpdateUserAttributesCommand
+        AdminUpdateUserAttributesCommand,
+        AdminDeleteUserAttributesCommand
 } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand } from "@aws-sdk/client-cognito-identity";
 import raesumCache from "./raesumCache.js";
@@ -796,6 +797,41 @@ class raesumCognito{
         } catch (error) {
             logger.error(`Failed to update Cognito user attributes for ${username}: ${error.message}`, Date.now() - start);
             throw new Error(`Failed to update Cognito user attributes: ${error.message}`);
+        }
+    }
+
+    /**
+     * Deletes user attributes from Cognito
+     * @param {string} username - The username (or sub/cognitoID) of the user
+     * @param {Array} attributeNames - Array of attribute names to delete
+     * @return {boolean} True if successful
+     * @throws {Error} if unable to delete attributes
+     */
+    async deleteCognitoUserAttributes(username, attributeNames) {
+        const start = Date.now();
+
+        try {
+            // Initialize the cognito client
+            logger.verbose(`Deleting Cognito user attributes for: ${username}`, Date.now() - start);
+            const awsCognitoConfig = await buildAWSClientConfig();
+            const client = new CognitoIdentityProviderClient(awsCognitoConfig);
+
+            const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
+
+            const deleteCommand = new AdminDeleteUserAttributesCommand({
+                UserPoolId: userPoolId,
+                Username: username,
+                UserAttributeNames: attributeNames
+            });
+
+            await client.send(deleteCommand);
+
+            logger.info(`Successfully deleted ${attributeNames.length} Cognito user attributes for: ${username}`, Date.now() - start);
+            return true;
+
+        } catch (error) {
+            logger.error(`Failed to delete Cognito user attributes for ${username}: ${error.message}`, Date.now() - start);
+            throw new Error(`Failed to delete Cognito user attributes: ${error.message}`);
         }
     }
 

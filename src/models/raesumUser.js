@@ -551,7 +551,7 @@ class raesumUserObject {
         let cachedKeys = await raesumCache.get(listCacheKey);
 
         // If not in cache, build the list (which will cache it)
-        if (!cachedKeys) {
+        if (!cachedKeys || Object.keys(cachedKeys).length === 0) {
             const keys = await this.getMetadataKeys(show_inactive);
             cachedKeys = Object.keys(keys);
         }
@@ -680,6 +680,13 @@ class raesumUserObject {
      */
     async deleteUserMetadataKey(key) {
         const start = Date.now();
+
+        // TO-DO, replace this with a controlled data definition of metadata delete
+        const doNotDelete = ['email'];
+        if(doNotDelete.includes(key.toLowerCase())) {
+            logger.warning(`Key: ${key} cannot be deleted`, Date.now() - start);
+            throw new Error("Key cannot be deleted");
+        }
 
         // Get the user metadata key list
         const keys = await this.getMetadataKeyList(true);
@@ -949,7 +956,112 @@ class raesumUserObject {
         return true;
     }
 
+    /**
+     * Deletes multiple user metadata values. Invalid keys will automatically be excluded
+     * @param  {Number} userId The ID of the user
+     * @param  {array} keys An array of keys to delete from the user
+     * @param  {boolean} activeStatus Whether to consider inactive keys
+     * @param  {boolean} updateCognito Whether to delete from Cognito as well
+     * @return {boolean} True on success
+     * @throw {Error} If the user does not exist
+     */
+    async deleteUserMetadataValues(userId, keys, activeStatus = false, updateCognito = true){
+        const start = Date.now();
 
+        // Validate userId
+        userId = parseInt(userId);
+        if (isNaN(userId) || userId < 1 || !Number.isInteger(userId)) {
+            throw new Error("User ID must be a positive integer");
+        }
+
+        if (!Array.isArray(keys) && keys.length < 1) {
+            throw new Error("Keys must be an array");
+        }
+
+        // Remove all values in keys that are not strings with length > 0
+        keys = keys.filter(key => typeof key === 'string' && key.length > 0);
+
+        // TO-DO, replace this with a controlled data definition of metadata delete
+        const doNotDelete = ['email'];
+
+        // Filter out keys that should not be deleted (case-insensitive)
+        let keysToDelete = [];
+
+        for (let i = 0; i < keys.length; i++) {
+           const key = keys[i].toLowerCase();
+           if(!doNotDelete.includes(key)){
+            keysToDelete.push(key);
+           }else{
+            logger.warning(`Attempting to delete mandatory metadata ${key} from user ${userId}`, Date.now() - start);
+           }
+        }
+
+        let user;
+        try {
+            user = await this.getUserById(userId);
+        } catch (e) {
+            // If not user, pass the error through
+            throw new Error("User not found");
+        }
+
+        // Get a list of valid metadata keys
+        const validKeys = await this.getMetadataKeyList(activeStatus);
+        const keyIndex = await this.getMetadataKeyIndex();
+
+        // Get a list of cognito keys
+        const cognitoKeys = await this.getMetadataCognitoKeyStatus();
+        const readOnlyCognitoKeys = Object.keys(cognitoKeys).filter(key => !cognitoKeys[key]);
+
+        // Remove any entries in keys that are not valid or are listed as cognito read only
+        keysToDelete = keysToDelete.filter(key => validKeys.includes(key) && !readOnlyCognitoKeys.includes(key));
+
+        if (keysToDelete.length === 0) {
+            logger.verbose(`No valid keys to delete for user ${userId}`, Date.now() - start);
+            return true;
+        }
+
+        // Delete the values from the raesum_user_x_metadata table corresponding with the keys
+        const deleteSql = `DELETE FROM raesum_user_x_metadata
+                          WHERE user_id = $1
+                          AND key_id = ANY($2)`;
+        const keyIds = keysToDelete.map(key => keyIndex[key]).filter(id => id !== undefined);
+
+        try {
+            await raesumDB.query(deleteSql, [userId, keyIds]);
+            logger.info(`Deleted ${keysToDelete.length} metadata values for user ${userId}`, Date.now() - start);
+        } catch (e) {
+            logger.error(`Error deleting user metadata values for user ${userId}: ${e.message}`, Date.now() - start);
+            throw new Error("Error deleting user metadata values");
+        }
+
+        // Remove any cognito user attributes that match to the keys
+        if (updateCognito) {
+            // Build list of cognito attributes to delete
+            const cognitoAttributesToDelete = [];
+            for (const key of keysToDelete) {
+                // If this is a cognito key and it's writable (not read-only)
+                if (cognitoKeys[key] === true) {
+                    cognitoAttributesToDelete.push(key);
+                }
+            }
+
+            // If there are cognito attributes to delete
+            if (cognitoAttributesToDelete.length > 0) {
+                try {
+                    await raesumCognito.deleteCognitoUserAttributes(user.username, cognitoAttributesToDelete);
+                    logger.info(`Successfully deleted ${cognitoAttributesToDelete.length} Cognito attributes for user ${user.username}`, Date.now() - start);
+                } catch (cognitoError) {
+                    // Log warning for each key that could not be deleted
+                    for (const attr of cognitoAttributesToDelete) {
+                        logger.warning(`Failed to delete Cognito attribute '${attr}' for user ${user.username}: ${cognitoError.message}`, Date.now() - start);
+                    }
+                    // Don't throw - we still want to return true since the Raesum DB was updated
+                }
+            }
+        }
+
+        return true;
+    }
 
     /**
      * Copies user and metadata from AWS Cognito pool to Raesum. This will also CREATE users.
@@ -958,7 +1070,6 @@ class raesumUserObject {
      * @throw {Error} If the external_id not found in AWS
      * @throw {Error} If the user create process fails
      */
-
     async syncUserFromCognitoToRaesum(username) {
         const start = Date.now();
 

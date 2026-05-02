@@ -605,6 +605,217 @@ describe("Raesum User Model", () => {
                 expect(dbMock).toHaveBeenCalled();
             });
         });
+
+        describe("deleteUserMetadataValues", () => {
+            test('should delete valid metadata values for user', async () => {
+                const userId = 123;
+                const keys = ["key1", "key2"];
+                const mockUser = { id: userId, username: "testuser" };
+
+                vi.spyOn(raesumUser, "getUserById").mockResolvedValue(mockUser);
+                vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue(["key1", "key2", "key3"]);
+                vi.spyOn(raesumUser, "getMetadataKeyIndex").mockResolvedValue({ key1: 1, key2: 2, key3: 3 });
+                vi.spyOn(raesumUser, "getMetadataCognitoKeyStatus").mockResolvedValue({});
+                const dbMock = vi.spyOn(raesumDB, "query").mockResolvedValue({});
+
+                const result = await raesumUser.deleteUserMetadataValues(userId, keys);
+
+                expect(result).toBe(true);
+                expect(dbMock).toHaveBeenCalledWith(
+                    expect.stringContaining("DELETE FROM raesum_user_x_metadata"),
+                    [userId, [1, 2]]
+                );
+            });
+
+            test('should filter out invalid keys (non-strings)', async () => {
+                const userId = 123;
+                const keys = ["key1", 123, null, undefined, "", "key2"];
+                const mockUser = { id: userId, username: "testuser" };
+
+                vi.spyOn(raesumUser, "getUserById").mockResolvedValue(mockUser);
+                vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue(["key1", "key2"]);
+                vi.spyOn(raesumUser, "getMetadataKeyIndex").mockResolvedValue({ key1: 1, key2: 2 });
+                vi.spyOn(raesumUser, "getMetadataCognitoKeyStatus").mockResolvedValue({});
+                const dbMock = vi.spyOn(raesumDB, "query").mockResolvedValue({});
+
+                const result = await raesumUser.deleteUserMetadataValues(userId, keys);
+
+                expect(result).toBe(true);
+                // Only key1 and key2 should be deleted (strings with length > 0)
+                expect(dbMock).toHaveBeenCalledWith(
+                    expect.stringContaining("DELETE FROM raesum_user_x_metadata"),
+                    [userId, [1, 2]]
+                );
+            });
+
+            test('should not delete email key', async () => {
+                const userId = 123;
+                const keys = ["email", "EMAIL", "Email", "key1"];
+                const mockUser = { id: userId, username: "testuser" };
+
+                vi.spyOn(raesumUser, "getUserById").mockResolvedValue(mockUser);
+                vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue(["email", "key1"]);
+                vi.spyOn(raesumUser, "getMetadataKeyIndex").mockResolvedValue({ email: 1, key1: 2 });
+                vi.spyOn(raesumUser, "getMetadataCognitoKeyStatus").mockResolvedValue({});
+                const dbMock = vi.spyOn(raesumDB, "query").mockResolvedValue({});
+
+                const result = await raesumUser.deleteUserMetadataValues(userId, keys);
+
+                expect(result).toBe(true);
+                // Only key1 should be deleted (email is protected)
+                expect(dbMock).toHaveBeenCalledWith(
+                    expect.stringContaining("DELETE FROM raesum_user_x_metadata"),
+                    [userId, [2]]
+                );
+            });
+
+            test('should delete Cognito writable attributes from both DB and Cognito', async () => {
+                const userId = 123;
+                const keys = ["custom_key"];
+                const mockUser = { id: userId, username: "testuser" };
+
+                vi.spyOn(raesumUser, "getUserById").mockResolvedValue(mockUser);
+                vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue(["custom_key"]);
+                vi.spyOn(raesumUser, "getMetadataKeyIndex").mockResolvedValue({ custom_key: 1 });
+                // custom_key is a writable Cognito attribute (true means writable)
+                vi.spyOn(raesumUser, "getMetadataCognitoKeyStatus").mockResolvedValue({ custom_key: true });
+                vi.spyOn(raesumDB, "query").mockResolvedValue({});
+                const cognitoDeleteMock = vi.spyOn(raesumCognito, "deleteCognitoUserAttributes").mockResolvedValue(true);
+
+                const result = await raesumUser.deleteUserMetadataValues(userId, keys, false, true);
+
+                expect(result).toBe(true);
+                expect(cognitoDeleteMock).toHaveBeenCalledWith("testuser", ["custom_key"]);
+            });
+
+            test('should not delete read-only Cognito attributes', async () => {
+                const userId = 123;
+                const keys = ["read_only_key", "writable_key"];
+                const mockUser = { id: userId, username: "testuser" };
+
+                vi.spyOn(raesumUser, "getUserById").mockResolvedValue(mockUser);
+                vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue(["read_only_key", "writable_key"]);
+                vi.spyOn(raesumUser, "getMetadataKeyIndex").mockResolvedValue({ read_only_key: 1, writable_key: 2 });
+                // read_only_key is false (read-only), writable_key is true (writable)
+                vi.spyOn(raesumUser, "getMetadataCognitoKeyStatus").mockResolvedValue({ read_only_key: false, writable_key: true });
+                const dbMock = vi.spyOn(raesumDB, "query").mockResolvedValue({});
+                const cognitoDeleteMock = vi.spyOn(raesumCognito, "deleteCognitoUserAttributes").mockResolvedValue(true);
+
+                const result = await raesumUser.deleteUserMetadataValues(userId, keys, false, true);
+
+                expect(result).toBe(true);
+                // Only writable_key should be in the DB delete (read_only_key is filtered out)
+                expect(dbMock).toHaveBeenCalledWith(
+                    expect.stringContaining("DELETE FROM raesum_user_x_metadata"),
+                    [userId, [2]]
+                );
+                // Only writable_key should be deleted from Cognito
+                expect(cognitoDeleteMock).toHaveBeenCalledWith("testuser", ["writable_key"]);
+            });
+
+            test('should skip Cognito delete when updateCognito is false', async () => {
+                const userId = 123;
+                const keys = ["custom_key"];
+                const mockUser = { id: userId, username: "testuser" };
+
+                vi.spyOn(raesumUser, "getUserById").mockResolvedValue(mockUser);
+                vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue(["custom_key"]);
+                vi.spyOn(raesumUser, "getMetadataKeyIndex").mockResolvedValue({ custom_key: 1 });
+                vi.spyOn(raesumUser, "getMetadataCognitoKeyStatus").mockResolvedValue({ custom_key: true });
+                vi.spyOn(raesumDB, "query").mockResolvedValue({});
+                const cognitoDeleteMock = vi.spyOn(raesumCognito, "deleteCognitoUserAttributes").mockResolvedValue(true);
+
+                const result = await raesumUser.deleteUserMetadataValues(userId, keys, false, false);
+
+                expect(result).toBe(true);
+                expect(cognitoDeleteMock).not.toHaveBeenCalled();
+            });
+
+            test('should return true when no valid keys to delete', async () => {
+                const userId = 123;
+                const keys = ["invalid_key"];
+                const mockUser = { id: userId, username: "testuser" };
+
+                vi.spyOn(raesumUser, "getUserById").mockResolvedValue(mockUser);
+                vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue(["other_key"]);
+                vi.spyOn(raesumUser, "getMetadataKeyIndex").mockResolvedValue({ other_key: 1 });
+                vi.spyOn(raesumUser, "getMetadataCognitoKeyStatus").mockResolvedValue({});
+                const dbMock = vi.spyOn(raesumDB, "query").mockResolvedValue({});
+
+                const result = await raesumUser.deleteUserMetadataValues(userId, keys);
+
+                expect(result).toBe(true);
+                // No DB delete should happen since no valid keys
+                expect(dbMock).not.toHaveBeenCalled();
+            });
+
+            test('should throw error for invalid user ID', async () => {
+                await expect(raesumUser.deleteUserMetadataValues(0, ["key1"])).rejects.toThrow("User ID must be a positive integer");
+                await expect(raesumUser.deleteUserMetadataValues(-1, ["key1"])).rejects.toThrow("User ID must be a positive integer");
+                await expect(raesumUser.deleteUserMetadataValues("abc", ["key1"])).rejects.toThrow("User ID must be a positive integer");
+            });
+
+            test('should throw error when user does not exist', async () => {
+                vi.spyOn(raesumUser, "getUserById").mockRejectedValue(new Error("User not found"));
+
+                await expect(raesumUser.deleteUserMetadataValues(123, ["key1"])).rejects.toThrow("User not found");
+            });
+
+            test('should handle Cognito delete failure gracefully', async () => {
+                const userId = 123;
+                const keys = ["custom_key"];
+                const mockUser = { id: userId, username: "testuser" };
+
+                vi.spyOn(raesumUser, "getUserById").mockResolvedValue(mockUser);
+                vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue(["custom_key"]);
+                vi.spyOn(raesumUser, "getMetadataKeyIndex").mockResolvedValue({ custom_key: 1 });
+                vi.spyOn(raesumUser, "getMetadataCognitoKeyStatus").mockResolvedValue({ custom_key: true });
+                vi.spyOn(raesumDB, "query").mockResolvedValue({});
+                // Mock Cognito delete to fail
+                vi.spyOn(raesumCognito, "deleteCognitoUserAttributes").mockRejectedValue(new Error("Cognito error"));
+
+                // Should still return true since DB was updated
+                const result = await raesumUser.deleteUserMetadataValues(userId, keys, false, true);
+
+                expect(result).toBe(true);
+            });
+
+            test('should handle database error', async () => {
+                const userId = 123;
+                const keys = ["key1"];
+                const mockUser = { id: userId, username: "testuser" };
+
+                vi.spyOn(raesumUser, "getUserById").mockResolvedValue(mockUser);
+                vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue(["key1"]);
+                vi.spyOn(raesumUser, "getMetadataKeyIndex").mockResolvedValue({ key1: 1 });
+                vi.spyOn(raesumUser, "getMetadataCognitoKeyStatus").mockResolvedValue({});
+                vi.spyOn(raesumDB, "query").mockRejectedValue(new Error("DB error"));
+
+                await expect(raesumUser.deleteUserMetadataValues(userId, keys)).rejects.toThrow("Error deleting user metadata values");
+            });
+
+            test('should handle non-cognito keys correctly', async () => {
+                const userId = 123;
+                const keys = ["regular_key"];
+                const mockUser = { id: userId, username: "testuser" };
+
+                vi.spyOn(raesumUser, "getUserById").mockResolvedValue(mockUser);
+                vi.spyOn(raesumUser, "getMetadataKeyList").mockResolvedValue(["regular_key"]);
+                vi.spyOn(raesumUser, "getMetadataKeyIndex").mockResolvedValue({ regular_key: 1 });
+                // No Cognito keys
+                vi.spyOn(raesumUser, "getMetadataCognitoKeyStatus").mockResolvedValue({});
+                const dbMock = vi.spyOn(raesumDB, "query").mockResolvedValue({});
+                const cognitoDeleteMock = vi.spyOn(raesumCognito, "deleteCognitoUserAttributes").mockResolvedValue(true);
+
+                const result = await raesumUser.deleteUserMetadataValues(userId, keys, false, true);
+
+                expect(result).toBe(true);
+                // DB should be called
+                expect(dbMock).toHaveBeenCalled();
+                // Cognito should not be called since no cognito keys
+                expect(cognitoDeleteMock).not.toHaveBeenCalled();
+            });
+        });
     });
 
     describe("initRaesum", () => {
