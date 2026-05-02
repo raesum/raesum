@@ -817,9 +817,10 @@ console.log("ROWS",response.rows)
     async setUserMetadataValues(userId, values, activeStatus = false, updateCognito = true) {
         const start = Date.now();
 
-        // Get the userID
+        // Get the user
+        let user;
         try {
-            const user = await this.getUserById(userId);
+            user = await this.getUserById(userId);
         } catch (e) {
             // If not user, pass the error through
             throw new Error("User not found");
@@ -918,13 +919,35 @@ console.log("ROWS",response.rows)
         if(updateCognito){
             // Update any cognito controlled keys. This should be skipped if PULLING values from cognito OR if cognito doesn't allow them to be updated.
 
-                // TO-DO: Update cognito with new values
+            // Build list of writable cognito attributes from the keys being updated
+            const cognitoAttributesToUpdate = [];
+            for (const key of keyList) {
+                // If this is a cognito key and it's writable
+                if (cognitoKeys[key] === true && !readOnlyCognitoKeys.includes(key)) {
+                    cognitoAttributesToUpdate.push({
+                        Name: key,
+                        Value: String(values[key])
+                    });
+                }
+            }
+
+            // If there are cognito attributes to update
+            if (cognitoAttributesToUpdate.length > 0) {
+                try {
+                    // Use the user's external_id (which is the Cognito sub/username) to update Cognito
+                    await raesumCognito.updateCognitoUserAttributes(user.username, cognitoAttributesToUpdate);
+                    logger.info(`Successfully updated ${cognitoAttributesToUpdate.length} Cognito attributes for user ${user.username}`, Date.now() - start);
+                } catch (cognitoError) {
+                    // Log warning for each key that could not be updated
+                    for (const attr of cognitoAttributesToUpdate) {
+                        logger.warning(`Failed to update Cognito attribute '${attr.Name}' for user ${user.username}: ${cognitoError.message}`, Date.now() - start);
+                    }
+                    // Don't throw - we still want to return true since the Raesum DB was updated
+                }
+            }
         }
 
-
-
         return true;
-
     }
 
 
@@ -951,7 +974,7 @@ console.log("ROWS",response.rows)
         try {
             cognitoUser = await raesumCognito.getCognitoUser(username);
         } catch (error) {
-            logger.error(`User ${external_id} not found in AWS Cognito: ${error.message}`, Date.now() - start);
+            logger.error(`User ${username} not found in AWS Cognito: ${error.message}`, Date.now() - start);
             throw new Error(`User not found in AWS Cognito: ${error.message}`);
         }
 

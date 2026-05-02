@@ -788,7 +788,8 @@ describe("Raesum User Model", () => {
                     custom_department: 'Engineering',
                     custom_valid_key: 'should_sync'
                 },
-                true
+                true,
+                false
             );
         });
 

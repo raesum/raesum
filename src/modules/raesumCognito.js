@@ -15,7 +15,8 @@ import {
         AdminDisableUserCommand,
         AdminEnableUserCommand,
         AdminCreateUserCommand,
-        AdminGetUserCommand
+        AdminGetUserCommand,
+        AdminUpdateUserAttributesCommand
 } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand } from "@aws-sdk/client-cognito-identity";
 import raesumCache from "./raesumCache.js";
@@ -760,6 +761,41 @@ class raesumCognito{
         } catch (error) {
             logger.error(`Failed to get Cognito user ${username}: ${error.message}`, Date.now() - start);
             throw new Error(`Failed to get Cognito user: ${error.message}`);
+        }
+    }
+
+    /**
+     * Updates user attributes in Cognito
+     * @param {string} username - The username (or sub/cognitoID) of the user
+     * @param {Array} attributes - Array of {Name, Value} objects to update
+     * @return {boolean} True if successful
+     * @throws {Error} if unable to update attributes
+     */
+    async updateCognitoUserAttributes(username, attributes) {
+        const start = Date.now();
+
+        try {
+            // Initialize the cognito client
+            logger.verbose(`Updating Cognito user attributes for: ${username}`, Date.now() - start);
+            const awsCognitoConfig = await buildAWSClientConfig();
+            const client = new CognitoIdentityProviderClient(awsCognitoConfig);
+
+            const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
+
+            const updateCommand = new AdminUpdateUserAttributesCommand({
+                UserPoolId: userPoolId,
+                Username: username,
+                UserAttributes: attributes
+            });
+
+            await client.send(updateCommand);
+
+            logger.info(`Successfully updated ${attributes.length} Cognito user attributes for: ${username}`, Date.now() - start);
+            return true;
+
+        } catch (error) {
+            logger.error(`Failed to update Cognito user attributes for ${username}: ${error.message}`, Date.now() - start);
+            throw new Error(`Failed to update Cognito user attributes: ${error.message}`);
         }
     }
 

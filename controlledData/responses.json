@@ -109,20 +109,20 @@
     "message": "This user is not authorized to perform action {0}: {1}",
     "description": "The user tried to perform an action they do not have permissions for.",
     "code": 401,
-    "keycode": 16
+    "keycode": 17
   },
   "requestInvalidFields":{
     "title": "Request Invalid",
     "message": "One or more of the requested parameters has invalid values.",
     "description": "The request was not successful due to invalid values submitted int he request.",
     "code": 400,
-    "keycode": 17
+    "keycode": 18
   },
     "loggedOut": {
     "title": "Logged Out",
     "message": "User is logged in.",
     "description": "User is logged in.",
     "code": 200,
-    "keycode": 18
+    "keycode": 19
   }
 }
