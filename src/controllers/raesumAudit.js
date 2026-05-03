@@ -10,6 +10,7 @@ const logger = raesumLogger(__filename);
 
 class raesumAuditController {
 
+    
     async getAuditLogs(req, res, next){
         const start = Date.now();
 
@@ -59,7 +60,7 @@ class raesumAuditController {
         } catch (error) {
             logger.error("Authorization check failed: " + error, Date.now() - start);
             const errorResponse = await raesumResponses.get('notAuthorized',['read','raesum_audit']);
-            return res.status(500).json(errorResponse);
+            return res.status(errorResponse.code).json(errorResponse);
         }
 
         logger.verbose("Getting audit logs, authorization allowed", Date.now() - start);
@@ -68,8 +69,10 @@ class raesumAuditController {
         const {  
             objectTypeID, 
             actionTypeID, 
-            sortBy, 
-            sortOrder
+            sortBy = "date", 
+            sortOrder = "DESC",
+            limit,
+            offset
         } = req.query;
 
         // Convert string parameters to numbers if provided
@@ -79,14 +82,14 @@ class raesumAuditController {
         if(!orgID) {
             logger.error("Organization ID is required", Date.now() - start);
             const errorResponse = await raesumResponses.get('requestMissingFields',['organizationId']);
-            return res.status(400).json(errorResponse);
+            return res.status(errorResponse.code).json(errorResponse);
         }
 
         // Validate query parameters
         const validationErrors = [];
 
         // Validate userID if provided
-        if (userID !== null || isNaN(parsedFilterUserID)) {
+        if (userID !== null || isNaN(requesterUserID)) {
             validationErrors.push('userID must be a positive integer');
         }
 
@@ -117,7 +120,7 @@ class raesumAuditController {
             logger.warning(`Invalid query parameters: ${validationErrors.join(', ')}`, Date.now() - start);
             const validationErrorResponse = await raesumResponses.get('requestInvalidFields');
             validationErrorResponse.errors = validationErrors;
-            return res.status(400).json(validationErrorResponse);
+            return res.status(validationErrorResponse.code).json(validationErrorResponse);
         }
 
         // Try to get the audit logs
@@ -128,17 +131,17 @@ class raesumAuditController {
                 parsedObjectTypeID,
                 parsedActionTypeID,
                 sortBy,
-                sortOrder
+                sortOrder,
+                limit ? parseInt(limit) : null,
+                offset ? parseInt(offset) : null
             );
             
-            const successResponse = await raesumResponses.get('auditLogs.success');
-            successResponse.data = auditLogs;
-            return res.status(200).json(successResponse);
+            return res.status(200).json(auditLogs);
             
         } catch (error) {
             logger.error("Error retrieving audit logs: " + error, Date.now() - start);
-            const errorResponse = await raesumResponses.get('auditLogs.error');
-            return res.status(500).json(errorResponse);
+            const errorResponse = await raesumResponses.get('error');
+            return res.status(errorResponse.code).json(errorResponse);
         }
     }
 

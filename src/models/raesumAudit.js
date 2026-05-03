@@ -140,7 +140,7 @@ class raesumAuditObject{
      * @throws {Error} If the orgID is not supplied
      * @throws {Error} If the userID, objectTypeID, or actionTypeID does not exist
      */
-    async getAuditLogs(orgID, userID=null, objectTypeID=null, actionTypeID=null, sortBy="date", sortOrder="DESC"){
+    async getAuditLogs(orgID, userID=null, objectTypeID=null, actionTypeID=null, sortBy="date", sortOrder="DESC", limit=null, offset=null){
         const start = Date.now();
 
         // Validate the sort by and sort order inputs. Use defaults if invalid input. Order is not case sensitive.
@@ -298,6 +298,19 @@ class raesumAuditObject{
             default:
                 query += ` ORDER BY al.event_at ${sortOrder}`;
                 break;
+        }
+
+        // Add LIMIT and OFFSET if provided
+        if (limit && !isNaN(limit) && limit > 0) {
+            query += ` LIMIT $${paramIndex}`;
+            params.push(limit);
+            paramIndex++;
+        }
+
+        if (offset && !isNaN(offset) && offset >= 0) {
+            query += ` OFFSET $${paramIndex}`;
+            params.push(offset);
+            paramIndex++;
         }
 
         // Attempt to run the query
