@@ -112,7 +112,8 @@ class raesumAuth {
                 } 
         
                 // get not logged with error in response and send to user
-                let response = await raesumResponses.get("notLoggedInError",[e]);
+                let response = await raesumResponses.get("notLoggedIn");
+
                 return res.status(response.code).json(response);
             }
 
@@ -231,7 +232,7 @@ class raesumAuth {
             } 
     
             // get not logged with error in response and send to user
-            let response = await raesumResponses.get("notLoggedInError",[e]);
+            let response = await raesumResponses.get("notLoggedIn");
             return res.status(response.code).json(response);
         }
     }

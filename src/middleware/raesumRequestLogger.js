@@ -37,7 +37,7 @@ export const raesumLoggerRequestFinishMiddleware = function(req,res,next){
             urlPath: req.originalUrl
         }
 
-        logger.route(`Finished Request: req.originalUrl`, duration, req.originalUrl, res.statusCode, userId);
+        logger.route(`Finished Request: ${req.originalUrl}`, duration, req.originalUrl, res.statusCode, userId);
 
     });
 

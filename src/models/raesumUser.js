@@ -915,11 +915,6 @@ class raesumUserObject {
         let insertValuesArray = [];
         let i = 1;
         
-console.log("newKeyList",newKeyList);
-console.log("existingValues",existingValues);
-console.log("updateKeyList",updateKeyList);
-console.log("keyList",keyList);
-
         // If there are new keys
         if(newKeyList.length > 0){
             // Loop through the values and build the update query
@@ -940,7 +935,7 @@ console.log("keyList",keyList);
             sql += "INSERT INTO raesum_user_x_metadata (user_id, key_id, value) VALUES ";
             sql += insertValuesArray.join(", ") + ";";
         }
-console.log(sql, valuesArray)
+
         // Run the update query
         try {
             await raesumDB.query(sql, valuesArray);

@@ -27,13 +27,6 @@
     "code": 401,
     "keycode": 4
   },
-  "notLoggedInError": {
-    "title": "Not Logged In",
-    "message": "You are not logged in",
-    "description": "Login is required to access this route.",
-    "code": 401,
-    "keycode": 5
-  },
   "invalidClientToken": {
     "title": "Invalid Token",
     "message": "Your token doesn't match the client token or is not a valid format.",

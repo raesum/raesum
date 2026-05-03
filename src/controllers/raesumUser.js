@@ -605,7 +605,6 @@ class raesumUserController {
 
         try{
 
-console.log(req.user)
             await raesumUser.syncUserFromCognitoToRaesum(req.user.username);
             logger.info(`User resynced from Cognito for user ${req.user.external_id}`, Date.now() - start);
              const message = await raesumResponses.get("success");
