@@ -32,90 +32,90 @@
     "message": "Your token doesn't match the client token or is not a valid format.",
     "description": "The token provided in the headers does not match the client token or is not a valid format.",
     "code": 401,
-    "keycode": 6
+    "keycode": 5
   },
   "invalidUserPool": {
     "title": "User Not Recognized",
     "message": "Your user token is not recognized as being a member of this system.",
     "description": "User might be valid but isn't a member of the cognito pool.",
     "code": 401,
-    "keycode": 7
+    "keycode": 6
   },
   "tokenExpired": {
     "title": "Your Login Has Expired",
     "message": "Your login as expired and you need to log in again.",
     "description": "User's token haas expired and needs to be renewed.",
     "code": 401,
-    "keycode": 8
+    "keycode": 7
   },
   "loggedIn": {
     "title": "Logged In",
     "message": "User {0} is logged in.",
     "description": "User is logged in.",
     "code": 200,
-    "keycode": 9
+    "keycode": 8
   },
   "loginTypeNotAllowed": {
     "title": "Not Logged In",
     "message": "This login type is now allowed.",
     "description": "The login type has been disabled in configuration.",
     "code": 401,
-    "keycode": 10
+    "keycode": 9
   },
   "alreadyLoggedInDifferentType": {
     "title": "Already Logged In",
     "message": "You have already logged in via a different method.",
     "description": "User is trying to login in via JWT after a session login or vice-versa.",
     "code": 401,
-    "keycode": 11
+    "keycode": 10
   },
   "missingHeader": {
     "title": "Missing Headers",
     "message": "Missing required header: {0}",
     "description": "A required header is missing.",
     "code": 401,
-    "keycode": 12
+    "keycode": 11
   },
-  "unableToCreateEditUser":{
+  "unableToCreateEditUser": {
     "title": "User Cannot Be Modified",
     "message": "Your user account cannot be accessed at this time.",
     "description": "User account creation or editing has failed.",
     "code": 500,
-    "keycode": 14
+    "keycode": 12
   },
-  "internalServerError":{
+  "internalServerError": {
     "title": "Internal Server Error",
     "message": "The server has experienced an unexpected error.",
     "description": "General internal server error that doesn't match up to anything more specific.",
     "code": 500,
-    "keycode": 15
+    "keycode": 13
   },
   "invalidCredentials": {
     "title": "Invalid Credentials",
     "message": "These credentials were not recognized",
     "description": "The code provided was not recognized as a valid authorization code.",
     "code": 401,
-    "keycode": 16
+    "keycode": 14
   },
   "notAuthorized": {
     "title": "Not Authorized",
     "message": "This user is not authorized to perform action {0}: {1}",
     "description": "The user tried to perform an action they do not have permissions for.",
     "code": 401,
-    "keycode": 17
+    "keycode": 15
   },
-  "requestInvalidFields":{
+  "requestInvalidFields": {
     "title": "Request Invalid",
     "message": "One or more of the requested parameters has invalid values.",
     "description": "The request was not successful due to invalid values submitted int he request.",
     "code": 400,
-    "keycode": 18
+    "keycode": 16
   },
-    "loggedOut": {
+  "loggedOut": {
     "title": "Logged Out",
     "message": "User is logged in.",
     "description": "User is logged in.",
     "code": 200,
-    "keycode": 19
+    "keycode": 17
   }
 }
