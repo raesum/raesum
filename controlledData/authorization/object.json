@@ -22,5 +22,11 @@
     "name": "Audit Logs",
     "string_key": "raesum_audit",
     "description": ""
+  },
+  {
+    "id": 5,
+    "name": "User Metadata",
+    "string_key": "raesum_user_metadata",
+    "description": ""
   }
 ]

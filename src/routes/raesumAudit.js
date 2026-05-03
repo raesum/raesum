@@ -80,48 +80,80 @@ const router = Router();
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                     description: Audit log entry ID
- *                   user_id:
- *                     type: string
- *                     description: ID of the user who performed the action
- *                   username:
- *                     type: string
- *                     description: Username of the user who performed the action
- *                   action_id:
- *                     type: integer
- *                     description: ID of the action type that was performed
- *                   action_name:
- *                     type: string
- *                     description: Human-readable name of the action
- *                   action_string_key:
- *                     type: string
- *                     description: String key for the action (e.g., 'read', 'create', 'update', 'delete')
- *                   object_type_id:
- *                     type: integer
- *                     description: ID of the object type that was acted upon
- *                   object_type_name:
- *                     type: string
- *                     description: Human-readable name of the object type
- *                   object_type_string_key:
- *                     type: string
- *                     description: String key for the object type (e.g., 'raesum_user', 'raesum_organization')
- *                   object_id:
- *                     type: integer
- *                     description: ID of the specific object that was acted upon
- *                   event_at:
- *                     type: string
- *                     format: date-time
- *                     description: Timestamp when the action occurred
- *                   metadata:
+ *               type: object
+ *               properties:
+ *                 title:
+ *                   type: string
+ *                   example: "Success"
+ *                   description: Response title
+ *                 message:
+ *                   type: string
+ *                   example: "OK"
+ *                   description: Response message
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                   description: HTTP status code
+ *                 keycode:
+ *                   type: integer
+ *                   example: 1
+ *                   description: Internal response code
+ *                 data:
+ *                   type: array
+ *                   description: Array of audit log entries
+ *                   items:
  *                     type: object
- *                     nullable: true
- *                     description: Additional metadata about the audit event (can be null)
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: Audit log entry ID
+ *                         example: "2237"
+ *                       user_id:
+ *                         type: string
+ *                         description: ID of the user who performed the action
+ *                         example: "1"
+ *                       username:
+ *                         type: string
+ *                         description: Username of the user who performed the action
+ *                         example: "odin"
+ *                       action_id:
+ *                         type: integer
+ *                         description: ID of the action type that was performed
+ *                         example: 1
+ *                       action_name:
+ *                         type: string
+ *                         description: Human-readable name of the action
+ *                         example: "Log In"
+ *                       action_string_key:
+ *                         type: string
+ *                         description: String key for the action
+ *                         example: "log_in"
+ *                       object_type_id:
+ *                         type: integer
+ *                         description: ID of the object type that was acted upon
+ *                         example: 1
+ *                       object_type_name:
+ *                         type: string
+ *                         description: Human-readable name of the object type
+ *                         example: "Users"
+ *                       object_type_string_key:
+ *                         type: string
+ *                         description: String key for the object type
+ *                         example: "raesum_user"
+ *                       object_id:
+ *                         type: integer
+ *                         description: ID of the specific object that was acted upon
+ *                         example: 1
+ *                       event_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Timestamp when the action occurred
+ *                         example: "2026-05-03T20:43:31.797Z"
+ *                       metadata:
+ *                         type: object
+ *                         nullable: true
+ *                         description: Additional metadata about the audit event (can be null)
+ *                         example: null
  *       400:
  *         description: Bad request - invalid parameters
  *       403:

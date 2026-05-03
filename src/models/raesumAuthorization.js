@@ -241,11 +241,17 @@ class raesumAuthorizationObject {
         }
 
         // Convert object type string to ID
+        let objectTypeID = false;
         try {
-            objectTypeString = await this.convertObjectTypeStringToID(objectTypeString);
+            objectTypeID = await this.convertObjectTypeStringToID(objectTypeString);
             logger.debug("Permission Converted object type string to ID (" + objectTypeString + ")");
         } catch (e) {
             logger.error("Failed to convert object type string (" + objectTypeString + ") to ID: " + e);
+            return false;
+        }
+
+        if (!objectTypeID) {
+            logger.error("Failed to convert object type string (" + objectTypeString + ") to ID");
             return false;
         }
 
@@ -259,7 +265,7 @@ class raesumAuthorizationObject {
         }
 
         logger.debug("Checking user permission for user " + userID + " on object type " + objectTypeString + " with action " + actionString + " in organization " + orgID + " for object owner " + objectOwnerUserID);
-        return await this.checkUserPermissionByID(userID, objectTypeString, actionString, orgID, objectOwnerUserID);
+        return await this.checkUserPermissionByID(userID, objectTypeID, actionString, orgID, objectOwnerUserID);
 
     }
 

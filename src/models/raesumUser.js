@@ -519,7 +519,7 @@ class raesumUserObject {
         // Create a list of keys
         const keyList = Object.keys(keys);
         const listCacheKey = "raesumUserMetadataKeys" + show_inactive;
-        const cacheResponse = await raesumCache.set(listCacheKey, keyList);
+        const cacheResponse = await raesumCache.set(listCacheKey, keys);
 
         if(!cacheResponse){
             logger.error("Failed to save metadata keys to cache", Date.now() - start);
@@ -542,7 +542,7 @@ class raesumUserObject {
 
         // Return object
         logger.verbose(`Returning ${response.rows.length} metadata keys`, Date.now() - start);
-        return keyList;
+        return keys;
     }
 
     /**
@@ -588,7 +588,7 @@ class raesumUserObject {
 
         // If not in cache, build the list (which will cache it)
         if (!cognitoKeys) {
-            const keys = await this.getMetadataKeys(true);
+            const keys = await this.getMetadataKeyList(true);
             const keyList = Object.keys(keys);
             raesumUserMetadataCognitoKeyStatuses = [];
             // If the key is a cognito key, add it to the cognitoKey list
@@ -638,7 +638,7 @@ class raesumUserObject {
 
         // If the key is in the list update it
         if (keys.includes(key)) {
-            const sql = "UPDATE raesum_user_metadata_keys SET active_status = $2, description = $3, cognito_attribute = $4, cognito_writable = $5 WHERE datakey = $1";
+            const sql = "UPDATE raesum_user_metadata_keys SET active_status = $2, description = $3, cognito_attribute = $4, cognito_writable = $5 WHERE datakey ILIKE $1";
             try {
                 // Create the key
                 await raesumDB.query(sql, [key, activeStatus, description, cognitoAttribute, cognitoWritable]);
@@ -696,7 +696,7 @@ class raesumUserObject {
         const sqlCheck = `SELECT COUNT(*)
                           FROM raesum_user_x_metadata as ruxm
                                    INNER JOIN raesum_user_metadata_keys as rumk on ruxm.datakey = rumk.datakey
-                          WHERE rumk.datakey = $1`;
+                          WHERE rumk.datakey ILIKE $1`;
         const result = await raesumDB.query(sqlCheck, [key]);
 
         // If count is > 1 return false as the key is in use
@@ -706,7 +706,7 @@ class raesumUserObject {
         }
 
         // Delete the key
-        const sql = "DELETE FROM raesum_user_metadata_keys WHERE datakey = $1";
+        const sql = "DELETE FROM raesum_user_metadata_keys WHERE datakey ILIKE $1";
         try {
             logger.info(`Deleting user metadata key: ${key}`, Date.now() - start);
             await raesumDB.query(sql, [key]);
@@ -746,7 +746,7 @@ class raesumUserObject {
         }
 
         // Update the key
-        const sql = "UPDATE raesum_user_metadata_keys SET active_status = $1 WHERE datakey = $2";
+        const sql = "UPDATE raesum_user_metadata_keys SET active_status = $1 WHERE datakey ILIKE $2";
         try {
             await raesumDB.query(sql, [activeStatus, key]);
             
@@ -779,15 +779,18 @@ class raesumUserObject {
 
         // Get the list of user metadata values
         const validKeys = await this.getMetadataKeyList(activeStatus);
+        logger.debug(`Geting User Metadata Key Values for user ${userId} and keys ${keys.join(',')} before invalid keys removed`, Date.now() - start);
+        logger.debug(`Valid user metadata keys ${validKeys.join(",")}`, Date.now() - start);
 
         // Remove invalid keys from list
-        keys = keys.filter(key => validKeys.includes(key));
+        keys = keys.filter(key => validKeys.map(validKey => validKey.toLowerCase()).includes(key.toLowerCase()));
+        logger.verbose(`Geting User Metadata Key Values for user ${userId} and keys ${keys.join(',')}`, Date.now() - start);
 
         const sql = `SELECT rumk.datakey, ruxm.value as value
                      FROM raesum_user_x_metadata as ruxm
                               INNER JOIN raesum_user_metadata_keys as rumk on ruxm.datakey = rumk.datakey
                      WHERE ruxm.user_id = $1
-                       AND rumk.datakey = ANY($2)`;
+                       AND rumk.datakey ILIKE ANY($2)`;
 
         // Run the query
         try {
@@ -800,7 +803,7 @@ class raesumUserObject {
             }
 
     
-            logger.info(`Retrieved user metadata values for keys ${keys.join(", ")}`, Date.now() - start);
+            logger.info(`Retrieved ${response.rows.length} user metadata values for keys ${keys.join(", ")}`, Date.now() - start);
             return values;
 
         } catch (e) {
@@ -914,7 +917,7 @@ class raesumUserObject {
             sql += `UPDATE raesum_user_x_metadata
                    SET value = $1
                    WHERE user_id = $2
-                     AND datakey = $3;`;
+                     AND datakey ILIKE $3;`;
             try {
                 await raesumDB.query(sql, [values[updateKeyList[q]], userId, updateKeyList[q]]);
             } catch (e) {
@@ -1023,7 +1026,7 @@ class raesumUserObject {
         // Delete the values from the raesum_user_x_metadata table corresponding with the keys
         const deleteSql = `DELETE FROM raesum_user_x_metadata
                           WHERE user_id = $1
-                          AND datakey = ANY($2)`;
+                          AND datakey ILIKE ANY($2)`;
 
         try {
             await raesumDB.query(deleteSql, [userId, keysToDelete]);

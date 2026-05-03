@@ -135,8 +135,9 @@ class raesumAuditController {
                 limit ? parseInt(limit) : null,
                 offset ? parseInt(offset) : null
             );
-            
-            return res.status(200).json(auditLogs);
+            const message = await raesumResponses.get("success");
+            message.data = auditLogs;
+            return res.status(message.code).json(message);
             
         } catch (error) {
             logger.error("Error retrieving audit logs: " + error, Date.now() - start);

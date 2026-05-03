@@ -439,7 +439,16 @@ describe("Raesum User Model", () => {
 
                 const result = await raesumUser.getMetadataKeys(false);
 
-                expect(result).toEqual(["key1", "key2"]);
+                expect(result).toEqual({
+                        "key1":  {
+                            "datakey": "key1",
+                            "id": 1,
+                        },
+                        "key2":  {
+                            "datakey": "key2",
+                            "id": 2,
+                        },
+                        });
                 expect(dbMock).toHaveBeenCalledWith("SELECT * FROM raesum_user_metadata_keys WHERE active_status = true");
                 expect(cacheSetMock).toHaveBeenCalledWith(cacheKey, { key1: { datakey: "key1", id: 1 }, key2: { datakey: "key2", id: 2 } });
             });
@@ -473,7 +482,7 @@ describe("Raesum User Model", () => {
 
                 expect(result).toBe(true);
                 expect(dbMock).toHaveBeenCalledWith(
-                    "UPDATE raesum_user_metadata_keys SET active_status = $2, description = $3, cognito_attribute = $4, cognito_writable = $5 WHERE datakey = $1",
+                    "UPDATE raesum_user_metadata_keys SET active_status = $2, description = $3, cognito_attribute = $4, cognito_writable = $5 WHERE datakey ILIKE $1",
                     [key, true, description, true, true]
                 );
             });

@@ -247,7 +247,7 @@ class raesumCognito{
 
         // Set all metadata cognito attributes to false where not in the cognito list
         logger.verbose("Updating metadata keys in raesum from cognito", Date.now() - start);
-        const updatesql = "UPDATE raesum_user_metadata_keys SET cognito_attribute = false, cognito_writable = false WHERE datakey = ANY($1);";
+        const updatesql = "UPDATE raesum_user_metadata_keys SET cognito_attribute = false, cognito_writable = false WHERE datakey ILIKE ANY($1);";
 
         try{
             const response = await raesumDB.query(updatesql, [nonCognitoMetadataKeys]);
