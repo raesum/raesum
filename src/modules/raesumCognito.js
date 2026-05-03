@@ -233,7 +233,7 @@ class raesumCognito{
         logger.info("Cognito connection successful.", Date.now() - start);
 
         // Get list of metadata keys
-        const metadataKeys = await raesumUser.getMetadataKeys(true);
+        const metadataKeys = await raesumUser.getMetadataKeyList(true);
 
 
         // Build a list of metadata keys that are NOT cognito attributes
