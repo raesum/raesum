@@ -495,6 +495,10 @@ class raesumUserController {
 
             // Add audit log entry 
             await raesumAudit.create("read", "raesum_user", userId, req.user.id); 
+            const message = await raesumResponses.get("success");
+            message.data = user;
+            return res.status(message.code).json(message);
+
         }catch(e){
             logger.error(`Error getting user ${userId}: ${e.message}`, Date.now()-start);
             const message = await raesumResponses.get("internalServerError");
@@ -502,9 +506,7 @@ class raesumUserController {
         }
        
         
-            const message = await raesumResponses.get("success");
-            message.data = user;
-            return res.status(message.code).json(message);
+
     }
 
 
@@ -1034,6 +1036,7 @@ class raesumUserController {
             logger.info(`Allowed organizations for user ${userId}: ${allowedOrgs}`, Date.now() - start);
             
             const message = await raesumResponses.get("success");
+            message.data = allowedOrgs;
             return res.status(message.code).json(message);
         }catch(e){
             logger.error(`Error getting allowed organizations for user ${userId}: ${e.message}`, Date.now() - start);

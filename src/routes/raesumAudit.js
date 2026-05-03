@@ -154,24 +154,6 @@ const router = Router();
  *                         nullable: true
  *                         description: Additional metadata about the audit event (can be null)
  *                         example: null
- *       400:
- *         description: Bad request - invalid parameters
- *         content:
- *           application/json:
- *             schema:
- *               $ref: './documentation/swagger/common/responses.yaml#/components/schemas/BadRequestResponse'
- *       403:
- *         description: Forbidden - not authorized to access audit logs
- *         content:
- *           application/json:
- *             schema:
- *               $ref: './documentation/swagger/common/responses.yaml#/components/schemas/ForbiddenResponse'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: './documentation/swagger/common/responses.yaml#/components/schemas/InternalServerErrorResponse'
  */
 router.get('/get', raesumAuditController.getAuditLogs);
 

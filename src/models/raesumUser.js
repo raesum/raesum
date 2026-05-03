@@ -396,7 +396,7 @@ class raesumUserObject {
             const result = await raesumDB.query(query, [userID]);
 
             for (let i = 0; i < result.rows.length; i++) {
-                const orgID = parseInt(result.rows[i].organization_id);
+                const orgID = parseInt(result.rows[i].org_id);
                 if (!isNaN(orgID) && orgID > 0) {
                     orgs.push(orgID);
                 }
