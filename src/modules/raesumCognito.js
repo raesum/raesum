@@ -235,7 +235,6 @@ class raesumCognito{
         // Get list of metadata keys
         const metadataKeys = await raesumUser.getMetadataKeyList(true);
 
-
         // Build a list of metadata keys that are NOT cognito attributes
         let nonCognitoMetadataKeys = [];
 

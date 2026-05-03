@@ -321,8 +321,12 @@ class raesumCachePool{
             return e;
         }
 
+        logger.debug("Getting cache key, Prefixing key after keymaker " + key, Date.now() - start);
+
         // Add prefix to key
         cacheKey = await this.prefixKey(cacheKey);
+
+        logger.debug("Getting cache key with prefix and keymaker " + key, Date.now() - start);
 
         const returnVal= await this.#cachePoolInstance.get(cacheKey);
         if(returnVal == undefined){
@@ -432,21 +436,26 @@ class raesumCachePool{
 
         // If the user ID is not a positive int or null, throw an error
         if(userId != null && (isNaN(userId) || userId < 1)){
+            logger.error("Cachekey keymaker Invalid format for userID: " + userId, Date.now() - start);
             throw new Error("Invalid format for userID");
         }
 
         // If the org ID is not a positive int or null, throw an error
         if(orgId != null && (isNaN(orgId) || orgId < 1)){
+            logger.error("Cachekey keymaker Invalid format for orgId: " + orgId, Date.now() - start);
+
             throw new Error("Invalid format for orgId");
         }
 
         // If the object type string is not an string, throw an error
         if(typeof objectType != "string"){
+            logger.error("Cachekey keymaker Invalid format for objectType: " + objectType, Date.now() - start);
             throw new Error("Invalid format for objectType");
         }
 
         // If key is not a string, or empty , or contains a :, throw an error
         if(typeof key != "string" || key == "" || key.includes(":")){
+            logger.error("Cachekey keymaker Invalid format for key: " + key, Date.now() - start);
             throw new Error("Invalid format for key");
         }
 
