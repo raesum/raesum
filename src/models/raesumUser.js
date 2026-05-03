@@ -454,6 +454,24 @@ class raesumUserObject {
         }
     }
 
+
+    async clearMetadataKeyCache(){
+        const start = Date.now();       
+        logger.debug("Clearing metadata key cache", Date.now() - start);
+        const cacheKeyStrings = [
+            'raesumUserMetadataKeystrue',
+            'raesumUserMetadataKeysfalse',
+            'raesumUserMetadataKeyIndex',
+            'raesumUserMetadataCognitoKeyStatus'
+        ];
+        
+        for (const cacheKey of cacheKeyStrings) {
+            await raesumCache.delete(cacheKey);
+        }
+
+        logger.verbose("User Metadata key list cache cleared", Date.now() - start);
+    }
+
     /**
      * Gets a list of all possible user metadata key objects. This function will also put several objects and arrays into cache used by other functions.
      * @param  {Boolean} show_inactive Include inactive keys in the list
@@ -474,6 +492,7 @@ class raesumUserObject {
         const cachedKeys = await raesumCache.get(cacheKey);
         if (cachedKeys && Object.keys(cachedKeys).length > 0) {
             logger.verbose(`Returning cached metadata keys`, Date.now() - start)
+            logger.debug(`Key list metadata with ${Object.keys(cachedKeys).length} keys: ${JSON.stringify(cachedKeys)}`, Date.now() - start);
             return cachedKeys;
         }
 
@@ -557,6 +576,7 @@ class raesumUserObject {
         }
 
         logger.verbose(`Returning cached metadata key list`, Date.now() - start)
+        logger.debug(`Key list metadata with ${cachedKeys.length} keys: ${JSON.stringify(cachedKeys)}`, Date.now() - start)
         return cachedKeys;
     }
 
@@ -581,7 +601,9 @@ class raesumUserObject {
                 cachedKeys[key] = keys[key].id;
             });
         }
-        logger.verbose(`Returning cached metadata key list`, Date.now() - start)
+        logger.verbose(`Returning cached metadata key index`, Date.now() - start)
+        logger.debug(`Key index of metadata with ${cachedKeys.length} keys: ${JSON.stringify(cachedKeys)}`, Date.now() - start)
+
         return cachedKeys;
     }
 
@@ -653,6 +675,9 @@ class raesumUserObject {
             try {
                 // Create the key
                 await raesumDB.query(sql, [key, activeStatus, description, cognitoAttribute, cognitoWritable]);
+
+                // Clear key cache as it is now invalid
+                await this.clearMetadataKeyCache();
                 return true;
             } catch (e) {
                 logger.error(`Error creating user metadata key: ${key}`, Date.now() - start);
@@ -663,6 +688,9 @@ class raesumUserObject {
             try {
                 // Create the key
                 await raesumDB.query(sql, [key, description]);
+                
+                // Clear key cache as it is now invalid
+                await this.clearMetadataKeyCache();
                 return true;
             } catch (e) {
                 logger.error(`Error creating user metadata key: ${key}`, Date.now() - start);
@@ -715,6 +743,9 @@ class raesumUserObject {
         try {
             logger.info(`Deleting user metadata key: ${key}`, Date.now() - start);
             await raesumDB.query(sql, [key]);
+
+            // Clear key cache as it is now invalid
+            await this.clearMetadataKeyCache();
             return true;
         } catch (e) {
             logger.error(`Error deleting user metadata key: ${key}`, Date.now() - start);
@@ -751,6 +782,9 @@ class raesumUserObject {
         const sql = "UPDATE raesum_user_metadata_keys SET active_status = $1 WHERE datakey = $2";
         try {
             await raesumDB.query(sql, [activeStatus, key]);
+            
+            // Clear key cache as it is now invalid
+            await this.clearMetadataKeyCache();
             return true;
         } catch (e) {
             logger.error(`Error updating key: ${key}`, Date.now() - start);
@@ -800,6 +834,7 @@ class raesumUserObject {
                 values[response.rows[i].datakey] = response.rows[i].value;
             }
 
+    
             logger.info(`Retrieved user metadata values for keys ${keys.join(", ")}`, Date.now() - start);
             return values;
 
@@ -879,6 +914,11 @@ class raesumUserObject {
         let valuesArray = [];
         let insertValuesArray = [];
         let i = 1;
+        
+console.log("newKeyList",newKeyList);
+console.log("existingValues",existingValues);
+console.log("updateKeyList",updateKeyList);
+console.log("keyList",keyList);
 
         // If there are new keys
         if(newKeyList.length > 0){
@@ -900,12 +940,13 @@ class raesumUserObject {
             sql += "INSERT INTO raesum_user_x_metadata (user_id, key_id, value) VALUES ";
             sql += insertValuesArray.join(", ") + ";";
         }
-
+console.log(sql, valuesArray)
         // Run the update query
         try {
             await raesumDB.query(sql, valuesArray);
         } catch (e) {
-            throw new Error("Error inserting new user metadata values", Date.now() - start);
+            logger.error(`Failed to insert new matadata values for user: ${e.message}`, Date.now() - start)
+            throw new Error("Error inserting new user metadata values");
         }
 
         // Update the existing keys
@@ -918,7 +959,8 @@ class raesumUserObject {
             try {
                 await raesumDB.query(sql, [values[updateKeyList[q]], userId, keyIndex[updateKeyList[q]]]);
             } catch (e) {
-                throw new Error("Error updating new user metadata values", Date.now() - start);
+                logger.error(`Failed to update user metadata values: ${e.message}`, Date.now() - start);
+                throw new Error("Error updating new user metadata values");
             }
         }
 

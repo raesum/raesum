@@ -25,11 +25,7 @@
         "create": ["crossorganization"],
         "set_status": ["crossorganization"]
       },
-      "raesum_user_metadata": {
-        "read": ["crossorganization"],
-        "update": ["crossorganization"],
-        "create": ["crossorganization"]
-      },
+    
       "raesum_audit": {
         "read": ["crossorganization"]
       }
@@ -51,9 +47,6 @@
         "read": ["organization"]
       },
       "raesum_audit": {
-        "read": ["self"]
-      },
-      "raesum_user_metadata": {
         "read": ["self"]
       }
     }
@@ -84,9 +77,6 @@
       },
       "raesum_audit": {
         "read": ["organization"]
-      },
-      "raesum_user_metadata": {
-        "read": ["organization"]
       }
     }
 
@@ -112,9 +102,6 @@
         "read": ["organization"]
       },
       "raesum_audit": {
-        "read": ["organization"]
-      },
-      "raesum_user_metadata": {
         "read": ["organization"]
       }
     }

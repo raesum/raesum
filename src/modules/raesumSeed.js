@@ -15,6 +15,7 @@ import raesumOrganization from "../models/raesumOrganization.js";
 import raesumAudit from "../models/raesumAudit.js";
 import raesumUser from "../models/raesumUser.js";
 import raesumCognito from "./raesumCognito.js";
+import raesumCache from "../modules/raesumCache.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -71,6 +72,15 @@ class raesumSeed {
 
 
         logger.info("Starting Seeding", Date.now() - start);
+
+        // Clear Caches
+        logger.info("Clearing the caches", Date.now() - start);
+        await raesumCache.deleteSet('raesumServer');
+        await raesumCache.deleteSet('cognito');
+        await raesumCache.deleteSet('cache');
+
+        logger.info("Clearing Caches Finished",Date.now()-start);
+
 
         // Truncate Extant Tables
         logger.info("Truncating Tables", Date.now() - start);
@@ -195,7 +205,13 @@ class raesumSeed {
         // loop through the metadata keys and create them
         for (let i = 0; i < userMetadataKeys.length; i++) {
             const key = userMetadataKeys[i];
-            await raesumUser.setUserMetadataKey(key, faker.lorem.paragraph(2));
+            try {
+                await raesumUser.setUserMetadataKey(key, faker.lorem.paragraph(2));
+            }catch(e){
+                logger.error(`Failed to create user metadata key: ${key}`, e);
+                throw new Error("Failed to create user metadata key: ${key}");
+            }
+            
         }
 
         logger.info(`Created ${userMetadataKeys.length} User metadata keys`, Date.now() - start);

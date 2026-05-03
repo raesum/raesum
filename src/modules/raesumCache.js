@@ -123,6 +123,8 @@ class raesumeCacheRedis{
     }
 
     async reset(){
+        const start = Date.now();
+
         if(this.#redisRunning){
             // Get the key prefix
             const prefix = await raesumConfig.get("cache.prefix");
@@ -132,9 +134,12 @@ class raesumeCacheRedis{
 
             logger.debug("Deleting Keys from Redis Cache that start with: "+prefix+". as part of the reset process");
             // Delete all keys that start with prefix
+            logger.info("Reset Redis Cache Starting", Date.now() - start);
+
             for(const key of keys){
                 await this.#redisInstance.del(key);
             }
+            logger.info("Reset Redis Cache Complete", Date.now() - start);
             return true;
 
         }else{
@@ -232,8 +237,12 @@ class raesumCachePool{
 
     // Primarily used for testing - this destroys the cache pool instance and forces a re-init
     async reset(){
+        const start = Date.now();
         if(typeof this.#cachePoolInstance != "undefined") {
+            logger.info("Resetting Cache Pool", Date.now() - start);
             await this.#cachePoolInstance.reset(); // Clear the cache and close connections
+        }else{
+            logger.warning("Cache Pool not initialized, nothing to reset", Date.now() - start);
         }
         this.#cachePoolInstance = undefined;
         this.#config = undefined;
@@ -473,7 +482,6 @@ class raesumCachePool{
     async deleteSet(objectType,orgId=null, userID=null){
         const start = Date.now();
 
-        logger.verbose("Deleting cache set", {objectType, orgId, userID});
         const cacheFunctioning = await this.#init();
 
         if(!cacheFunctioning){return undefined;}
@@ -494,7 +502,8 @@ class raesumCachePool{
         }
 
         // Create the key
-        const cacheKey =  `${objectType}:${orgId}:${userID}`;
+        let cacheKey =  `${objectType}:${orgId}:${userID}`;
+        cacheKey = await this.prefixKey(cacheKey);
 
         const result = await this.#cachePoolInstance.deleteKeysStartingWith(cacheKey);
 

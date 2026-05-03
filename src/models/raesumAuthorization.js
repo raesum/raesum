@@ -602,39 +602,64 @@ class raesumAuthorizationObject {
             orgID = user.current_organization_id;
         }
 
-        const query = ` INSERT INTO raesum_auth_user_x_organization_x_role
-                        SELECT allowedRole.id as role_id, oxu.user_id, oxu.org_id
-                        FROM (SELECT r.id as id, rxor.org_id as org_id
-                              FROM raesum_auth_role as r
-                                       INNER JOIN raesum_auth_role_x_organization_restriction as rxor
-                                                  ON r.id = rxor.role_id
-                                                      AND org_id = $1
-                              WHERE r.active_status = true
-                              UNION
-                              SELECT r.id as id, $2 as org_id
-                              FROM raesum_auth_role as r
-                                       LEFT JOIN raesum_auth_role_x_organization_restriction as rxor
-                                                 ON r.id = rxor.role_id
-                              WHERE rxor.org_id IS NULL
-                                AND r.active_status = true) as allowedRole
-                                 LEFT JOIN raesum_organization_x_user as oxu
-                                           ON oxu.org_id = allowedRole.org_id AND oxu.user_id = $3
-                        WHERE allowedRole.id = $4
-                          AND oxu.user_id IS NOT NULL`;
+        // Check to see if the user already is in the role
+        
 
-        const params = [orgID, orgID, userID, roleID];
-
+        logger.debug(`Checking if user is already in role: ${userID}, ${roleID}, ${orgID}`, Date.now() - start);
         try {
+            const query = `SELECT * FROM raesum_auth_user_x_organization_x_role WHERE user_id = $3 AND role_id = $2 AND org_id = $1`;
+
+            const params = [orgID, roleID, userID ];
+
             const result = await raesumDB.query(query, params);
+            console.log("params",params)
+            console.log("result.rowCount",result.rowCount);
+            console.log("result.rows",result.rows);
             if (result.rowCount > 0) {
-                logger.info(`User: ${userID} added to role: ${roleID} for org: ${orgID}`, Date.now() - start);
-                return true;
-            } else {
                 logger.warning(`User ${userID} already in role: ${roleID} for org: ${orgID}, or role, org, or user does not exist`, Date.now() - start);
                 return false;
-            }
+            } 
+        }catch(e){
+            logger.error(`Error checking if user ${userID} is in role ${roleID} for org ${orgID} with error: ` + e, Date.now() - start);
+            throw new Error("Error checking if user is in role");
+        }
+
+        logger.debug(`User is not already in role, attempting to add: ${userID}, ${roleID}, ${orgID}`, Date.now() - start);
+
+        try {
+                const params = [orgID, orgID, userID, roleID];
+
+                const query = `INSERT INTO raesum_auth_user_x_organization_x_role 
+                        SELECT  oxu.user_id, oxu.org_id, allowedRole.id as role_id
+                                FROM (SELECT r.id as id, rxor.org_id as org_id
+                                    FROM raesum_auth_role as r
+                                            INNER JOIN raesum_auth_role_x_organization_restriction as rxor
+                                                        ON r.id = rxor.role_id
+                                                            AND org_id = $1
+                                    WHERE r.active_status = true
+                                    UNION
+                                    SELECT r.id as id, $2 as org_id
+                                    FROM raesum_auth_role as r
+                                            LEFT JOIN raesum_auth_role_x_organization_restriction as rxor
+                                                        ON r.id = rxor.role_id
+                                    WHERE rxor.org_id IS NULL
+                                        AND r.active_status = true) as allowedRole
+                                        LEFT JOIN raesum_organization_x_user as oxu
+                                                ON oxu.org_id = allowedRole.org_id AND oxu.user_id = $3
+                                WHERE allowedRole.id = $4
+                                AND oxu.user_id IS NOT NULL`;
+                const result = await raesumDB.query(query, params);
+                logger.debug(`Result of adding user to role: ${userID}, ${roleID}, ${orgID}`, Date.now() - start);
+                console.log("result",result)
+                if(result.rowCount > 0){
+                    logger.info(`User: ${userID} added to role: ${roleID} for org: ${orgID}`, Date.now() - start);
+                    return true;
+                }
+                logger.warning(`User ${userID} already in role: ${roleID} for org: ${orgID}, or role, org, or user does not exist`, Date.now() - start);
+                return false;
+            
         } catch (e) {
-            logger.error("Error adding user to role with error: " + e, Date.now() - start);
+            logger.error(`Error adding user ${userID} to role ${roleID} for org ${orgID} with error: ` + e, Date.now() - start);
             throw new Error("Error adding user to role");
 
         }
