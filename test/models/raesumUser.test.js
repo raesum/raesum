@@ -1076,4 +1076,158 @@ describe("Raesum User Model", () => {
             expect(setMetadataMock).not.toHaveBeenCalled();
         });
     });
+
+    describe('getMetadataKeyList', () => {
+        
+
+        test('should return array of all keys when show_inactive is true', async () => {
+            const mockKeys = {
+                'key1': { datakey: 'key1', active_status: true },
+                'key2': { datakey: 'key2', active_status: true },
+                'key3': { datakey: 'key3', active_status: false }
+            };
+
+            vi.spyOn(raesumUser, "getMetadataKeys").mockResolvedValue(mockKeys);
+
+            const result = await raesumUser.getMetadataKeyList(true);
+
+            expect(result).toEqual(['key1', 'key2', 'key3']);
+            expect(raesumUser.getMetadataKeys).toHaveBeenCalledWith(true);
+        });
+
+        test('should return empty array when no keys exist', async () => {
+            const mockKeys = {};
+
+            vi.spyOn(raesumUser, "getMetadataKeys").mockResolvedValue(mockKeys);
+
+            const result = await raesumUser.getMetadataKeyList();
+
+            expect(result).toEqual([]);
+            expect(raesumUser.getMetadataKeys).toHaveBeenCalledWith(false);
+        });
+
+
+        test('should handle database errors gracefully', async () => {
+            vi.spyOn(raesumUser, "getMetadataKeys").mockRejectedValue(new Error("Database error"));
+
+            await expect(raesumUser.getMetadataKeyList()).rejects.toThrow("Database error");
+            expect(raesumUser.getMetadataKeys).toHaveBeenCalledWith(false);
+        });
+
+        test('should return keys in consistent order', async () => {
+            const mockKeys = {
+                'zebra': { datakey: 'zebra', active_status: true },
+                'apple': { datakey: 'apple', active_status: true },
+                'banana': { datakey: 'banana', active_status: true }
+            };
+
+            vi.spyOn(raesumUser, "getMetadataKeys").mockResolvedValue(mockKeys);
+
+            const result = await raesumUser.getMetadataKeyList();
+
+            // Should return keys in the order they appear in the object
+            expect(result).toEqual(['zebra', 'apple', 'banana']);
+        });
+
+        describe('cache scenarios', () => {
+            test('should return cached keys when cache exists', async () => {
+                const mockCachedKeys = ['cached_key1', 'cached_key2'];
+                
+                vi.spyOn(raesumCache, "get").mockResolvedValue(mockCachedKeys);
+                const getMetadataKeysSpy = vi.spyOn(raesumUser, "getMetadataKeys");
+
+                const result = await raesumUser.getMetadataKeyList();
+
+                expect(result).toEqual(mockCachedKeys);
+                expect(raesumCache.get).toHaveBeenCalledWith("raesumUserMetadataKeysfalse");
+                expect(getMetadataKeysSpy).not.toHaveBeenCalled();
+            });
+
+            test('should fetch from database when cache is empty', async () => {
+                const mockKeys = {
+                    'key1': { datakey: 'key1', active_status: true },
+                    'key2': { datakey: 'key2', active_status: true }
+                };
+
+                vi.spyOn(raesumCache, "get").mockResolvedValue([]);
+                vi.spyOn(raesumUser, "getMetadataKeys").mockResolvedValue(mockKeys);
+
+                const result = await raesumUser.getMetadataKeyList();
+
+                expect(result).toEqual(['key1', 'key2']);
+                expect(raesumCache.get).toHaveBeenCalledWith("raesumUserMetadataKeysfalse");
+                expect(raesumUser.getMetadataKeys).toHaveBeenCalledWith(false);
+            });
+
+            test('should fetch from database when cache returns null', async () => {
+                const mockKeys = {
+                    'key1': { datakey: 'key1', active_status: true },
+                    'key2': { datakey: 'key2', active_status: true }
+                };
+
+                vi.spyOn(raesumCache, "get").mockResolvedValue(null);
+                vi.spyOn(raesumUser, "getMetadataKeys").mockResolvedValue(mockKeys);
+
+                const result = await raesumUser.getMetadataKeyList();
+
+                expect(result).toEqual(['key1', 'key2']);
+                expect(raesumCache.get).toHaveBeenCalledWith("raesumUserMetadataKeysfalse");
+                expect(raesumUser.getMetadataKeys).toHaveBeenCalledWith(false);
+            });
+
+            test('should fetch from database when cache is undefined', async () => {
+                const mockKeys = {
+                    'key1': { datakey: 'key1', active_status: true },
+                    'key2': { datakey: 'key2', active_status: true }
+                };
+
+                vi.spyOn(raesumCache, "get").mockResolvedValue(undefined);
+                vi.spyOn(raesumUser, "getMetadataKeys").mockResolvedValue(mockKeys);
+
+                const result = await raesumUser.getMetadataKeyList();
+
+                expect(result).toEqual(['key1', 'key2']);
+                expect(raesumCache.get).toHaveBeenCalledWith("raesumUserMetadataKeysfalse");
+                expect(raesumUser.getMetadataKeys).toHaveBeenCalledWith(false);
+            });
+
+            test('should use correct cache key for active keys', async () => {
+                const mockCachedKeys = ['active_key1', 'active_key2'];
+                
+                vi.spyOn(raesumCache, "get").mockResolvedValue(mockCachedKeys);
+                vi.spyOn(raesumUser, "getMetadataKeys");
+
+                await raesumUser.getMetadataKeyList(false);
+
+                expect(raesumCache.get).toHaveBeenCalledWith("raesumUserMetadataKeysfalse");
+                expect(raesumUser.getMetadataKeys).not.toHaveBeenCalled();
+            });
+
+            test('should use correct cache key for all keys including inactive', async () => {
+                const mockCachedKeys = ['active_key1', 'inactive_key1'];
+                
+                vi.spyOn(raesumCache, "get").mockResolvedValue(mockCachedKeys);
+                vi.spyOn(raesumUser, "getMetadataKeys");
+
+                await raesumUser.getMetadataKeyList(true);
+
+                expect(raesumCache.get).toHaveBeenCalledWith("raesumUserMetadataKeystrue");
+                expect(raesumUser.getMetadataKeys).not.toHaveBeenCalled();
+            });
+
+            test('should handle cache errors and fall back to database', async () => {
+                const mockKeys = {
+                    'key1': { datakey: 'key1', active_status: true },
+                    'key2': { datakey: 'key2', active_status: true }
+                };
+
+                vi.spyOn(raesumCache, "get").mockRejectedValue(new Error("Cache error"));
+                vi.spyOn(raesumUser, "getMetadataKeys").mockResolvedValue(mockKeys);
+
+                await expect(raesumUser.getMetadataKeyList()).rejects.toThrow("Cache error");
+                expect(raesumCache.get).toHaveBeenCalledWith("raesumUserMetadataKeysfalse");
+                expect(raesumUser.getMetadataKeys).not.toHaveBeenCalled();
+            });
+        });
+    });
 });

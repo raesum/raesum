@@ -267,7 +267,7 @@ class raesumCognito{
             if(metadataKeys.includes(i)){
                 // If yes, update they cognito attribute and writable status accordingly
                 // Create update SQL command
-                sql += "UPDATE raesum_user_metadata_keys SET cognito_attribute = true , cognito_writable = " + attrList[i] + " WHERE datakey = '" + i + "';\n";
+                sql += "UPDATE raesum_user_metadata_keys SET cognito_attribute = true , cognito_writable = " + attrList[i] + " WHERE datakey ILIKE '" + i + "';\n";
 
 
             }else{

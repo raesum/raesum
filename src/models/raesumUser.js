@@ -561,12 +561,16 @@ class raesumUserObject {
         // Check to see if list is already in cache
         const listCacheKey = "raesumUserMetadataKeys" + show_inactive;
         let cachedKeys = await raesumCache.get(listCacheKey);
+            
+        cachedKeys = Object.keys(cachedKeys);
 
         // If not in cache, build the list (which will cache it)
         if (!cachedKeys || Object.keys(cachedKeys).length === 0) {
+            logger.verbose(`Metadata key list not found in cache, building it`, Date.now() - start);
             const keys = await this.getMetadataKeys(show_inactive);
             cachedKeys = Object.keys(keys);
         }
+            
 
         logger.verbose(`Returning cached metadata key list`, Date.now() - start)
         logger.debug(`Key list metadata with ${cachedKeys.length} keys: ${JSON.stringify(cachedKeys)}`, Date.now() - start)
