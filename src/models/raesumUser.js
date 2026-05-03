@@ -461,7 +461,6 @@ class raesumUserObject {
         const cacheKeyStrings = [
             'raesumUserMetadataKeystrue',
             'raesumUserMetadataKeysfalse',
-            'raesumUserMetadataKeyIndex',
             'raesumUserMetadataCognitoKeyStatus'
         ];
         
@@ -528,20 +527,14 @@ class raesumUserObject {
             logger.debug("Saved "+response.rows.length+" metadata keys to cache", Date.now() - start);
         }
 
-        let keyIndex = {};
         let cognitoKeys = {};
         keyList.forEach((key) => {
-            keyIndex[key] = keys[key].id;
-
             // If the key is a cognito key, add it to the cognitoKey list
             if(keys[key].cognito_attribute){
                 cognitoKeys[key] = keys[key].cognito_writable;
             }
         });
 
-        const indexCacheKey = "raesumUserMetadataKeyIndex";
-
-        await raesumCache.set(indexCacheKey, keyIndex);
 
         const cognitocacheKey = "raesumUserMetadataCognitoKeyStatus";
         await raesumCache.set(cognitocacheKey, cognitoKeys);
@@ -580,32 +573,6 @@ class raesumUserObject {
         return cachedKeys;
     }
 
-    /**
-     * Gets a list of all possible user metadata keys and their matching internal ID's
-     * @return {Array} An array of possible user metadata keys
-     */
-    async getMetadataKeyIndex() {
-        const start = Date.now();
-
-
-        // Check to see if list is already in cache
-        const listCacheKey = "raesumUserMetadataKeyIndex";
-        let cachedKeys = await raesumCache.get(listCacheKey);
-
-        // If not in cache, build the list (which will cache it)
-        if (!cachedKeys || Object.keys(cachedKeys).length === 0) {
-            const keys = await this.getMetadataKeys(true);
-            const keyList = Object.keys(keys);
-            cachedKeys = [];
-            keyList.forEach((key) => {
-                cachedKeys[key] = keys[key].id;
-            });
-        }
-        logger.verbose(`Returning cached metadata key index`, Date.now() - start)
-        logger.debug(`Key index of metadata with ${cachedKeys.length} keys: ${JSON.stringify(cachedKeys)}`, Date.now() - start)
-
-        return cachedKeys;
-    }
 
     /**
      * Gets a list of all cognito keys and their writable status
@@ -728,7 +695,7 @@ class raesumUserObject {
         // Check to see if the key is in use
         const sqlCheck = `SELECT COUNT(*)
                           FROM raesum_user_x_metadata as ruxm
-                                   INNER JOIN raesum_user_metadata_keys as rumk on ruxm.key_id = rumk.id
+                                   INNER JOIN raesum_user_metadata_keys as rumk on ruxm.datakey = rumk.datakey
                           WHERE rumk.datakey = $1`;
         const result = await raesumDB.query(sqlCheck, [key]);
 
@@ -812,15 +779,13 @@ class raesumUserObject {
 
         // Get the list of user metadata values
         const validKeys = await this.getMetadataKeyList(activeStatus);
-        const keyIndex = await this.getMetadataKeyIndex();
-
 
         // Remove invalid keys from list
         keys = keys.filter(key => validKeys.includes(key));
 
         const sql = `SELECT rumk.datakey, ruxm.value as value
                      FROM raesum_user_x_metadata as ruxm
-                              INNER JOIN raesum_user_metadata_keys as rumk on ruxm.key_id = rumk.id
+                              INNER JOIN raesum_user_metadata_keys as rumk on ruxm.datakey = rumk.datakey
                      WHERE ruxm.user_id = $1
                        AND rumk.datakey = ANY($2)`;
 
@@ -878,7 +843,6 @@ class raesumUserObject {
 
         // Get the list of user metadata values
         const validKeys = await this.getMetadataKeyList(activeStatus);
-        const keyIndex = await this.getMetadataKeyIndex();
         const cognitoKeys = await this.getMetadataCognitoKeyStatus();
         const readOnlyCognitoKeys = Object.keys(cognitoKeys).filter(key => !cognitoKeys[key]);
 
@@ -924,7 +888,7 @@ class raesumUserObject {
                 // Add insert/update query
                 insertValuesArray.push(`($${i}, $${i + 1}, $${i + 2})`);
                 valuesArray.push(userId);
-                valuesArray.push(keyIndex[newKeyList[q]]);
+                valuesArray.push(newKeyList[q]);
                 valuesArray.push(values[newKeyList[q]]);
 
                 // Increment iterator
@@ -932,7 +896,7 @@ class raesumUserObject {
 
             }
 
-            sql += "INSERT INTO raesum_user_x_metadata (user_id, key_id, value) VALUES ";
+            sql += "INSERT INTO raesum_user_x_metadata (user_id, datakey, value) VALUES ";
             sql += insertValuesArray.join(", ") + ";";
         }
 
@@ -950,9 +914,9 @@ class raesumUserObject {
             sql += `UPDATE raesum_user_x_metadata
                    SET value = $1
                    WHERE user_id = $2
-                     AND key_id = $3;`;
+                     AND datakey = $3;`;
             try {
-                await raesumDB.query(sql, [values[updateKeyList[q]], userId, keyIndex[updateKeyList[q]]]);
+                await raesumDB.query(sql, [values[updateKeyList[q]], userId, updateKeyList[q]]);
             } catch (e) {
                 logger.error(`Failed to update user metadata values: ${e.message}`, Date.now() - start);
                 throw new Error("Error updating new user metadata values");
@@ -1043,7 +1007,6 @@ class raesumUserObject {
 
         // Get a list of valid metadata keys
         const validKeys = await this.getMetadataKeyList(activeStatus);
-        const keyIndex = await this.getMetadataKeyIndex();
 
         // Get a list of cognito keys
         const cognitoKeys = await this.getMetadataCognitoKeyStatus();
@@ -1060,11 +1023,10 @@ class raesumUserObject {
         // Delete the values from the raesum_user_x_metadata table corresponding with the keys
         const deleteSql = `DELETE FROM raesum_user_x_metadata
                           WHERE user_id = $1
-                          AND key_id = ANY($2)`;
-        const keyIds = keysToDelete.map(key => keyIndex[key]).filter(id => id !== undefined);
+                          AND datakey = ANY($2)`;
 
         try {
-            await raesumDB.query(deleteSql, [userId, keyIds]);
+            await raesumDB.query(deleteSql, [userId, keysToDelete]);
             logger.info(`Deleted ${keysToDelete.length} metadata values for user ${userId}`, Date.now() - start);
         } catch (e) {
             logger.error(`Error deleting user metadata values for user ${userId}: ${e.message}`, Date.now() - start);
