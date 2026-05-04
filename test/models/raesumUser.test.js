@@ -338,8 +338,8 @@ describe("Raesum User Model", () => {
         test('should get allowed organizations for valid user', async () => {
             const userId = 123;
             const mockOrgs = [
-                { organization_id: 1 },
-                { organization_id: 2 }
+                { org_id: 1 },
+                { org_id: 2 }
             ];
 
             const dbMock = vi.spyOn(raesumDB, "query").mockResolvedValue({
@@ -1131,14 +1131,14 @@ describe("Raesum User Model", () => {
 
         describe('cache scenarios', () => {
             test('should return cached keys when cache exists', async () => {
-                const mockCachedKeys = ['cached_key1', 'cached_key2'];
+                const mockCachedKeys = {"cached_key1":{"id":1,"datakey":"cached_key1"},"cached_key2":{"id":2,"datakey":"cached_key2"}};
                 
                 vi.spyOn(raesumCache, "get").mockResolvedValue(mockCachedKeys);
                 const getMetadataKeysSpy = vi.spyOn(raesumUser, "getMetadataKeys");
 
                 const result = await raesumUser.getMetadataKeyList();
 
-                expect(result).toEqual(mockCachedKeys);
+                expect(result).toEqual(['cached_key1', 'cached_key2']);
                 expect(raesumCache.get).toHaveBeenCalledWith("raesumUserMetadataKeysfalse");
                 expect(getMetadataKeysSpy).not.toHaveBeenCalled();
             });
