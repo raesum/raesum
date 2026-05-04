@@ -1,5 +1,6 @@
 import express from 'express';
 import raesumUser from "../controllers/raesumUser.js";
+import raesumAuth from "../controllers/raesumAuth.js";
 const raesumAuthRouter = express.Router();
 
 /**
@@ -29,7 +30,7 @@ const raesumAuthRouter = express.Router();
  *       500:
  *         description: Internal server error
  */
-raesumAuthRouter.get('/login', raesumUser.login);
+raesumAuthRouter.get('/login', raesumAuth.login);
 
 /**
  * @swagger
@@ -66,7 +67,7 @@ raesumAuthRouter.get('/login', raesumUser.login);
  *       500:
  *         description: Internal server error
  */
-raesumAuthRouter.get('/logout', raesumUser.logout);
+raesumAuthRouter.get('/logout', raesumAuth.logout);
 
 /**
  * @swagger
@@ -93,7 +94,7 @@ raesumAuthRouter.get('/logout', raesumUser.logout);
  *       500:
  *         description: Internal server error
  */
-raesumAuthRouter.get('/callbackSession', raesumUser.callbackSession);
+raesumAuthRouter.get('/callbackSession', raesumAuth.callbackSession);
 
 /**
  * @swagger
@@ -148,6 +149,6 @@ raesumAuthRouter.get('/callbackSession', raesumUser.callbackSession);
  *       500:
  *         description: Internal server error
  */
-raesumAuthRouter.post('/callbackJWT', raesumUser.callbackJWT);
+raesumAuthRouter.post('/callbackJWT', raesumAuth.callbackJWT);
 
 export default raesumAuthRouter;
