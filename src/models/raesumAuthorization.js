@@ -575,6 +575,63 @@ class raesumAuthorizationObject {
 
     }
 
+
+    /**
+     * Gets the roles for a user
+     * @param {Number} userID The ID of the user
+     * @param  {Number} [orgID=currentOrgID] The ID of the organization. Defaults to the user's current orgID
+     * @param {Boolean} [showInactive=false] Whether to include inactive roles AND inactive orgs
+     * @returns {Object} An Object of role IDs, org IDs, and role keys
+     * @throws {Error} If the user ID is not a number or is not a valid user ID
+     */
+    async getUserRoles(userID, orgID = null, activeOnly = true) {
+        const start = Date.now();
+        logger.verbose("Starting getUserRoles for user " + userID, Date.now() - start);
+
+        // Validate the data types of the inputs
+        if (typeof userID != "number" || userID < 1) {
+            logger.error("Invalid userID input for getUserRoles. Must be a positive int.", Date.now() - start);
+            throw new Error("Invalid userID input for getUserRoles. Must be a positive int.");
+        }
+
+        if (typeof activeOnly != "boolean") {
+            activeOnly = false;
+        }
+
+        // If the orgID is not submitted
+        if (typeof orgID != "number" || orgID < 1) {
+            logger.debug("OrgID not submitted for getUserRoles. Getting current orgID for user", Date.now() - start);
+            // Get the user
+            const user = await raesumUser.getUserById(userID);
+            
+            // set the orgID equal to the user's current org
+            orgID = user.current_organization_id;
+        }
+
+        const query = `SELECT RAUXOXR.role_id, RAUXOXR.org_id, RAR.string_key
+                        FROM raesum_auth_user_x_organization_x_role as RAUXOXR
+                        INNER JOIN raesum_auth_role as RAR ON RAR.id = RAUXOXR.role_id
+                        INNER JOIN raesum_organization as RO ON RAUXOXR.org_id = RO.id
+                        WHERE RAUXOXR.user_id = $1
+                        AND RAR.active_status = $3
+                        AND RO.active_status = $4
+                        AND RAUXOXR.org_id = $2
+                        ORDER BY RAUXOXR.org_id ASC, RAUXOXR.role_id ASC;`;
+        const params = [userID, orgID, activeOnly, showInactive];
+        try{
+            const result = await raesumDB.query(query, params);
+
+            logger.info(`Found ${result.rows.length} roles for user: ${userID}`, Date.now() - start);
+
+            return result.rows;
+        }catch(e){
+            logger.error(`Error getting user roles for user: ${userID}`, Date.now() - start);
+            throw e;
+        }
+        return [];
+    }
+
+
     /**
      * Adds a user to a role for an organization. The user MUST already be allowed to switch to the organization. The role must also be available to the organization. A user cannot be added to an inactive role.
      * @param  {Number} id The ID of the user
@@ -801,6 +858,50 @@ class raesumAuthorizationObject {
 
     }
 
+        /**
+     * Get role by ID
+     * @param  {Array} roleIDs The IDs of the roles
+     * @param   {boolean} [activeOnly=true] Only return active roles
+     * @returns {object} A single role object
+     * @throws {Error} If the role ID is not a positive int
+     * @throws {Error} If the role does not exist
+     */
+    async getRolesByIDs(roleIDs, activeOnly) {
+        const start = Date.now();
+
+        // Validate that roleID is a positive int
+        if(!Array.isArray(roleIDs) || roleIDs.length === 0) {
+            for(let i=0;i<roleIDs.length;i++) {
+                roleIDs[i] = parseInt(roleIDs[i]);
+
+                if(isNaN(roleIDs[i]) || typeof roleIDs[i] != "number" || roleIDs[i] < 1) {
+                    logger.error("Invalid input for getRoleByID. Must be a positive int.", Date.now() - start);
+                    throw new Error("Invalid input for getRoleByID. Must be a positive int.");
+                }
+            }
+        }
+
+        // Determine whether to include inactive records
+        // Create query fragment for activeonly
+        let activeOnlyQuery = "";
+        if (activeOnly !== false) {
+            activeOnlyQuery = " AND r.active_status = true ";
+        }
+
+        const query = `SELECT *
+                       FROM raesum_auth_role as r
+                       WHERE id = ANY($1) ${activeOnlyQuery};`;
+        const result = await raesumDB.query(query, [roleIDs]);
+
+        if (result.rows.length > 0) {
+            logger.verbose(`getRolesByIDs found ${result.rows.length} roles`, Date.now() - start);
+            return result.rows;
+        } else {
+            logger.warning(`Roles with IDs: ${roleIDs.join(",")} not found`, Date.now() - start);
+            throw new Error("Role not found");
+        }
+
+    }
 
     /**
      * Get role by Key

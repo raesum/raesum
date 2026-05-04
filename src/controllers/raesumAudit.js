@@ -18,6 +18,11 @@ class raesumAuditController {
         const requesterUserID = req.user ? req.user.id : null;
         let orgID = req.user ? req.user.current_organization_id : null;
         if("organizationId" in req.query){
+            // Validate the organization ID is a number
+            if (isNaN(req.query.organizationId) || req.query.organizationId < 1 || !Number.isInteger(parseInt(req.query.organizationId))) {
+                const message = await raesumResponses.get("requestInvalidFields",['organizationId']);
+                return res.status(message.code).json(message);
+            }
             orgID = req.query.organizationId ? parseInt(req.query.organizationId) : null;
         }
         

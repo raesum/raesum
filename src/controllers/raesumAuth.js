@@ -8,6 +8,9 @@ import raesumAudit from "../models/raesumAudit.js";
 import raesumUser from "../models/raesumUser.js";
 import raesumAuthorization from "../models/raesumAuthorization.js";
 
+const __filename = fileURLToPath(import.meta.url);
+const logger = raesumLogger(__filename);
+
 class raesumAuthController {
     
     /*
@@ -429,6 +432,355 @@ class raesumAuthController {
             return res.status(message.code).json(message);
         }
 
+    }
+
+
+    async getAvailableRoles(req,res,next){
+        const start = Date.now();
+        logger.info("Controller Getting available roles", Date.now() - start);
+
+        let orgId = null;
+
+        // If no organization ID is requested use the current_organization_id
+        if (!req.params.organizationId) {
+            orgId = req.user.current_organization_id;
+        }else{
+            // Validate the organization ID is a number
+            if (isNaN(req.params.organizationId) || req.params.organizationId < 1 || !Number.isInteger(parseInt(req.params.organizationId))) {
+                const message = await raesumResponses.get("requestInvalidFields",['organizationId']);
+                return res.status(message.code).json(message);
+            }
+            orgId = parseInt(req.params.organizationId);
+        }
+
+        // Use raesum authorization to check to see if this user may access the requested object
+        let isAuthorized = await raesumAuthorization.checkUserPermission(
+                req.user.id, 
+                'raesum_auth_role', 
+                'read', 
+                req.user.current_organization_id, 
+                orgId
+            );
+        
+        if (!isAuthorized) {
+            // If not, get the not authorized message and return the rejected request
+            const message = await raesumResponses.get("notAuthorized",["read","raesum_auth_role"]);
+            return res.status(message.code).json(message);
+        }
+
+        try{
+            // Get the available roles for the organization
+            const roles = await raesumAuthorization.getRolesForOrg(orgId, true);
+            
+            // Return the roles
+            logger.info(`Available roles for organization ${orgId} retrieved`, Date.now() - start);
+
+            // Add audit log entry 
+            await raesumAudit.create("read", "raesum_auth_role", orgId, req.user.id); 
+            const message = await raesumResponses.get("success");
+            message.data = roles;
+            return res.status(message.code).json(message);
+
+        }catch(e){
+            logger.error(`Error getting available roles for organization ${orgId}: ${e.message}`, Date.now()-start);
+            const message = await raesumResponses.get("internalServerError");
+            return res.status(message.code).json(message);
+        }
+    }
+
+
+    async getUserRoles(req,res,next){
+        const start = Date.now();
+        logger.info("Controller Getting user roles", Date.now() - start);
+
+        let userId = null;
+        let orgId = null;
+
+        // If no user ID is provided, use the current user
+        if (!req.params.userId ) {
+            userId = req.user.id;
+        }else{
+            // Validate the user ID is a number
+            if (isNaN(req.params.userId) || req.params.userId < 1 || !Number.isInteger(parseInt(req.params.userId))) {
+                const message = await raesumResponses.get("requestInvalidFields",['userId']);
+                return res.status(message.code).json(message);
+            }
+            userId = parseInt(req.params.userId);
+        }
+
+        // If no organization ID is requested use the current_organization_id
+        if (!req.params.organizationId) {
+            orgId = req.user.current_organization_id;
+        }else{
+            // Validate the organization ID is a number
+            if (isNaN(req.params.organizationId) || req.params.organizationId < 1 || !Number.isInteger(parseInt(req.params.organizationId))) {
+                const message = await raesumResponses.get("requestInvalidFields",['organizationId']);
+                return res.status(message.code).json(message);
+            }
+            orgId = parseInt(req.params.organizationId);
+        }
+
+            // Use raesum authorization to check to see if this user may access the requested object
+        let isAuthorized = await raesumAuthorization.checkUserPermission(
+                req.user.id, 
+                'raesum_user', 
+                'read', 
+                req.user.current_organization_id, 
+                userId
+            );
+        
+        if (!isAuthorized) {
+            // If not, get the not authorized message and return the rejected request
+            const message = await raesumResponses.get("notAuthorized",["read","raesum_user"]);
+            return res.status(message.code).json(message);
+        }
+
+        try{
+            // Get the user's roles
+            const user = await raesumAuthorization.getUserRoles(userId);
+            
+            // Return the user
+            logger.info(`User ${userId} retrieved`, Date.now() - start);
+
+            // Add audit log entry 
+            await raesumAudit.create("read", "raesum_user", userId, req.user.id); 
+            const message = await raesumResponses.get("success");
+            message.data = user;
+            return res.status(message.code).json(message);
+
+        }catch(e){
+            logger.error(`Error getting user ${userId}: ${e.message}`, Date.now()-start);
+            const message = await raesumResponses.get("internalServerError");
+            return res.status(message.code).json(message);
+        }
+    }
+
+    async addUserRoles(req,res,next){
+        const start = Date.now();
+        logger.info("Controller Adding user roles", Date.now() - start);
+
+        let userId = null;
+        let orgId = null;
+
+        // If no user ID is provided, use the current user
+        if (!req.params.userId ) {
+            userId = req.user.id;
+        }else{
+            // Validate the user ID is a number
+            if (isNaN(req.params.userId) || req.params.userId < 1 || !Number.isInteger(parseInt(req.params.userId))) {
+                const message = await raesumResponses.get("requestInvalidFields",['userId']);
+                return res.status(message.code).json(message);
+            }
+            userId = parseInt(req.params.userId);
+        }
+
+        // If no organization ID is requested use the current_organization_id
+        if (!req.params.organizationId) {
+            orgId = req.user.current_organization_id;
+        }else{
+            // Validate the organization ID is a number
+            if (isNaN(req.params.organizationId) || req.params.organizationId < 1 || !Number.isInteger(parseInt(req.params.organizationId))) {
+                const message = await raesumResponses.get("requestInvalidFields",['organizationId']);
+                return res.status(message.code).json(message);
+            }
+            orgId = parseInt(req.params.organizationId);
+        }
+
+        // Validate that roles array is provided in the request body
+        if (!req.body.values || !Array.isArray(req.body.values)) {
+            const message = await raesumResponses.get("requestMissingFields",['values']);
+            return res.status(message.code).json(message);
+        }
+
+        // Validate each role ID in the array
+        const roles = req.body.values;
+
+
+        // Use raesum authorization to check to see if this user may manage roles for the target user
+        let isAuthorized = await raesumAuthorization.checkUserPermission(
+                req.user.id, 
+                'raesum_role', 
+                'update', 
+                orgId, 
+                userId
+            );
+        
+        if (!isAuthorized) {
+            // If not, get the not authorized message and return the rejected request
+            const message = await raesumResponses.get("notAuthorized",["update","raesum_user"]);
+            return res.status(message.code).json(message);
+        }
+
+        // Get a list of valid roleIDs
+        try{
+            const validRoleIds = await raesumAuthorization.getRolesForOrg(orgId, true);
+            const validRoles = await raesumAuthorization.getRolesByIDs(validRoleIds, true);
+
+             // Divide the requested roles into numbers and strings
+             const roleIds = [];
+             const roleKeys = [];
+
+            for (const role of roles) {
+                const candidateRoleID = parseInt(role);
+                if (isNaN(candidateRoleID) || candidateRoleID < 1 || !Number.isInteger(candidateRoleID)) {
+                    // If the string is a valid role key name add it to the role keys, otherwise, send an error to the user
+                    if (validRoles.some(r => r.key === candidateRoleID)) {
+                        roleKeys.push(parseInt(candidateRoleID));
+                    } else {
+                        const message = await raesumResponses.get("requestInvalidFields",['values']);
+                        return res.status(message.code).json(message);
+                    }
+                } else {
+                    // If the ID is a valid role id in validRoles then add it to roleIds, otherwise send an error to the user
+                    if (validRoles.some(r => r.id === parseInt(role))) {
+                        roleIds.push(parseInt(role));
+                    } else {
+                        const message = await raesumResponses.get("requestInvalidFields",['values']);
+                        return res.status(message.code).json(message);
+                    }
+                }
+            }
+
+
+        } catch (error) {
+            logger.error(`Error getting valid roles: ${error.message}`, Date.now() - start);
+            const message = await raesumResponses.get("internalServerError");
+            return res.status(message.code).json(message);
+        }
+
+
+        try{
+            // Add each role by ID to the user
+            const addedRoles = [];
+            for (const roleId of roleIds) {
+                await raesumAuthorization.addUserToRole(userId, parseInt(roleId), orgId);
+                addedRoles.push(parseInt(roleId));
+            }
+
+            // Add each role by key to the user
+            for (const roleKey of roleKeys) {
+                await raesumAuthorization.addUserToRole(userId, roleKey, orgId);
+                addedRoles.push(roleKey);
+            }
+            
+            // Return success
+            logger.info(`Roles ${addedRoles.join(', ')} added to user ${userId}`, Date.now() - start);
+
+            // Add audit log entry 
+            await raesumAudit.create("update", "raesum_role", userId, req.user.id); 
+            const message = await raesumResponses.get("success");
+            message.data = { addedRoles: addedRoles };
+            return res.status(message.code).json(message);
+
+        }catch(e){
+            logger.error(`Error adding roles to user ${userId}: ${e.message}`, Date.now()-start);
+            const message = await raesumResponses.get("internalServerError");
+            return res.status(message.code).json(message);
+        }
+    }
+
+    async deleteUserRoles(req,res,next){
+        const start = Date.now();
+        logger.info("Controller Deleting user roles", Date.now() - start);
+
+        let userId = null;
+        let orgId = null;
+
+        // If no user ID is provided, use the current user
+        if (!req.params.userId ) {
+            userId = req.user.id;
+        }else{
+            // Validate the user ID is a number
+            if (isNaN(req.params.userId) || req.params.userId < 1 || !Number.isInteger(parseInt(req.params.userId))) {
+                const message = await raesumResponses.get("requestInvalidFields",['userId']);
+                return res.status(message.code).json(message);
+            }
+            userId = parseInt(req.params.userId);
+        }
+
+        // If no organization ID is requested use the current_organization_id
+        if (!req.params.organizationId) {
+            orgId = req.user.current_organization_id;
+        }else{
+            // Validate the organization ID is a number
+            if (isNaN(req.params.organizationId) || req.params.organizationId < 1 || !Number.isInteger(parseInt(req.params.organizationId))) {
+                const message = await raesumResponses.get("requestInvalidFields",['organizationId']);
+                return res.status(message.code).json(message);
+            }
+            orgId = parseInt(req.params.organizationId);
+        }
+
+        // Validate that roles array is provided in the request body
+        if (!req.body.values || !Array.isArray(req.body.values)) {
+            const message = await raesumResponses.get("requestMissingFields",['values']);
+            return res.status(message.code).json(message);
+        }
+
+
+        // Use raesum authorization to check to see if this user may manage roles for the target user
+        let isAuthorized = await raesumAuthorization.checkUserPermission(
+                req.user.id, 
+                'raesum_role', 
+                'delete', 
+                orgId, 
+                userId
+            );
+        
+
+        if (!isAuthorized) {
+            // If not, get the not authorized message and return the rejected request
+            const message = await raesumResponses.get("notAuthorized",["update","raesum_user"]);
+            return res.status(message.code).json(message);
+        }
+
+        // Get the user's current roles
+        const rolesByID = [];
+        try {
+            const userRoles = await raesumAuthorization.getUserRoles(userId, orgId);
+
+            // Loop through the values in the body if the role is a valid INT check to see if it's a valid role in userRoles. If it is then add to rolesByID
+            for (const role of req.body.values) {
+                const candidateRoleID = parseInt(role);
+                if (isNaN(candidateRoleID) && typeof candidateRoleID === 'number' && userRoles.some(r => r.id === candidateRoleID)) {
+                    rolesByID.push(candidateRoleID);
+                }else if (typeof role === 'string' && userRoles.some(r => r.string_key === role)) {
+                    rolesByID.push(userRoles.find(r => r.string_key === role).id);
+                }else{
+                    // Invalid role, pass error to user
+                    const message = await raesumResponses.get("requestInvalidFields",['values']);
+                    return res.status(message.code).json(message);
+                }
+            }
+
+        }catch(e){
+            logger.error(`Error getting validating the requested roles to delete: ${e.message}`, Date.now() - start);
+            const message = await raesumResponses.get("internalServerError");
+            return res.status(message.code).json(message);
+        }
+        
+        
+        try{
+            // Remove each role from the user
+            const removedRoles = [];
+            for (const roleId of rolesByID) {
+                await raesumAuthorization.removeUserFromRole(userId, roleId, orgId);
+                removedRoles.push(roleId);
+            }
+            
+            // Return success
+            logger.info(`Roles ${removedRoles.join(', ')} removed from user ${userId}`, Date.now() - start);
+
+            // Add audit log entry 
+            await raesumAudit.create("delete", "raesum_role", userId, req.user.id); 
+            const message = await raesumResponses.get("success");
+            message.data = { removedRoles: removedRoles };
+            return res.status(message.code).json(message);
+
+        }catch(e){
+            logger.error(`Error removing roles from user ${userId}: ${e.message}`, Date.now()-start);
+            const message = await raesumResponses.get("internalServerError");
+            return res.status(message.code).json(message);
+        }
     }
 
 }

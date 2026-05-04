@@ -1,8 +1,5 @@
 import {raesumLogger} from "../modules/raesumLogger.js";
 import {fileURLToPath} from "url";
-import raesumCognito from "../modules/raesumCognito.js";
-import raesumConfig from "../modules/raesumConfig.js";
-import raesumServer from "../modules/raesumServer.js";
 import raesumResponses from "../modules/raesumResponses.js";
 import raesumAudit from "../models/raesumAudit.js";
 import raesumUser from "../models/raesumUser.js";
@@ -44,7 +41,7 @@ class raesumUserController {
         }else{
             // Validate the user ID is a number
             if (isNaN(req.params.userId) || req.params.userId < 1 || !Number.isInteger(parseInt(req.params.userId))) {
-                const message = await raesumResponses.get("invalidUserId");
+                const message = await raesumResponses.get("requestInvalidFields",['userId']);
                 return res.status(message.code).json(message);
             }
             userId = parseInt(req.params.userId);
@@ -143,7 +140,7 @@ class raesumUserController {
         }else{
             // Validate the user ID is a number
             if (isNaN(req.params.userId) || req.params.userId < 1 || !Number.isInteger(parseInt(req.params.userId))) {
-                const message = await raesumResponses.get("invalidUserId");
+                const message = await raesumResponses.get("requestInvalidFields",['userId']);
                 return res.status(message.code).json(message);
             }
             userId = parseInt(req.params.userId);
@@ -203,7 +200,7 @@ class raesumUserController {
         }else{
             // Validate the user ID is a number
             if (isNaN(req.params.userId) || req.params.userId < 1 || !Number.isInteger(parseInt(req.params.userId))) {
-                const message = await raesumResponses.get("invalidUserId");
+                const message = await raesumResponses.get("requestInvalidFields",['userId']);
                 return res.status(message.code).json(message);
             }
             userId = parseInt(req.params.userId);
@@ -274,7 +271,7 @@ class raesumUserController {
         }else{
             // Validate the user ID is a number
             if (isNaN(req.params.userId) || req.params.userId < 1 || !Number.isInteger(parseInt(req.params.userId))) {
-                const message = await raesumResponses.get("invalidUserId");
+                const message = await raesumResponses.get("requestInvalidFields",['userId']);
                 return res.status(message.code).json(message);
             }
             userId = parseInt(req.params.userId);
@@ -348,7 +345,7 @@ class raesumUserController {
         }else{
             // Validate the user ID is a number
             if (isNaN(req.params.userId) || req.params.userId < 1 || !Number.isInteger(parseInt(req.params.userId))) {
-                const message = await raesumResponses.get("invalidUserId");
+                const message = await raesumResponses.get("requestInvalidFields",['userId']);
                 return res.status(message.code).json(message);
             }
             userId = parseInt(req.params.userId);
@@ -457,7 +454,7 @@ class raesumUserController {
         }else{
             // Validate the user ID is a number
             if (isNaN(req.params.userId) || req.params.userId < 1 || !Number.isInteger(parseInt(req.params.userId))) {
-                const message = await raesumResponses.get("invalidUserId");
+                const message = await raesumResponses.get("requestInvalidFields",['userId']);
                 return res.status(message.code).json(message);
             }
             userId = parseInt(req.params.userId);
@@ -481,7 +478,7 @@ class raesumUserController {
         // Get value from post body. If not specifically true or false, return an invalid value error
         const activationStatus = req.body.value;
         if (activationStatus !== true && activationStatus !== false) {
-            const message = await raesumResponses.get("invalidValue",["value"]);
+            const message = await raesumResponses.get("requestInvalidFields",["value"]);
             return res.status(message.code).json(message);
         }
 
@@ -515,7 +512,7 @@ class raesumUserController {
         }else{
             // Validate the user ID is a number
             if (isNaN(req.params.userId) || req.params.userId < 1 || !Number.isInteger(parseInt(req.params.userId))) {
-                const message = await raesumResponses.get("invalidValue",["userId"]);
+                const message = await raesumResponses.get("requestInvalidFields",["userId"]);
                 return res.status(message.code).json(message);
             }
             userId = parseInt(req.params.userId);
@@ -543,7 +540,7 @@ class raesumUserController {
         }
         const orgId = parseInt(req.body.organizationId);
         if (isNaN(orgId) || orgId < 1 || !Number.isInteger(orgId)) {
-            const message = await raesumResponses.get("invalidValue",["orgId"]);
+            const message = await raesumResponses.get("requestInvalidFields",["orgId"]);
             return res.status(message.code).json(message);
         }
 
@@ -552,7 +549,7 @@ class raesumUserController {
         // If the orgID is not in the list, return an invalid value error
         const allowedOrgs = await raesumUser.getAllowedUserOrgs(userId);
         if (!allowedOrgs.includes(orgId)) {
-            const message = await raesumResponses.get("invalidValue",["orgId"]);
+            const message = await raesumResponses.get("requestInvalidFields",["orgId"]);
             return res.status(message.code).json(message);
         }
 
@@ -587,7 +584,7 @@ class raesumUserController {
         }else{
             // Validate the user ID is a number
             if (isNaN(req.params.userId) || req.params.userId < 1 || !Number.isInteger(parseInt(req.params.userId))) {
-                const message = await raesumResponses.get("invalidUserId");
+                const message = await raesumResponses.get("requestInvalidFields",['userId']);
                 return res.status(message.code).json(message);
             }
             userId = parseInt(req.params.userId);

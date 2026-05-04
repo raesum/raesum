@@ -15,7 +15,7 @@
     "id": 3,
     "name": "Roles",
     "string_key": "raesum_role",
-    "description": ""
+    "description": "This object governs the User to Role to Organization assignment and necessary reads on roles. It is NOT possible to add/remove/edit roles themselves from the API."
   },
   {
     "id": 4,
