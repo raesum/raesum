@@ -3,7 +3,7 @@ import {fileURLToPath} from "url";
 import raesumResponses from "../modules/raesumResponses.js";
 import raesumAudit from "../models/raesumAudit.js";
 import raesumUser from "../models/raesumUser.js";
-import raesumAuthorization from "../models/raesumAuthorization.js";
+import raesumAuthorization from "../models/raesumAuth.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);

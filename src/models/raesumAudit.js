@@ -1,7 +1,7 @@
 import {raesumLogger} from "../modules/raesumLogger.js";
 import {fileURLToPath} from "url";
 import raesumDB from "../modules/raesumDB.js";
-import raesumAuthorization from "./raesumAuthorization.js";
+import raesumAuthorization from "./raesumAuth.js";
 import raesumOrganization from "./raesumOrganization.js";
 import raesumUser from "./raesumUser.js";
 

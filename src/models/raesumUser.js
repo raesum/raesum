@@ -5,7 +5,7 @@ import raesumOrganization from "./raesumOrganization.js";
 import raesumDB from "../modules/raesumDB.js";
 import raesumCache from "../modules/raesumCache.js";
 import raesumCognito from "../modules/raesumCognito.js";
-import raesumAuthorization from "../models/raesumAuthorization.js";
+import raesumAuthorization from "./raesumAuth.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);

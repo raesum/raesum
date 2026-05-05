@@ -5,7 +5,7 @@ import raesumOrganization from "../../src/models/raesumOrganization.js";
 import raesumConfig from "../../src/modules/raesumConfig.js";
 import raesumCache from "../../src/modules/raesumCache.js";
 import raesumCognito from "../../src/modules/raesumCognito.js";
-import raesumAuthorization from "../../src/models/raesumAuthorization.js";
+import raesumAuthorization from "../../src/models/raesumAuth.js";
 
 describe("Raesum User Model", () => {
     beforeEach(() => {

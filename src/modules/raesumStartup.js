@@ -5,7 +5,7 @@ import {fileURLToPath} from "url";
 import raesumOrganization from "../models/raesumOrganization.js";
 import raesumUser from "../models/raesumUser.js";
 import raesumMetadata from "../models/raesumMetadata.js";
-import raesumAuthorization from "../models/raesumAuthorization.js";
+import raesumAuthorization from "../models/raesumAuth.js";
 import readLineAsync from "../utils/readlineAsync.js";
 import raesumCognito from "./raesumCognito.js";
 

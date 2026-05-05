@@ -1,7 +1,7 @@
 import {raesumLogger} from "../modules/raesumLogger.js";
 import {fileURLToPath} from "url";
 import raesumAudit from "../models/raesumAudit.js";
-import raesumAuthorization from "../models/raesumAuthorization.js";
+import raesumAuthorization from "../models/raesumAuth.js";
 import raesumResponses from "../modules/raesumResponses.js";
 
 const __filename = fileURLToPath(import.meta.url);

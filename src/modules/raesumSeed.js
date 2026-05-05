@@ -9,7 +9,7 @@ import raesumMigrate from "./raesumMigrate.js";
 import raesumStartup from "../modules/raesumStartup.js";
 import raesumMetadata from "../models/raesumMetadata.js";
 import raesumDB from "./raesumDB.js";
-import raesumAuthorization from "../models/raesumAuthorization.js";
+import raesumAuthorization from "../models/raesumAuth.js";
 import raesumConfig from "../modules/raesumConfig.js";
 import raesumOrganization from "../models/raesumOrganization.js";
 import raesumAudit from "../models/raesumAudit.js";

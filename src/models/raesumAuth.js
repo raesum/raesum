@@ -711,9 +711,10 @@ class raesumAuthorizationObject {
                                                 ON oxu.org_id = allowedRole.org_id AND oxu.user_id = $3
                                 WHERE allowedRole.id = $4
                                 AND oxu.user_id IS NOT NULL`;
+                                
                 const result = await raesumDB.query(query, params);
                 logger.debug(`Result of adding user to role: ${userID}, ${roleID}, ${orgID}`, Date.now() - start);
-                console.log("result",result)
+
                 if(result.rowCount > 0){
                     logger.info(`User: ${userID} added to role: ${roleID} for org: ${orgID}`, Date.now() - start);
                     return true;
