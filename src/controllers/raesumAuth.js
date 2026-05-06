@@ -641,6 +641,11 @@ class raesumAuthController {
                 }
             }
 
+            if(roleIds.length == 0 && roleKeys.length==0){
+                // No valid roles
+                const message = await raesumResponses.get("requestInvalidFields",['values']);
+                return res.status(message.code).json(message);
+            }
 
         } catch (error) {
             logger.error(`Error getting valid roles: ${error.message}`, Date.now() - start);
