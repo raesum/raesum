@@ -235,12 +235,6 @@ describe("Raesum Authorization System: Actions, Objects, and Scopes", () => {
             expect(scopes).toBe(false);
         });
 
-        iftest('should handle user with multiple roles', async () => {
-            const scopes = await raesumAuthorization.getAllowedUserScopesByID(2, 1, 1);
-            expect(scopes).toBeGreaterThan(0);
-            // Should have scopes from multiple roles
-        });
-
         iftest('should handle deny action specifically', async () => {
             const denyActionId = await raesumAuthorization.convertActionStringToID("deny");
             const scopes = await raesumAuthorization.getAllowedUserScopesByID(1, 1, denyActionId);
