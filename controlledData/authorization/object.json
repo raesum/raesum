@@ -28,5 +28,11 @@
     "name": "User Metadata",
     "string_key": "raesum_user_metadata",
     "description": ""
+  },
+  {
+    "id": 6,
+    "name": "Organization Metadata",
+    "string_key": "raesum_organization_metadata",
+    "description": ""
   }
 ]
