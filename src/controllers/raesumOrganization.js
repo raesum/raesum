@@ -11,6 +11,55 @@ const logger = raesumLogger(__filename);
 
 class raesumOrganizationController {
 
+
+    async create(req,res,next){
+        const start = Date.now();
+
+        // Get organization name from request body
+        const { name } = req.body;
+        
+        // Validate organization name
+        if (!name || typeof name !== 'string') {
+            const message = await raesumResponses.get("requestMissingFields",["name"]);
+            return res.status(message.code).json(message);
+        }
+
+        logger.debug(`Creating organization: ${name}`, Date.now() - start);
+
+        // Use raesum authorization to check to see if this user may create organizations
+        let isAuthorized = await raesumAuthorization.checkUserPermission(
+                req.user.id, 
+                'raesum_organization', 
+                'create', 
+                req.user.current_organization_id, 
+                null
+            );
+    
+        if (!isAuthorized) {
+            // If not, get not authorized message and return the rejected request
+            const message = await raesumResponses.get("notAuthorized",["create","raesum_organization"]);
+            return res.status(message.code).json(message);
+        }
+
+        try{
+            // Create the organization
+            const organizationId = await raesumOrganization.create(name);
+            
+            logger.info(`Organization created with id: ${organizationId}`, Date.now() - start);
+
+            // Add audit log entry 
+            await raesumAudit.create("create", "raesum_organization", organizationId, req.user.id); 
+            const message = await raesumResponses.get("success");
+            message.data = { id: organizationId };
+            return res.status(message.code).json(message);
+
+        }catch(e){
+            logger.error(`Error creating organization: ${e.message}`, Date.now()-start);
+            const message = await raesumResponses.get("internalServerError");
+            return res.status(message.code).json(message);
+        }
+    }
+
     // Gets an organization by ID, default to current organization if no ID provided
     async getById(req,res,next){
         const start = Date.now();

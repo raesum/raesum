@@ -453,5 +453,7 @@ raesumOrganizationRouter.post('/metadata/delete/byKey/:key/', raesumOrganization
 raesumOrganizationRouter.post('/activation/set/:organizationId', raesumOrganization.setOrganizationActivation);
 raesumOrganizationRouter.post('/activation/set/', raesumOrganization.setOrganizationActivation);
 
+raesumOrganizationRouter.post('/create/', raesumOrganization.create);
+
 
 export default raesumOrganizationRouter;
