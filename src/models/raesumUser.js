@@ -466,7 +466,7 @@ class raesumUserObject {
 
     async clearMetadataKeyCache(){
         const start = Date.now();       
-        logger.debug("Clearing metadata key cache", Date.now() - start);
+        logger.debug("Clearing User metadata key cache", Date.now() - start);
         const cacheKeyStrings = [
             'raesumUserMetadataKeystrue',
             'raesumUserMetadataKeysfalse',
@@ -568,7 +568,7 @@ class raesumUserObject {
         }
 
         // Check to see if list is already in cache
-        logger.debug("Checking cache for metadata key list", Date.now() - start);
+        logger.debug("Checking cache for user metadata key list", Date.now() - start);
 
         const listCacheKey = "raesumUserMetadataKeys" + show_inactive;
         let cachedKeys = await raesumCache.get(listCacheKey);
@@ -577,7 +577,7 @@ class raesumUserObject {
 
         // If not in cache, build the list (which will cache it)
         if (!cachedKeys || Object.keys(cachedKeys).length === 0) {
-            logger.verbose(`Metadata key list not found in cache, building it`, Date.now() - start);
+            logger.verbose(`User Metadata key list not found in cache, building it`, Date.now() - start);
             const keys = await this.getMetadataKeys(show_inactive);
             cachedKeys = Object.keys(keys);
         }else{
@@ -586,8 +586,8 @@ class raesumUserObject {
         }
             
 
-        logger.verbose(`Returning cached metadata key list`, Date.now() - start)
-        logger.debug(`Key list metadata with ${cachedKeys.length} keys: ${JSON.stringify(cachedKeys)}`, Date.now() - start)
+        logger.verbose(`Returning cached user metadata key list`, Date.now() - start)
+        logger.debug(`Key list user metadata with ${cachedKeys.length} keys: ${JSON.stringify(cachedKeys)}`, Date.now() - start)
         return cachedKeys;
     }
 
@@ -739,43 +739,43 @@ class raesumUserObject {
     }
 
     /**
-     * Gets a list of active organizations the user is allowed to be in
+     * Updates whether the user metadata key is active or inactive (this WILL be overwritten by cognito statuses)
      * @param  {string} key The metadata key
      * @param  {boolean} activeStatus The desired active status
      * @return {boolean} True on success
      * @throw {Error} If the key does not exist
      * @throw {Error} If the update fails
      */
-    async setActivationStatusMetadataKey(key, activeStatus = true) {
-        const start = Date.now();
+    // async setActivationStatusMetadataKey(key, activeStatus = true) {
+    //     const start = Date.now();
 
-        // Limit show_inactive to boolean
-        if (activeStatus !== false) {
-            activeStatus = true;
-        }
+    //     // Limit show_inactive to boolean
+    //     if (activeStatus !== false) {
+    //         activeStatus = true;
+    //     }
 
-        // Get the user metadata key list
-        const keys = await this.getMetadataKeyList(true);
+    //     // Get the user metadata key list
+    //     const keys = await this.getMetadataKeyList(true);
 
-        // If the key is not in the list thrown an error
-        if (!keys.includes(key)) {
-            logger.warning(`Key: ${key} not found`, Date.now() - start);
-            throw new Error("Key not found");
-        }
+    //     // If the key is not in the list thrown an error
+    //     if (!keys.includes(key)) {
+    //         logger.warning(`Key: ${key} not found`, Date.now() - start);
+    //         throw new Error("Key not found");
+    //     }
 
-        // Update the key
-        const sql = "UPDATE raesum_user_metadata_keys SET active_status = $1 WHERE datakey ILIKE $2";
-        try {
-            await raesumDB.query(sql, [activeStatus, key]);
+    //     // Update the key
+    //     const sql = "UPDATE raesum_user_metadata_keys SET active_status = $1 WHERE datakey ILIKE $2";
+    //     try {
+    //         await raesumDB.query(sql, [activeStatus, key]);
             
-            // Clear key cache as it is now invalid
-            await this.clearMetadataKeyCache();
-            return true;
-        } catch (e) {
-            logger.error(`Error updating key: ${key}`, Date.now() - start);
-            throw new Error("Error updating key");
-        }
-    }
+    //         // Clear key cache as it is now invalid
+    //         await this.clearMetadataKeyCache();
+    //         return true;
+    //     } catch (e) {
+    //         logger.error(`Error updating key: ${key}`, Date.now() - start);
+    //         throw new Error("Error updating key");
+    //     }
+    // }
 
 
     /**
@@ -996,7 +996,7 @@ class raesumUserObject {
             throw new Error("User ID must be a positive integer");
         }
 
-        if (!Array.isArray(keys) && keys.length < 1) {
+        if (!Array.isArray(keys) || keys.length < 1) {
             throw new Error("Keys must be an array");
         }
 

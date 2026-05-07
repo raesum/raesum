@@ -158,6 +158,9 @@ class raesumMigrate {
         // Load the global roles
         await raesumAuthorization.loadGlobalRolesToDatabase();
 
+        // Load the Metadata keys
+        await raesumOrganization.loadGlobalMetadataToDatabase();
+
         logger.info("Static content load/update complete", Date.now() - start);
         return true;
     }

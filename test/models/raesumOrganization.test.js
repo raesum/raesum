@@ -2,6 +2,7 @@ import raesumOrganization from "../../src/models/raesumOrganization.js";
 import config from 'config';
 import raesumDB from "../../src/modules/raesumDB.js";
 import raesumCognito from "../../src/modules/raesumCognito.js";
+import raesumCache from "../../src/modules/raesumCache.js";
 
 import {vi, test, expect, describe, beforeEach, afterEach, beforeAll} from 'vitest';
 
@@ -327,7 +328,6 @@ describe("Raesum Organization System", () => {
                 [userId2]
             );
 
-            console.log(userId1, userId2, user1Orgs.rows, user1Orgs.rows)
             expect(parseInt(user1Orgs.rows[0].active_status)).toBeFalsy();
             expect(parseInt(user2Orgs.rows[0].current_organization_id)).toBe(org2Id);
 
@@ -377,6 +377,325 @@ describe("Raesum Organization System", () => {
             const results = await Promise.all(promises);
             results.forEach(result => {
                 expect(result).toBeDefined();
+            });
+        });
+    });
+
+    describe('Organization Metadata Functions', () => {
+        
+        describe('getMetadataKeys', () => {
+            iftest('should return active metadata keys', async () => {
+                // Mock database response
+                const mockKeys = [
+                    { datakey: 'orgName', active_status: true, description: 'Organization name', displayname: 'Organization Name' },
+                    { datakey: 'orgType', active_status: true, description: 'Organization type', displayname: 'Organization Type' }
+                ];
+                
+                vi.spyOn(raesumDB, "query").mockResolvedValue({ rows: mockKeys });
+                vi.spyOn(raesumCache, "get").mockResolvedValue(null);
+                const cacheSetSpy = vi.spyOn(raesumCache, "set").mockResolvedValue(true);
+
+                const result = await raesumOrganization.getMetadataKeys(false);
+
+                expect(result).toEqual({
+                    'orgName': mockKeys[0],
+                    'orgType': mockKeys[1]
+                });
+                expect(raesumDB.query).toHaveBeenCalledWith("SELECT * FROM raesum_organization_metadata_keys WHERE active_status = true");
+                expect(cacheSetSpy).toHaveBeenCalled();
+            });
+
+            iftest('should return all metadata keys including inactive', async () => {
+                const mockKeys = [
+                    { datakey: 'orgName', active_status: true, description: 'Organization name', displayname: 'Organization Name' },
+                    { datakey: 'oldKey', active_status: false, description: 'Old key', displayname: 'Old Key' }
+                ];
+                
+                vi.spyOn(raesumDB, "query").mockResolvedValue({ rows: mockKeys });
+                vi.spyOn(raesumCache, "get").mockResolvedValue(null);
+                vi.spyOn(raesumCache, "set").mockResolvedValue(true);
+
+                const result = await raesumOrganization.getMetadataKeys(true);
+
+                expect(result).toEqual({
+                    'orgName': mockKeys[0],
+                    'oldKey': mockKeys[1]
+                });
+                expect(raesumDB.query).toHaveBeenCalledWith("SELECT * FROM raesum_organization_metadata_keys");
+            });
+
+            iftest('should return cached keys when available', async () => {
+                const cachedKeys = { 'cachedKey': { datakey: 'cachedKey', active_status: true } };
+                
+                vi.spyOn(raesumCache, "get").mockResolvedValue(cachedKeys);
+                const dbSpy = vi.spyOn(raesumDB, "query");
+
+                const result = await raesumOrganization.getMetadataKeys(false);
+
+                expect(result).toEqual(cachedKeys);
+                expect(dbSpy).not.toHaveBeenCalled();
+            });
+
+            iftest('should handle database errors', async () => {
+                vi.spyOn(raesumDB, "query").mockRejectedValue(new Error("Database error"));
+                vi.spyOn(raesumCache, "get").mockResolvedValue(null);
+
+                await expect(raesumOrganization.getMetadataKeys()).rejects.toThrow("Database error");
+            });
+        });
+
+        describe('getMetadataKeyList', () => {
+            iftest('should return array of key names', async () => {
+                const mockKeys = {
+                    'orgName': { datakey: 'orgName', active_status: true },
+                    'orgType': { datakey: 'orgType', active_status: true }
+                };
+                
+                vi.spyOn(raesumCache, "get").mockResolvedValue(null);
+                vi.spyOn(raesumOrganization, "getMetadataKeys").mockResolvedValue(mockKeys);
+
+                const result = await raesumOrganization.getMetadataKeyList(false);
+
+                expect(result).toEqual(['orgName', 'orgType']);
+                expect(raesumOrganization.getMetadataKeys).toHaveBeenCalledWith(false);
+            });
+
+            iftest('should return cached key list when available', async () => {
+
+                const mockCachedKeys = {"cachedKey1":{"id":1,"datakey":"cachedKey1"},"cachedKey2":{"id":2,"datakey":"cachedKey2"}};
+                const mockedKeys = ["cachedKey1","cachedKey2"];
+                vi.spyOn(raesumCache, "get").mockResolvedValue(mockCachedKeys);
+                const getKeysSpy = vi.spyOn(raesumOrganization, "getMetadataKeys");
+
+                const result = await raesumOrganization.getMetadataKeyList(false);
+
+                expect(result).toEqual(['cachedKey1', 'cachedKey2']);
+                expect(getKeysSpy).not.toHaveBeenCalled();
+            });
+
+            iftest('should handle empty cache response', async () => {
+                const mockKeys = {
+                    'orgName': { datakey: 'orgName', active_status: true }
+                };
+                
+                vi.spyOn(raesumCache, "get").mockResolvedValue({});
+                vi.spyOn(raesumOrganization, "getMetadataKeys").mockResolvedValue(mockKeys);
+
+                const result = await raesumOrganization.getMetadataKeyList(false);
+
+                expect(result).toEqual(['orgName']);
+            });
+        });
+
+        describe('clearMetadataKeyCache', () => {
+            iftest('should clear all metadata cache keys', async () => {
+                const cacheDeleteSpy = vi.spyOn(raesumCache, "delete").mockResolvedValue(true);
+
+                await raesumOrganization.clearMetadataKeyCache();
+
+                expect(cacheDeleteSpy).toHaveBeenCalledWith('raesumOrganizationMetadataKeystrue');
+                expect(cacheDeleteSpy).toHaveBeenCalledWith('raesumOrganizationMetadataKeysfalse');
+                expect(cacheDeleteSpy).toHaveBeenCalledTimes(2);
+            });
+        });
+
+        describe('getOrganizationMetadataValues', () => {
+            iftest('should return metadata values for valid keys', async () => {
+                const orgId = 1;
+                const keys = ['orgName', 'orgType'];
+                const mockValues = [
+                    { datakey: 'orgName', value: 'Test Org' },
+                    { datakey: 'orgType', value: 'Company' }
+                ];
+                
+                vi.spyOn(raesumOrganization, "getMetadataKeyList").mockResolvedValue(keys);
+                vi.spyOn(raesumDB, "query").mockResolvedValue({ rows: mockValues });
+
+                const result = await raesumOrganization.getOrganizationMetadataValues(orgId, keys);
+
+                expect(result).toEqual({
+                    'orgName': 'Test Org',
+                    'orgType': 'Company'
+                });
+                expect(raesumDB.query).toHaveBeenCalledWith(
+                    expect.stringContaining('SELECT rumk.datakey, ruxm.value as value'),
+                    [orgId, keys]
+                );
+            });
+
+            iftest('should filter out invalid keys', async () => {
+                const orgId = 1;
+                const requestedKeys = ['orgName', 'invalidKey'];
+                const validKeys = ['orgName'];
+                const mockValues = [{ datakey: 'orgName', value: 'Test Org' }];
+                
+                vi.spyOn(raesumOrganization, "getMetadataKeyList").mockResolvedValue(validKeys);
+                vi.spyOn(raesumDB, "query").mockResolvedValue({ rows: mockValues });
+
+                const result = await raesumOrganization.getOrganizationMetadataValues(orgId, requestedKeys);
+
+                expect(result).toEqual({ 'orgName': 'Test Org' });
+                expect(raesumDB.query).toHaveBeenCalledWith(
+                    expect.stringContaining('SELECT rumk.datakey, ruxm.value as value'),
+                    [orgId, ['orgName']]
+                );
+            });
+
+            iftest('should throw error for invalid org ID', async () => {
+                await expect(raesumOrganization.getOrganizationMetadataValues(-1, ['orgName']))
+                    .rejects.toThrow("Organization ID must be a positive integer");
+            });
+
+            iftest('should handle database errors', async () => {
+                vi.spyOn(raesumOrganization, "getMetadataKeyList").mockResolvedValue(['orgName']);
+                vi.spyOn(raesumDB, "query").mockRejectedValue(new Error("Database error"));
+
+                await expect(raesumOrganization.getOrganizationMetadataValues(1, ['orgName']))
+                    .rejects.toThrow("Error getting organization metadata values");
+            });
+        });
+
+        describe('setOrganizationMetadataValues', () => {
+            iftest('should set new metadata values', async () => {
+                const orgId = 1;
+                const values = { 'orgName': 'New Org', 'orgType': 'Company' };
+                const validKeys = ['orgName', 'orgType'];
+                
+                vi.spyOn(raesumOrganization, "getById").mockResolvedValue({ id: orgId, active_status: true });
+                vi.spyOn(raesumOrganization, "getMetadataKeyList").mockResolvedValue(validKeys);
+                vi.spyOn(raesumOrganization, "getOrganizationMetadataValues").mockResolvedValue({});
+                vi.spyOn(raesumDB, "query").mockResolvedValue({ rows: [] });
+
+                const result = await raesumOrganization.setOrganizationMetadataValues(orgId, values);
+
+                expect(result).toBe(true);
+                expect(raesumDB.query).toHaveBeenCalledWith(
+                    expect.stringContaining('INSERT INTO raesum_organization_x_metadata'),
+                    expect.arrayContaining([orgId, 'orgName', 'New Org', 'orgType', 'Company'])
+                );
+            });
+
+            iftest('should update existing metadata values', async () => {
+                const orgId = 1;
+                const values = { 'orgName': 'Updated Org' };
+                const validKeys = ['orgName'];
+                const existingValues = { 'orgName': 'Old Org' };
+                
+                vi.spyOn(raesumOrganization, "getById").mockResolvedValue({ id: orgId, active_status: true });
+                vi.spyOn(raesumOrganization, "getMetadataKeyList").mockResolvedValue(validKeys);
+                vi.spyOn(raesumOrganization, "getOrganizationMetadataValues").mockResolvedValue(existingValues);
+                vi.spyOn(raesumDB, "query").mockResolvedValue({ rows: [] });
+
+                const result = await raesumOrganization.setOrganizationMetadataValues(orgId, values);
+
+                expect(result).toBe(true);
+                expect(raesumDB.query).toHaveBeenCalledWith(
+                    expect.stringContaining('UPDATE raesum_organization_x_metadata'),
+                    ['Updated Org', orgId, 'orgName']
+                );
+            });
+
+            iftest('should filter out invalid value types', async () => {
+                const orgId = 1;
+                const values = { 
+                    'orgName': 'Valid String', 
+                    'isValid': true, 
+                    'count': 42,
+                    'invalid': { object: 'value' },
+                    'alsoInvalid': undefined
+                };
+                const validKeys = ['orgName', 'isValid', 'count'];
+                
+                vi.spyOn(raesumOrganization, "getById").mockResolvedValue({ id: orgId, active_status: true });
+                vi.spyOn(raesumOrganization, "getMetadataKeyList").mockResolvedValue(validKeys);
+                vi.spyOn(raesumOrganization, "getOrganizationMetadataValues").mockResolvedValue({});
+                vi.spyOn(raesumDB, "query").mockResolvedValue({ rows: [] });
+
+                const result = await raesumOrganization.setOrganizationMetadataValues(orgId, values);
+
+                expect(result).toBe(true);
+                // Should only include valid types (string, boolean, number)
+                expect(raesumDB.query).toHaveBeenCalledWith(
+                    expect.stringContaining('INSERT INTO raesum_organization_x_metadata'),
+                    expect.arrayContaining([orgId, 'orgName', 'Valid String', 'isValid', true, 'count', 42])
+                );
+            });
+
+            iftest('should throw error for non-existent organization', async () => {
+                vi.spyOn(raesumOrganization, "getById").mockRejectedValue(new Error("Organization not found"));
+
+                await expect(raesumOrganization.setOrganizationMetadataValues(999, { 'orgName': 'Test' }))
+                    .rejects.toThrow("User not found");
+            });
+        });
+
+        describe('deleteOrganizationMetadataValues', () => {
+            iftest('should delete metadata values', async () => {
+                const orgId = 1;
+                const keys = ['orgName', 'orgType'];
+                const validKeys = ['orgName', 'orgType'];
+                
+                vi.spyOn(raesumOrganization, "getById").mockResolvedValue({ id: orgId, active_status: true });
+                vi.spyOn(raesumOrganization, "getMetadataKeyList").mockResolvedValue(validKeys);
+                vi.spyOn(raesumDB, "query").mockResolvedValue({ rows: [] });
+
+                const result = await raesumOrganization.deleteOrganizationMetadataValues(orgId, keys);
+
+                expect(result).toBe(true);
+                expect(raesumDB.query).toHaveBeenCalledWith(
+                    expect.stringContaining('DELETE FROM raesum_organization_x_metadata'),
+                    [orgId, keys]
+                );
+            });
+
+            iftest('should filter out invalid keys', async () => {
+                const orgId = 1;
+                const keys = ['orgName', 'invalidKey', ''];
+                const validKeys = ['orgName'];
+                
+                vi.spyOn(raesumOrganization, "getById").mockResolvedValue({ id: orgId, active_status: true });
+                vi.spyOn(raesumOrganization, "getMetadataKeyList").mockResolvedValue(validKeys);
+                vi.spyOn(raesumDB, "query").mockResolvedValue({ rows: [] });
+
+                const result = await raesumOrganization.deleteOrganizationMetadataValues(orgId, keys);
+
+                expect(result).toBe(true);
+                expect(raesumDB.query).toHaveBeenCalledWith(
+                    expect.stringContaining('DELETE FROM raesum_organization_x_metadata'),
+                    [orgId, ['orgName']]
+                );
+            });
+
+            iftest('should throw error for invalid org ID', async () => {
+                await expect(raesumOrganization.deleteOrganizationMetadataValues(-1, ['orgName']))
+                    .rejects.toThrow("Organization ID must be a positive integer");
+            });
+
+            iftest('should throw error for invalid keys array', async () => {
+                await expect(raesumOrganization.deleteOrganizationMetadataValues(1, 'notAnArray'))
+                    .rejects.toThrow("Keys must be an array");
+            });
+
+            iftest('should throw error for non-existent organization', async () => {
+                vi.spyOn(raesumOrganization, "getById").mockRejectedValue(new Error("Organization not found"));
+
+                await expect(raesumOrganization.deleteOrganizationMetadataValues(999, ['orgName']))
+                    .rejects.toThrow("Organizaztion not found");
+            });
+
+            iftest('should return true when no valid keys to delete', async () => {
+                const orgId = 1;
+                const keys = ['invalidKey'];
+                const validKeys = [];
+                
+                vi.spyOn(raesumOrganization, "getById").mockResolvedValue({ id: orgId, active_status: true });
+                vi.spyOn(raesumOrganization, "getMetadataKeyList").mockResolvedValue(validKeys);
+                const dbSpy = vi.spyOn(raesumDB, "query");
+
+                const result = await raesumOrganization.deleteOrganizationMetadataValues(orgId, keys);
+
+                expect(result).toBe(true);
+                expect(dbSpy).not.toHaveBeenCalled();
             });
         });
     });

@@ -252,4 +252,53 @@ create index raesum_user_x_metadata_datakey_index
 
 
 
+create table public.raesum_organization_metadata_keys
+(
+    id            serial
+        constraint raesum_organization_metadata_keys_pk
+            primary key,
+    datakey       varchar(256)         not null
+        constraint raesum_organization_metadata_keys_pk_2
+            unique,
+    active_status boolean default true not null,
+    description   varchar(4096),
+    displayname   varchar(255)
+);
+
+alter table public.raesum_organization_metadata_keys
+    owner to seneca;
+
+create index raesum_organization_metadata_keys_datakey_active_status_index
+    on public.raesum_organization_metadata_keys (datakey asc, active_status desc);
+
+
+
+
+
+create table raesum_organization_x_metadata
+(
+    datakey varchar(256) not null
+        constraint raesum_organization_x_metadata_raesum_organization_metadata_key
+            references public.raesum_organization_metadata_keys (datakey),
+    org_id  bigint       not null
+        constraint raesum_user_x_metadata_raesum_organization_id_fk
+            references public.raesum_organization,
+    value   varchar(164096),
+    constraint raesum_organization_x_metadata_pk
+        primary key (org_id, datakey)
+);
+
+alter table public.raesum_organization_x_metadata
+    owner to seneca;
+
+create index raesum_organization_x_metadata_datakey_index
+    on public.raesum_organization_x_metadata (datakey);
+
+
+
+
+
+
+
+
 COMMIT;
