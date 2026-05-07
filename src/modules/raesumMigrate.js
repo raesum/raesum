@@ -6,6 +6,7 @@ import {fileURLToPath} from "url";
 import raesumDB from "./raesumDB.js";
 import raesumConfig from "./raesumConfig.js";
 import raesumAuthorization from "../models/raesumAuth.js";
+import raesumOrganization from "../models/raesumOrganization.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

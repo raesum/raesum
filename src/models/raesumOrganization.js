@@ -3,9 +3,11 @@ import {fileURLToPath} from "url";
 import raesumDB from "../modules/raesumDB.js";
 import raesumUser from "./raesumUser.js";
 import raesumCache from "../modules/raesumCache.js";
-
+import path from "path";
+import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const logger = raesumLogger(__filename);
 
 class raesumOrganizationObject {
