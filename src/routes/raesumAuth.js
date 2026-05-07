@@ -77,7 +77,7 @@ raesumAuthRouter.get('/logout', raesumAuth.logout);
  *     summary: Get available roles for organization
  *     description: Retrieves all available roles for the user's current organization
  *     tags:
- *       - Authentication
+ *       - Authorization
  *       - Roles
  *     security:
  *       - BearerAuth: []
@@ -111,7 +111,7 @@ raesumAuthRouter.get('/logout', raesumAuth.logout);
  *     summary: Get available roles for specific organization
  *     description: Retrieves all available roles for a specific organization
  *     tags:
- *       - Authentication
+ *       - Authorization
  *       - Roles
  *     security:
  *       - BearerAuth: []
@@ -158,7 +158,7 @@ raesumAuthRouter.get('/role/get/:organizationId', raesumAuth.getAvailableRoles);
  *     summary: Get current user's roles
  *     description: Retrieves all roles assigned to the current user for their organization
  *     tags:
- *       - Authentication
+ *       - Authorization
  *       - Roles
  *     security:
  *       - BearerAuth: []
@@ -211,7 +211,7 @@ raesumAuthRouter.get('/role/get/:organizationId', raesumAuth.getAvailableRoles);
  *     summary: Get user's roles for specific organization
  *     description: Retrieves all roles assigned to the current user for a specific organization
  *     tags:
- *       - Authentication
+ *       - Authorization
  *       - Roles
  *     security:
  *       - BearerAuth: []
@@ -364,7 +364,7 @@ raesumAuthRouter.post('/callbackJWT', raesumAuth.callbackJWT);
  *     summary: Add roles to current user
  *     description: Adds one or more roles to the current user for their organization. Supports both role IDs and role keys.
  *     tags:
- *       - Authentication
+ *       - Authorization
  *       - Roles
  *     security:
  *       - BearerAuth: []
@@ -425,7 +425,7 @@ raesumAuthRouter.post('/callbackJWT', raesumAuth.callbackJWT);
  *     summary: Add roles to user for specific organization
  *     description: Adds one or more roles to the current user for a specific organization. Supports both role IDs and role keys.
  *     tags:
- *       - Authentication
+ *       - Authorization
  *       - Roles
  *     security:
  *       - BearerAuth: []
@@ -498,7 +498,7 @@ raesumAuthRouter.post('/role/user/add/:organizationId', raesumAuth.addUserRoles)
  *     summary: Remove roles from current user
  *     description: Removes one or more roles from the current user for their organization. Supports both role IDs and role keys.
  *     tags:
- *       - Authentication
+ *       - Authorization
  *       - Roles
  *     security:
  *       - BearerAuth: []
@@ -559,7 +559,7 @@ raesumAuthRouter.post('/role/user/add/:organizationId', raesumAuth.addUserRoles)
  *     summary: Remove roles from user for specific organization
  *     description: Removes one or more roles from the current user for a specific organization. Supports both role IDs and role keys.
  *     tags:
- *       - Authentication
+ *       - Authorization
  *       - Roles
  *     security:
  *       - BearerAuth: []

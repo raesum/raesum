@@ -11,7 +11,7 @@ const raesumOrganizationRouter = express.Router();
  *     summary: Get organization by ID
  *     description: Retrieve organization information for a specific organization ID. Authorization is required - organizations can only access their own information unless they have organization-level permissions.
  *     tags:
- *       - organization
+ *       - Organization
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -57,18 +57,10 @@ const raesumOrganizationRouter = express.Router();
  *                       type: integer
  *                       example: 1
  *                       description: Internal organization ID
- *                     current_organization_id:
- *                       type: integer
- *                       example: 1
- *                       description: Current organization ID
- *                     external_id:
+ *                     name:
  *                       type: string
- *                       example: "b49884a8-e021-70ee-50eb-817e0a3b634e"
- *                       description: External organization ID (Cognito sub)
- *                     organizationname:
- *                       type: string
- *                       example: "odin"
- *                       description: organizationname
+ *                       example: "Vahalla"
+ *                       description: Organization name
  *                     active_status:
  *                       type: boolean
  *                       example: true
@@ -88,7 +80,7 @@ raesumOrganizationRouter.get('/get/:organizationId', raesumOrganization.getById)
  *     summary: Get current organization
  *     description: Retrieve information for the currently authenticated organization. Uses the organization ID from the authentication token.
  *     tags:
- *       - organization
+ *       - Organization
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -126,18 +118,10 @@ raesumOrganizationRouter.get('/get/:organizationId', raesumOrganization.getById)
  *                       type: integer
  *                       example: 1
  *                       description: Internal organization ID
- *                     current_organization_id:
- *                       type: integer
- *                       example: 1
- *                       description: Current organization ID
- *                     external_id:
+ *                     name:
  *                       type: string
- *                       example: "b49884a8-e021-70ee-50eb-817e0a3b634e"
- *                       description: External organization ID (Cognito sub)
- *                     organizationname:
- *                       type: string
- *                       example: "odin"
- *                       description: organizationname
+ *                       example: "Vahalla"
+ *                       description: Organization name
  *                     active_status:
  *                       type: boolean
  *                       example: true
@@ -157,7 +141,7 @@ raesumOrganizationRouter.get('/get/', raesumOrganization.getById);
  *     summary: Get all organization metadata keys
  *     description: Retrieve all available organization metadata keys with their properties including whether they are Cognito attributes and their writable status.
  *     tags:
- *       - organization Metadata
+ *       - Organization Metadata
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -228,7 +212,7 @@ raesumOrganizationRouter.get('/metadata/get/keys/', raesumOrganization.getMetaDa
  *     summary: Get a specific metadata value for a organization
  *     description: Retrieve a single metadata key-value pair for a specific organization ID. Authorization is required - organizations can only access their own metadata unless they have organization-level permissions.
  *     tags:
- *       - organization Metadata
+ *       - Organization Metadata
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -290,7 +274,7 @@ raesumOrganizationRouter.get('/metadata/get/byKey/:key/:organizationId', raesumO
  *     summary: Get a specific metadata value for current organization
  *     description: Retrieve a single metadata key-value pair for the currently authenticated organization. Uses the organization ID from the authentication token.
  *     tags:
- *       - organization Metadata
+ *       - Organization Metadata
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -344,7 +328,7 @@ raesumOrganizationRouter.get('/metadata/get/byKey/:key', raesumOrganization.getO
  *     summary: Get all metadata for a specific organization
  *     description: Retrieve all metadata key-value pairs for a specific organization ID. Authorization is required - organizations can only access their own metadata unless they have organization-level permissions.
  *     tags:
- *       - organization Metadata
+ *       - Organization Metadata
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -402,7 +386,7 @@ raesumOrganizationRouter.get('/metadata/get/:organizationId', raesumOrganization
  *     summary: Get all metadata for current organization
  *     description: Retrieve all metadata key-value pairs for the currently authenticated organization. Uses the organization ID from the authentication token.
  *     tags:
- *       - organization Metadata
+ *       - Organization Metadata
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -453,7 +437,66 @@ raesumOrganizationRouter.post('/metadata/delete/byKey/:key/', raesumOrganization
 raesumOrganizationRouter.post('/activation/set/:organizationId', raesumOrganization.setOrganizationActivation);
 raesumOrganizationRouter.post('/activation/set/', raesumOrganization.setOrganizationActivation);
 
+/**
+ * @swagger
+ * /api/v1/organization/create/:
+ *   post:
+ *     summary: Create a new organization
+ *     description: Create a new organization with the provided name. Authorization is required - users must have organization-level permissions to create organizations.
+ *     tags:
+ *       - Organization
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "New Organization"
+ *                 description: The name of the organization to create
+ *     responses:
+ *       200:
+ *         description: Successfully created organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 title:
+ *                   type: string
+ *                   example: "Success"
+ *                   description: Response title
+ *                 message:
+ *                   type: string
+ *                   example: "OK"
+ *                   description: Response message
+ *                 description:
+ *                   type: string
+ *                   example: "The request was successful."
+ *                   description: Response description
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                   description: HTTP status code
+ *                 keycode:
+ *                   type: integer
+ *                   example: 1
+ *                   description: Internal response code
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                       description: Internal organization ID
+ *                   description: Object containing the new organization ID
+ */
 raesumOrganizationRouter.post('/create/', raesumOrganization.create);
-
 
 export default raesumOrganizationRouter;
