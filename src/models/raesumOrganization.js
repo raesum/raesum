@@ -120,7 +120,18 @@ class raesumOrganizationObject {
 
         // If active is not boolean, set to true
         if (typeof activeStatus !== 'boolean') {
-            activeStatus = true;
+            if(activeStatus.toLowerCase() == "true"){
+                activeStatus = true;
+            } else {
+                activeStatus = false;
+            }
+        }
+
+        // Check to see if the org exists and throw and error if it doesn't
+        try{
+            await this.getById(id);
+        } catch (e) {
+            throw new Error("Organization not found");
         }
 
 
@@ -128,7 +139,8 @@ class raesumOrganizationObject {
         const query = "UPDATE raesum_organization SET active_status = $1 WHERE id = $2";
         try {
 
-            await raesumDB.query(query, [activeStatus, id]);
+            const orgResult = await raesumDB.query(query, [activeStatus, id]);
+
             logger.verbose(`Activation status set for org: ${id} to ${activeStatus}`, Date.now() - start);
 
         } catch (e) {
@@ -142,23 +154,29 @@ class raesumOrganizationObject {
             if(activeStatus === false){
 
                 logger.info(`Deactivating org: ${id}. Starting Moving Users.`, Date.now() - start);
+
                 // Get the list of users on the org
                 const orgUsers = await this.getUsers(id, false);
 
+                logger.info(`Found ${orgUsers.length} users on org: ${id} to deactivate or move`, Date.now() - start);
+                
                 for(let i=0; i<orgUsers.length; i++) {
+                    logger.verbose("Organization setActivationStatus processing user: " + orgUsers[i].id);
 
                     // For each user, check if they are part of another org
-                    const userOrgs = await raesumUser.getOrganizations(orgUsers[i].id);
-                    if(userOrgs.length > 1) {
+                    const userOrgs = await raesumUser.getAllowedUserOrgs(orgUsers[i].id);
+                    logger.debug("Organization setActivationStatus userOrgs: " + JSON.stringify(userOrgs));
+
+                    if(userOrgs.length > 0) {
 
                         // If they are part of another org, move them to that org
-                        logger.verbose(`Moving user: ${orgUsers[i].id} to org: ${userOrgs[0]}`, Date.now() - start);
-                        await this.addUserToOrganization(orgUsers[i].id, userOrgs[0]);
+                        logger.info(`Moving user: ${orgUsers[i].id} to org: ${userOrgs[0]}`, Date.now() - start);
+                        await raesumUser.changeUserOrg(orgUsers[i].id, userOrgs[0]);
                     }else{
 
                         // If they are not part of another org, deactivate them if they are active
                         if(orgUsers[i].active_status === true){
-                            logger.verbose(`Deactivating user: ${orgUsers[i].id}`, Date.now() - start);
+                            logger.info(`Deactivating user: ${orgUsers[i].id}`, Date.now() - start);
                             await raesumUser.setActivationStatus(orgUsers[i].id, false);
                         }
                     }
@@ -340,15 +358,22 @@ class raesumOrganizationObject {
             activeStatus = true;
         }
 
-        // Get users
-        const query = `SELECT *
-                       FROM raesum_organization_x_user as oxu
-                       LEFT JOIN raesum_user as u ON oxu.user_id = u.id
-                       WHERE oxu.org_id = $1
-                         AND u.active_status = $2`;
-        const result = await raesumDB.query(query, [orgID, activeStatus]);
+        let activeQuery = "";
+        if (activeStatus) {
+            activeQuery = " AND u.active_status = true";
+        }
 
-        logger.verbose(`Users found for org: ${orgID}`, Date.now() - start);
+
+
+        // Get users
+        const query = `SELECT u.*
+                       FROM raesum_organization_x_user as oxu
+                       INNER JOIN raesum_user as u ON oxu.user_id = u.id
+                       WHERE oxu.org_id = $1
+                         AND u.active_status = true ${activeQuery}`;
+        const result = await raesumDB.query(query, [orgID]);
+
+        logger.info(`Organization getUsers found ${result.rows.length} users for org: ${orgID}`, Date.now() - start);
         return result.rows;
     }
 

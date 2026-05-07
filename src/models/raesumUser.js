@@ -267,6 +267,9 @@ class raesumUserObject {
             throw new Error("Activation status must be a boolean");
         }
 
+        // Convert to string in case a number is string type
+        id = parseInt(id)
+
         // If the ID is not a number, throw error
         if (isNaN(id) || id < 1 || !Number.isInteger(id)) {
             throw new Error("User ID must be a positive integer");
@@ -380,6 +383,9 @@ class raesumUserObject {
 
         logger.verbose(`Getting allowed organizations for user with ID: ${userID}`, Date.now() - start);
 
+        // Convert to INT if a string number is provided
+        userID = parseInt(userID);
+
         // If the ID is not a number, throw error
         if (isNaN(userID) || userID < 1 || !Number.isInteger(userID)) {
             throw new Error("User ID must be a positive integer");
@@ -424,6 +430,9 @@ class raesumUserObject {
         const start = Date.now();
 
         logger.verbose(`Changing user with ID: ${userID} to organization with ID: ${orgID}`, Date.now() - start);
+
+        // handle user ID being passed as a string of an int
+        userID = parseInt(userID)
 
         // If the ID is not a number, throw error
         if (isNaN(userID) || userID < 1 || !Number.isInteger(userID)) {
