@@ -45,7 +45,7 @@ class raesumOrganizationObject {
         Note: Several of the SQL commands here are not using prepared statements. This except is made because the data is controlled solely in the core codebase and the data is not user input. Further, this function only runs during a migrate or initialization and is not exposed to the public.
          */
         const start = Date.now();
-        logger.info("Loading Global Roles", Date.now() - start);
+        logger.info("Loading Organization Metadata Definitions", Date.now() - start);
 
         // Load the globalRoles.json file
         const dirPath = path.join(__dirname, '..', '..', 'controlledData/');
@@ -523,10 +523,16 @@ class raesumOrganizationObject {
 
         // If not in cache, build the list (which will cache it)
         if (!cachedKeys || Object.keys(cachedKeys).length === 0) {
-            logger.verbose(`Organization Metadata key list not found in cache, building it`, Date.now() - start);
+            logger.verbose(`getMetadataKeyList Organization Metadata key list not found in cache, building it`, Date.now() - start);
+
             const keys = await this.getMetadataKeys(show_inactive);
+
+            logger.debug(`getMetadataKeyList Organization Metadata keys: ${JSON.stringify(keys)}`, Date.now() - start);
+
             cachedKeys = Object.keys(keys);
         }else{
+
+            logger.debug(`getMetadataKeyList Organization Metadata key list found in cache`, Date.now() - start);
             cachedKeys = Object.keys(cachedKeys);
 
         }
@@ -636,7 +642,7 @@ async setOrganizationMetadataValues(orgId, values, activeStatus = false) {
             }
         }
 
-        logger.debug(`Attempting to update organization metadata`, Date.now() - start);
+        logger.debug(`setOrganizationMetadataValues Attempting to update organization metadata`, Date.now() - start);
 
         // Get the list of user metadata values
         const validKeys = await this.getMetadataKeyList(activeStatus);
@@ -665,6 +671,8 @@ async setOrganizationMetadataValues(orgId, values, activeStatus = false) {
                 newKeyList.push(keyList[i]);
             }
         }
+
+        logger.debug(`setOrganizationMetadataValues existingValues: ${JSON.stringify(existingValues)} validKeys: ${validKeys.join(", ")} keyList: ${keyList.join(", ")} updateKeyList: ${updateKeyList.join(", ")} newKeyList: ${newKeyList.join(", ")}`, Date.now() - start);
 
         // Insert the new keys
         let sql = "";
@@ -697,8 +705,8 @@ async setOrganizationMetadataValues(orgId, values, activeStatus = false) {
         try {
             await raesumDB.query(sql, valuesArray);
         } catch (e) {
-            logger.error(`Failed to insert new matadata values for organization: ${e.message}`, Date.now() - start)
-            throw new Error("Error inserting new organization metadata values");
+            logger.error(`Failed setOrganizationMetadataValues to insert new matadata values for organization: ${e.message}`, Date.now() - start)
+            throw new Error("Error setOrganizationMetadataValues inserting new organization metadata values");
         }
 
         // Update the existing keys
@@ -711,12 +719,12 @@ async setOrganizationMetadataValues(orgId, values, activeStatus = false) {
             try {
                 await raesumDB.query(sql, [values[updateKeyList[q]], orgId, updateKeyList[q]]);
             } catch (e) {
-                logger.error(`Failed to update organization metadata values: ${e.message}`, Date.now() - start);
-                throw new Error("Error updating new organization metadata values");
+                logger.error(`Failed setOrganizationMetadataValues to update organization metadata values: ${e.message}`, Date.now() - start);
+                throw new Error("Error setOrganizationMetadataValues updating new organization metadata values");
             }
         }
 
-
+        logger.verbose("Organization setOrganizationMetadataValues completed for org: " + orgId + " with keys " + Object.keys(values).join(", "), Date.now() - start);
         return true;
 }
 

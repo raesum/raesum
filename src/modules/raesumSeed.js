@@ -140,7 +140,7 @@ class raesumSeed {
 
             // Add organization metadata
             await raesumOrganization.setOrganizationMetadataValues(orgID, {
-                "description": faker.lorem.sentence()
+                "description": faker.lorem.paragraph(1)
             });
 
             // Create Users for the Organization
