@@ -137,6 +137,12 @@ class raesumSeed {
             // Create Audit Log Entry
             await raesumAudit.create("create", "raesum_organization", orgID, firstUserID);
 
+
+            // Add organization metadata
+            await raesumOrganization.setOrganizationMetadataValues(orgID, {
+                "description": faker.lorem.sentence()
+            });
+
             // Create Users for the Organization
             userCount += await this.#createSeedUsersForOrg(orgID, orgType, firstUserID, []);
             orgCount++;

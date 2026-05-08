@@ -233,7 +233,11 @@ class raesumOrganizationObject {
                         // If they are not part of another org, deactivate them if they are active
                         if(orgUsers[i].active_status === true){
                             logger.info(`Deactivating user: ${orgUsers[i].id}`, Date.now() - start);
-                            await raesumUser.setActivationStatus(orgUsers[i].id, false);
+                            try{
+                                await raesumUser.setActivationStatus(orgUsers[i].id, false);
+                            }catch(e){
+                                logger.error(`Failed to deactivate user: ${orgUsers[i].id}: ${e.message}`, Date.now() - start);
+                            }
                         }
                     }
 
