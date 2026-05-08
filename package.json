@@ -41,6 +41,7 @@
     "node-cache": "^5.1.2",
     "node-fetch": "^3.3.2",
     "pg-pool": "^3.13.0",
+    "rate-limiter-flexible": "^11.1.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "vitest": "^1.0.0",

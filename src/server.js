@@ -23,6 +23,7 @@ import raesumServer from "./modules/raesumServer.js";
 import raesumSession from "./modules/raesumSession.js";
 import raesumMetadata from "./models/raesumMetadata.js";
 import session from 'express-session';
+import raesumLimiterMiddleware from "./middleware/raesumRateLimiter.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -125,6 +126,12 @@ export async function createApp() {
     );
 
 
+    // Rate limiter
+    const useRateLimitConfig = await raesumConfig.get('ratelimiter.useRateLimiter');
+
+    if(useRateLimitConfig){
+        app.use(raesumLimiterMiddleware);
+    }
 
     // List of paths to exclude from authentication
     const excludePaths = {

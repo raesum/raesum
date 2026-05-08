@@ -24,6 +24,12 @@
     "ttl": 500,
     "prefix": "raesum_cache_"
   },
+  "ratelimiter": {
+    "useRateLimiter": true,
+    "type": "memory",
+    "pointsPerSecond":100,
+    "blockDurationMinutes":15
+  },
   "connections": {
     "primaryDatabase": {
       "host": null,
@@ -66,7 +72,19 @@
         }
       },
       "memory": {}
-    }
+    },
+    "ratelimiter": {
+        "redis": {
+          "host": null,
+          "port": 6379,
+          "connectTimeout": 10000,
+          "databaseNumber": 2,
+          "credentials": {
+            "username": null,
+            "password": null
+          }
+        }
+      }
   },
   "logging": {
       "level": "debug",

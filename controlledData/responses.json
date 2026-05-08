@@ -117,5 +117,12 @@
     "description": "User is logged in.",
     "code": 200,
     "keycode": 17
+  },
+  "rateLimitExceeded": {
+    "title": "Rate Limit Exceeded",
+    "message": "You have exceeded the rate limit for this endpoint.",
+    "description": "The user has exceeded the rate limit for this endpoint.",
+    "code": 429,
+    "keycode": 18
   }
 }
