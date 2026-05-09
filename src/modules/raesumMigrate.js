@@ -7,6 +7,7 @@ import raesumDB from "./raesumDB.js";
 import raesumConfig from "./raesumConfig.js";
 import raesumAuthorization from "../models/raesumAuth.js";
 import raesumOrganization from "../models/raesumOrganization.js";
+import raseumMetadata from "../models/raesumMetadata.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -172,6 +173,29 @@ class raesumMigrate {
         // Get current schema version
         let schemaVersion = await this.getCurrentSchemaVesion();
 
+        // Log current schema version
+        logger.info("Current schema version: " + schemaVersion, Date.now() - start);
+
+        // If the schema version is > 0 get the system metadata for update in progress
+        if (schemaVersion > 0) {
+            try{
+                let migrationInProgress = await raseumMetadata.getByKey('migrationInProgress');
+                if (migrationInProgress == 1) {
+                    logger.error("Update in progress, cannot run migration", Date.now() - start);
+                    return false;
+                }else{
+                    // No migration in progress, set the flag
+                    await raseumMetadata.set('migrationInProgress', true);
+                }
+            }catch(e){
+                    logger.error("No metadata key migrationInProgress found but SHOULD be present. Aborting migration." , Date.now() - start);
+                    return false;
+            }
+            
+        }else{
+            logger.info("No update in progress, proceeding with initial migration", Date.now() - start);
+        }
+
         // Get list of valid available migrations
         let possibleMigrations = this.getValidMigrationsAvailableList();
 
@@ -215,9 +239,14 @@ class raesumMigrate {
         }
 
         logger.info("Database schema migrations complete", Date.now() - start);
+        
 
         // Load static content
         const loadStaticContentReturn = await this.loadAllStaticContent();
+
+        // Set migrationInProgress to false to allow future migrations
+        await raseumMetadata.set('migrationInProgress', false);
+
         if(loadStaticContentReturn != 0){
             return 1;
         }
