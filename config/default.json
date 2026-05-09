@@ -27,8 +27,13 @@
   "ratelimiter": {
     "useRateLimiter": true,
     "type": "memory",
-    "pointsPerSecond":100,
-    "blockDurationMinutes":15
+    "pointsPerSecond":200,
+    "blockDurationMinutes":15,
+    "pathWeights": {
+      "/api/v1/auth/login": 20,
+      "/api/v1/auth/callbackSession": 20,
+      "/api/v1/auth/callbackJWT": 20
+    }
   },
   "connections": {
     "primaryDatabase": {

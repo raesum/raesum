@@ -14,6 +14,7 @@ const logger = raesumLogger(__filename);
 class raesumRateLimiter {
 
     limiterInstance
+    pathWeights
     
     async buildRateLimiter(){
             // Use the rasum config to get the rate limit config
@@ -31,6 +32,8 @@ class raesumRateLimiter {
                 blockDurationMinutes = 5;
             }
 
+            this.pathWeights = rateLimitConfig.pathWeights || {};
+
             const rateLimiterMemory = new RateLimiterMemory({
                 keyPrefix: 'raesumAPI',
                 points: pointsPerSecond,
@@ -40,35 +43,33 @@ class raesumRateLimiter {
             this.limiterInstance = rateLimiterMemory;
 
             // if the rateLimitConfig is NOT redit, build a memory limiter and return it
-            if(rateLimitConfig.type !== 'redis'){
-                logger.warning("Rate limiter is not using redis, using memory limiter instead. NOT recommended for production.");
+            if(rateLimitConfig.type != 'redis'){
+                logger.warning("RateLimiter is not using redis, using memory limiter instead. NOT recommended for production.");
                 this.limiterInstance = rateLimiterMemory;
             }
 
             // Else, attempt to build the redis connection using rateLimitDatabaseConfig and return a redis limiter
             const redisConfigSet = await raesumConfig.get('connections.ratelimiter.redis');
+            const redisConfig = await raesumServer.createRedisConfig(redisConfigSet);
 
-                    const redisConfig = await raesumServer.createRedisConfig(redisConfigSet);
+            // Rate limiter redis config
+            redisConfig.enable_offline_queue = false;
 
                     if(redisConfig == undefined || !redisConfig.host){
-                        logger.error("Redis Configuration not set for sessions, falling back to memory store");
+                        logger.error("Redis Configuration not set for RateLimiter, falling back to memory store");
                     }else{
                         try {
                             const redisClient = new Redis(redisConfig);
 
                             // On connect log entry and store redis instance in class
                             redisClient.on("connect",()=>{
-                                logger.info("Redis Connected for Session Cache");
+                                logger.info("Redis Connected for RateLimiter Cache");
                             });
                             // On error log entry and store redis instance in class
                             redisClient.on("error",(err)=>{
-                                logger.error("Redis Error for Session Cache: ",err);
+                                logger.error("Redis Error for RateLimiter Cache: ",err);
                             });
 
-                            // Add the session store to the session configuration object
-                            sessionConfiguration.store = new RedisStore({
-                                client: redisClient,
-                            });
                             const redisRateLimiter = new RateLimiterRedis({
                                 storeClient: redisClient,
                                 keyPrefix: 'raesumAPI',
@@ -79,9 +80,9 @@ class raesumRateLimiter {
                             });
 
                             this.limiterInstance = redisRateLimiter;
-                            logger.info("Using Redis store for sessions");
+                            logger.info("Using Redis store for RateLimiter");
                         } catch (redisError) {
-                            logger.error(`Failed to create Redis session store: ${redisError.message}, falling back to memory store`);
+                            logger.error(`Failed to create Redis RateLimiter store: ${redisError.message}, falling back to memory store`);
                             this.limiterInstance = rateLimiterMemory;
                         }
                     }

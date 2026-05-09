@@ -23,7 +23,16 @@ const logger = raesumLogger(__filename);
         }
 
         const key = raesumRateLimiter.keymaker(req);
-        let pointsToConsume = 51;
+        let pointsToConsume = 1; // Default value
+
+        // Check if there's a path-specific weight configured
+        if (raesumRateLimiter.pathWeights && raesumRateLimiter.pathWeights[req.path]) {
+            let pointsToConsumeCandidate = parseInt(raesumRateLimiter.pathWeights[req.path]);
+            if(!isNaN(pointsToConsumeCandidate) && pointsToConsumeCandidate > 1){
+                pointsToConsume = pointsToConsumeCandidate;
+            }
+            logger.verbose(`Using path-specific weight ${pointsToConsume} for path ${req.path}`, Date.now() - start);
+        }
 
         logger.verbose(`Rate limit consuming ${pointsToConsume} points) for ${key} on path ${req.path}`,Date.now() - start);
 
