@@ -15,7 +15,9 @@ import {
         AdminDisableUserCommand,
         AdminEnableUserCommand,
         AdminCreateUserCommand,
-        AdminGetUserCommand
+        AdminGetUserCommand,
+        AdminUpdateUserAttributesCommand,
+        AdminDeleteUserAttributesCommand
 } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand } from "@aws-sdk/client-cognito-identity";
 import raesumCache from "./raesumCache.js";
@@ -231,8 +233,7 @@ class raesumCognito{
         logger.info("Cognito connection successful.", Date.now() - start);
 
         // Get list of metadata keys
-        const metadataKeys = await raesumUser.getMetadataKeys(true);
-
+        const metadataKeys = await raesumUser.getMetadataKeyList(true);
 
         // Build a list of metadata keys that are NOT cognito attributes
         let nonCognitoMetadataKeys = [];
@@ -245,7 +246,7 @@ class raesumCognito{
 
         // Set all metadata cognito attributes to false where not in the cognito list
         logger.verbose("Updating metadata keys in raesum from cognito", Date.now() - start);
-        const updatesql = "UPDATE raesum_user_metadata_keys SET cognito_attribute = false, cognito_writable = false WHERE datakey = ANY($1);";
+        const updatesql = "UPDATE raesum_user_metadata_keys SET cognito_attribute = false, cognito_writable = false WHERE datakey ILIKE ANY($1);";
 
         try{
             const response = await raesumDB.query(updatesql, [nonCognitoMetadataKeys]);
@@ -265,7 +266,7 @@ class raesumCognito{
             if(metadataKeys.includes(i)){
                 // If yes, update they cognito attribute and writable status accordingly
                 // Create update SQL command
-                sql += "UPDATE raesum_user_metadata_keys SET cognito_attribute = true , cognito_writable = " + attrList[i] + " WHERE datakey = '" + i + "';\n";
+                sql += "UPDATE raesum_user_metadata_keys SET cognito_attribute = true , cognito_writable = " + attrList[i] + " WHERE datakey ILIKE '" + i + "';\n";
 
 
             }else{
@@ -601,11 +602,12 @@ class raesumCognito{
      * Creates a new user in Cognito or returns existing user ID if already present
      * @param {string} username - The username for the new user
      * @param {string} email - The email address for the new user
+     * @param {string} initialPassword - The initial password for the new user
      * @param {boolean} [suppressMessage=false] - Whether to suppress the welcome message
      * @return {string} The Cognito user ID (sub) of the created or existing user
      * @throws {Error} if unable to create user or get user info
      */
-    async createCognitoUser(username, email, suppressMessage = false) {
+    async createCognitoUser(username, email, initialPassword, suppressMessage = false) {
         const start = Date.now();
 
         // Validate inputs
@@ -614,6 +616,9 @@ class raesumCognito{
         }
         if (typeof email !== 'string' || email.length < 1) {
             throw new Error("Email must be a non-empty string");
+        }
+        if (typeof initialPassword !== 'string' || initialPassword.length < 1) {
+            throw new Error("Initial password must be a non-empty string");
         }
 
         // Initialize the cognito client
@@ -653,6 +658,7 @@ class raesumCognito{
             const createCommand = new AdminCreateUserCommand({
                 UserPoolId: userPoolId,
                 Username: username,
+                TemporaryPassword: initialPassword,
                 UserAttributes: [
                     {
                         Name: 'email',
@@ -722,6 +728,109 @@ class raesumCognito{
         } catch (error) {
             logger.error(`Failed to decode token for expiration: ${error.message}`);
             return Date.now() + 3600000; // Default to 1 hour from now
+        }
+    }
+
+    /**
+     * Gets a user from Cognito by username
+     * @param {string} username - The username (or sub/cognitoID) of the user
+     * @return {Object} The Cognito user object with UserAttributes array
+     * @throws {Error} if user not found or unable to retrieve
+     */
+    async getCognitoUser(username) {
+        const start = Date.now();
+
+        try {
+            // Initialize the cognito client
+            logger.verbose(`Getting Cognito user: ${username}`, Date.now() - start);
+            const awsCognitoConfig = await buildAWSClientConfig();
+            const client = new CognitoIdentityProviderClient(awsCognitoConfig);
+
+            const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
+
+            const getUserCommand = new AdminGetUserCommand({
+                UserPoolId: userPoolId,
+                Username: username
+            });
+
+            const response = await client.send(getUserCommand);
+
+            logger.info(`Successfully retrieved Cognito user: ${username}`, Date.now() - start);
+            return response;
+
+        } catch (error) {
+            logger.error(`Failed to get Cognito user ${username}: ${error.message}`, Date.now() - start);
+            throw new Error(`Failed to get Cognito user: ${error.message}`);
+        }
+    }
+
+    /**
+     * Updates user attributes in Cognito
+     * @param {string} username - The username (or sub/cognitoID) of the user
+     * @param {Array} attributes - Array of {Name, Value} objects to update
+     * @return {boolean} True if successful
+     * @throws {Error} if unable to update attributes
+     */
+    async updateCognitoUserAttributes(username, attributes) {
+        const start = Date.now();
+
+        try {
+            // Initialize the cognito client
+            logger.verbose(`Updating Cognito user attributes for: ${username}`, Date.now() - start);
+            const awsCognitoConfig = await buildAWSClientConfig();
+            const client = new CognitoIdentityProviderClient(awsCognitoConfig);
+
+            const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
+
+            const updateCommand = new AdminUpdateUserAttributesCommand({
+                UserPoolId: userPoolId,
+                Username: username,
+                UserAttributes: attributes
+            });
+
+            await client.send(updateCommand);
+
+            logger.info(`Successfully updated ${attributes.length} Cognito user attributes for: ${username}`, Date.now() - start);
+            return true;
+
+        } catch (error) {
+            logger.error(`Failed to update Cognito user attributes for ${username}: ${error.message}`, Date.now() - start);
+            throw new Error(`Failed to update Cognito user attributes: ${error.message}`);
+        }
+    }
+
+    /**
+     * Deletes user attributes from Cognito
+     * @param {string} username - The username (or sub/cognitoID) of the user
+     * @param {Array} attributeNames - Array of attribute names to delete
+     * @return {boolean} True if successful
+     * @throws {Error} if unable to delete attributes
+     */
+    async deleteCognitoUserAttributes(username, attributeNames) {
+        const start = Date.now();
+
+        try {
+            // Initialize the cognito client
+            logger.verbose(`Deleting Cognito user attributes for: ${username}`, Date.now() - start);
+            const awsCognitoConfig = await buildAWSClientConfig();
+            const client = new CognitoIdentityProviderClient(awsCognitoConfig);
+
+            const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
+
+            const deleteCommand = new AdminDeleteUserAttributesCommand({
+                UserPoolId: userPoolId,
+                Username: username,
+                UserAttributeNames: attributeNames
+            });
+
+            await client.send(deleteCommand);
+
+            logger.info(`Successfully deleted ${attributeNames.length} Cognito user attributes for: ${username}`, Date.now() - start);
+            return true;
+
+        } catch (error) {
+            logger.error(`Failed to delete Cognito user attributes for ${username}: ${error.message}`, Date.now() - start);
+            throw new Error(`Failed to delete Cognito user attributes: ${error.message}`);
         }
     }
 

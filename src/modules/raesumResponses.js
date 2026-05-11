@@ -68,6 +68,10 @@ class raesumResponses{
 
                     // Make a copy of the response and replace the message
                     newResponse.message = JSON.parse(JSON.stringify(newMessage));
+
+                    // Remove the description
+                    delete newResponse.description;
+                    
                     return newResponse;
 
             }else if(variableCount == 0){

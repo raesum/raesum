@@ -1,7 +1,7 @@
 import {raesumLogger} from "../modules/raesumLogger.js";
 import {fileURLToPath} from "url";
 import raesumAudit from "../models/raesumAudit.js";
-import raesumAuthorization from "../models/raesumAuthorization.js";
+import raesumAuthorization from "../models/raesumAuth.js";
 import raesumResponses from "../modules/raesumResponses.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -10,6 +10,7 @@ const logger = raesumLogger(__filename);
 
 class raesumAuditController {
 
+    
     async getAuditLogs(req, res, next){
         const start = Date.now();
 
@@ -17,6 +18,11 @@ class raesumAuditController {
         const requesterUserID = req.user ? req.user.id : null;
         let orgID = req.user ? req.user.current_organization_id : null;
         if("organizationId" in req.query){
+            // Validate the organization ID is a number
+            if (isNaN(req.query.organizationId) || req.query.organizationId < 1 || !Number.isInteger(parseInt(req.query.organizationId))) {
+                const message = await raesumResponses.get("requestInvalidFields",['organizationId']);
+                return res.status(message.code).json(message);
+            }
             orgID = req.query.organizationId ? parseInt(req.query.organizationId) : null;
         }
         
@@ -59,7 +65,7 @@ class raesumAuditController {
         } catch (error) {
             logger.error("Authorization check failed: " + error, Date.now() - start);
             const errorResponse = await raesumResponses.get('notAuthorized',['read','raesum_audit']);
-            return res.status(500).json(errorResponse);
+            return res.status(errorResponse.code).json(errorResponse);
         }
 
         logger.verbose("Getting audit logs, authorization allowed", Date.now() - start);
@@ -68,8 +74,10 @@ class raesumAuditController {
         const {  
             objectTypeID, 
             actionTypeID, 
-            sortBy, 
-            sortOrder
+            sortBy = "date", 
+            sortOrder = "DESC",
+            limit,
+            offset
         } = req.query;
 
         // Convert string parameters to numbers if provided
@@ -79,14 +87,14 @@ class raesumAuditController {
         if(!orgID) {
             logger.error("Organization ID is required", Date.now() - start);
             const errorResponse = await raesumResponses.get('requestMissingFields',['organizationId']);
-            return res.status(400).json(errorResponse);
+            return res.status(errorResponse.code).json(errorResponse);
         }
 
         // Validate query parameters
         const validationErrors = [];
 
         // Validate userID if provided
-        if (userID !== null || isNaN(parsedFilterUserID)) {
+        if (userID !== null || isNaN(requesterUserID)) {
             validationErrors.push('userID must be a positive integer');
         }
 
@@ -117,7 +125,7 @@ class raesumAuditController {
             logger.warning(`Invalid query parameters: ${validationErrors.join(', ')}`, Date.now() - start);
             const validationErrorResponse = await raesumResponses.get('requestInvalidFields');
             validationErrorResponse.errors = validationErrors;
-            return res.status(400).json(validationErrorResponse);
+            return res.status(validationErrorResponse.code).json(validationErrorResponse);
         }
 
         // Try to get the audit logs
@@ -128,17 +136,18 @@ class raesumAuditController {
                 parsedObjectTypeID,
                 parsedActionTypeID,
                 sortBy,
-                sortOrder
+                sortOrder,
+                limit ? parseInt(limit) : null,
+                offset ? parseInt(offset) : null
             );
-            
-            const successResponse = await raesumResponses.get('auditLogs.success');
-            successResponse.data = auditLogs;
-            return res.status(200).json(successResponse);
+            const message = await raesumResponses.get("success");
+            message.data = auditLogs;
+            return res.status(message.code).json(message);
             
         } catch (error) {
             logger.error("Error retrieving audit logs: " + error, Date.now() - start);
-            const errorResponse = await raesumResponses.get('auditLogs.error');
-            return res.status(500).json(errorResponse);
+            const errorResponse = await raesumResponses.get('error');
+            return res.status(errorResponse.code).json(errorResponse);
         }
     }
 

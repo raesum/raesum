@@ -123,6 +123,8 @@ class raesumeCacheRedis{
     }
 
     async reset(){
+        const start = Date.now();
+
         if(this.#redisRunning){
             // Get the key prefix
             const prefix = await raesumConfig.get("cache.prefix");
@@ -132,9 +134,12 @@ class raesumeCacheRedis{
 
             logger.debug("Deleting Keys from Redis Cache that start with: "+prefix+". as part of the reset process");
             // Delete all keys that start with prefix
+            logger.info("Reset Redis Cache Starting", Date.now() - start);
+
             for(const key of keys){
                 await this.#redisInstance.del(key);
             }
+            logger.info("Reset Redis Cache Complete", Date.now() - start);
             return true;
 
         }else{
@@ -232,8 +237,12 @@ class raesumCachePool{
 
     // Primarily used for testing - this destroys the cache pool instance and forces a re-init
     async reset(){
+        const start = Date.now();
         if(typeof this.#cachePoolInstance != "undefined") {
+            logger.info("Resetting Cache Pool", Date.now() - start);
             await this.#cachePoolInstance.reset(); // Clear the cache and close connections
+        }else{
+            logger.warning("Cache Pool not initialized, nothing to reset", Date.now() - start);
         }
         this.#cachePoolInstance = undefined;
         this.#config = undefined;
@@ -312,8 +321,12 @@ class raesumCachePool{
             return e;
         }
 
+        logger.debug("Getting cache key, Prefixing key after keymaker " + key, Date.now() - start);
+
         // Add prefix to key
         cacheKey = await this.prefixKey(cacheKey);
+
+        logger.debug("Getting cache key with prefix and keymaker " + key, Date.now() - start);
 
         const returnVal= await this.#cachePoolInstance.get(cacheKey);
         if(returnVal == undefined){
@@ -423,21 +436,26 @@ class raesumCachePool{
 
         // If the user ID is not a positive int or null, throw an error
         if(userId != null && (isNaN(userId) || userId < 1)){
+            logger.error("Cachekey keymaker Invalid format for userID: " + userId, Date.now() - start);
             throw new Error("Invalid format for userID");
         }
 
         // If the org ID is not a positive int or null, throw an error
         if(orgId != null && (isNaN(orgId) || orgId < 1)){
+            logger.error("Cachekey keymaker Invalid format for orgId: " + orgId, Date.now() - start);
+
             throw new Error("Invalid format for orgId");
         }
 
         // If the object type string is not an string, throw an error
         if(typeof objectType != "string"){
+            logger.error("Cachekey keymaker Invalid format for objectType: " + objectType, Date.now() - start);
             throw new Error("Invalid format for objectType");
         }
 
         // If key is not a string, or empty , or contains a :, throw an error
         if(typeof key != "string" || key == "" || key.includes(":")){
+            logger.error("Cachekey keymaker Invalid format for key: " + key, Date.now() - start);
             throw new Error("Invalid format for key");
         }
 
@@ -473,7 +491,6 @@ class raesumCachePool{
     async deleteSet(objectType,orgId=null, userID=null){
         const start = Date.now();
 
-        logger.verbose("Deleting cache set", {objectType, orgId, userID});
         const cacheFunctioning = await this.#init();
 
         if(!cacheFunctioning){return undefined;}
@@ -494,7 +511,8 @@ class raesumCachePool{
         }
 
         // Create the key
-        const cacheKey =  `${objectType}:${orgId}:${userID}`;
+        let cacheKey =  `${objectType}:${orgId}:${userID}`;
+        cacheKey = await this.prefixKey(cacheKey);
 
         const result = await this.#cachePoolInstance.deleteKeysStartingWith(cacheKey);
 

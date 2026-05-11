@@ -18,41 +18,37 @@ const raesumHealthRouter = express.Router();
  *             schema:
  *               type: object
  *               properties:
- *                 status:
+ *                 title:
  *                   type: string
- *                   example: "healthy"
- *                 timestamp:
+ *                   example: "Health Check"
+ *                   description: Response title
+ *                 message:
  *                   type: string
- *                   format: date-time
- *                 version:
- *                   type: string
- *                   description: Application version
- *       503:
- *         description: Service unavailable - one or more dependencies are unhealthy
+ *                   example: "Passed"
+ *                   description: Health check result message
+ *                 messageId:
+ *                   type: integer
+ *                   example: 0
+ *                   description: Message identifier
+ *       500:
+ *         description: Application is unhealthy - one or more dependencies are failing
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 status:
+ *                 title:
  *                   type: string
- *                   example: "unhealthy"
- *                 timestamp:
+ *                   example: "Health Check"
+ *                   description: Response title
+ *                 message:
  *                   type: string
- *                   format: date-time
- *                 errors:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       service:
- *                         type: string
- *                         example: "database"
- *                       error:
- *                         type: string
- *                         example: "Connection timeout"
- *       500:
- *         description: Internal server error during health check
+ *                   example: "Failed"
+ *                   description: Health check result message
+ *                 messageId:
+ *                   type: integer
+ *                   example: 0
+ *                   description: Message identifier
  */
 raesumHealthRouter.get('/', raesumHealthController);
 

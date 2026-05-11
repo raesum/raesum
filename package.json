@@ -41,6 +41,7 @@
     "node-cache": "^5.1.2",
     "node-fetch": "^3.3.2",
     "pg-pool": "^3.13.0",
+    "rate-limiter-flexible": "^11.1.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "vitest": "^1.0.0",
@@ -60,7 +61,8 @@
     "eslint-config-prettier": "^9.1.2",
     "eslint-plugin-prettier": "^5.5.5",
     "nodemon": "^3.1.14",
-    "prettier": "^3.8.3"
+    "prettier": "^3.8.3",
+    "supertest": "^7.2.2"
   },
   "vitest": {
     "environment": "node",

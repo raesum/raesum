@@ -14,6 +14,7 @@ import raesumLoggerRequestFinishMiddleware from "./middleware/raesumRequestLogge
 import raesumHealthRouter from "./routes/raesumHealth.js";
 import raesumAuthRouter from "./routes/raesumAuth.js";
 import raesumAuditRouter from "./routes/raesumAudit.js";
+import raesumUserRouter from "./routes/raesumUser.js";
 import swaggerRouter from "./routes/swagger.js";
 import raesumCache from "./modules/raesumCache.js";
 import raesumCognito from "./modules/raesumCognito.js";
@@ -22,6 +23,7 @@ import raesumServer from "./modules/raesumServer.js";
 import raesumSession from "./modules/raesumSession.js";
 import raesumMetadata from "./models/raesumMetadata.js";
 import session from 'express-session';
+import raesumLimiterMiddleware from "./middleware/raesumRateLimiter.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -124,6 +126,12 @@ export async function createApp() {
     );
 
 
+    // Rate limiter
+    const useRateLimitConfig = await raesumConfig.get('ratelimiter.useRateLimiter');
+
+    if(useRateLimitConfig){
+        app.use(raesumLimiterMiddleware);
+    }
 
     // List of paths to exclude from authentication
     const excludePaths = {
@@ -162,6 +170,8 @@ export async function createApp() {
     app.use('/api/v1/health', raesumHealthRouter);
     app.use('/api/v1/auth', raesumAuthRouter);
     app.use('/api/v1/audit', raesumAuditRouter);
+    app.use('/api/v1/user', raesumUserRouter);
+
 
     // If the system is not a production environment add a swagger/openapi route
     const isProductionDatabase = await raesumMetadata.getByKey("isProductionDatabase");

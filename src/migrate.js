@@ -17,5 +17,8 @@ const migrator = new raesumMigrate();
 
 migrator.doMigration().then((migrationReturn)=>{
     logger.info("Migration Complete", Date.now() - start);
+    if(migrationReturn === false){
+        migrationReturn = 0;
+    }
     process.exit(migrationReturn);
 });
