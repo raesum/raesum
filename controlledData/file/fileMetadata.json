@@ -3,18 +3,28 @@
         "active_status":true,
         "description":"Name / Title of the file",
         "displayName":"File Name",
-        "datakey":"filename"
+        "datakey":"filename",
+        "writable":true
     },
     {
         "active_status":true,
         "description":"Width of the file (only applies to images)",
         "displayName":"Width",
-        "datakey":"width"
+        "datakey":"width",
+        "writable":false
     },
     {
         "active_status":true,
         "description":"Height of the file (only applies to images)",
         "displayName":"Height",
-        "datakey":"height"
+        "datakey":"height",
+        "writable":false
+    },
+    {
+        "active_status":true,
+        "description":"If there is a particular reason for the file status it will be recorded. This usually applies if a file is invalid or rejected.",
+        "displayName":"Status Reason",
+        "datakey":"statusreason",
+        "writable":false
     }
 ]

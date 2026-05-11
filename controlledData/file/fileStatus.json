@@ -3,21 +3,36 @@
         "id":1,
         "active_status":true,
         "description":"File uploaded but not yet processed",
-        "displayName":"Initial",
-        "datakey":"init"
+        "displayName":"Uploading",
+        "datakey":"uploading"
     },
+
     {
         "id":2,
-        "active_status":true,
-        "description":"File processed and ready for use",
-        "displayName":"done",
-        "datakey":"done"
-    },
-    {
-        "id":3,
         "active_status":true,
         "description":"File validated against constraints",
         "displayName":"Validating",
         "datakey":"validating"
+    },
+    {
+        "id":3,
+        "active_status":true,
+        "description":"File processed and ready for use",
+        "displayName":"Accepted",
+        "datakey":"accepted"
+    },
+    {
+        "id":4,
+        "active_status":true,
+        "description":"File processed and has been rejected",
+        "displayName":"Rejected",
+        "datakey":"rejected"
+    },
+    {
+        "id":5,
+        "active_status":true,
+        "description":"File upload has failed",
+        "displayName":"Failed",
+        "datakey":"failed"
     }
 ]

@@ -46,8 +46,10 @@ create table public.raesum_file_metadata_keys
             unique,
     active_status boolean,
     description   varchar(4096),
-    displayname   varchar(255)
+    displayname   varchar(255),
+    writable      boolean
 );
+
 
 
 

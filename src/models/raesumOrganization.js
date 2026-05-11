@@ -548,7 +548,7 @@ class raesumOrganizationObject {
     */
     async clearMetadataKeyCache(){
          const start = Date.now();       
-        logger.debug("Clearing User metadata key cache", Date.now() - start);
+        logger.debug("Clearing Organization metadata key cache", Date.now() - start);
         const cacheKeyStrings = [
             'raesumOrganizationMetadataKeystrue',
             'raesumOrganizationMetadataKeysfalse'
@@ -558,7 +558,7 @@ class raesumOrganizationObject {
             await raesumCache.delete(cacheKey);
         }
 
-        logger.verbose("User Metadata key list cache cleared", Date.now() - start);
+        logger.verbose("Organization Metadata key list cache cleared", Date.now() - start);
     }
 
 /**
