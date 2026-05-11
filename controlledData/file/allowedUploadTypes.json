@@ -7,15 +7,13 @@
             "width": 1920,
             "height": 1080
         },
-        "publicByDefault": true,
-        "isTemporary": false
+        "publicByDefault": true
     },
     "testTextFile": {
         "title": "Test Text File. For testing purposes only.",
         "mimeTypes": ["text/plain"],
         "dimensionsLimit": null,
         "fileSizeLimit": 5242880,
-        "publicByDefault": false,
-        "isTemporary": true
+        "publicByDefault": false
     }
 }

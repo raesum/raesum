@@ -1,0 +1,20 @@
+[
+    {
+        "active_status":true,
+        "description":"Name / Title of the file",
+        "displayName":"File Name",
+        "datakey":"filename"
+    },
+    {
+        "active_status":true,
+        "description":"Width of the file (only applies to images)",
+        "displayName":"Width",
+        "datakey":"width"
+    },
+    {
+        "active_status":true,
+        "description":"Height of the file (only applies to images)",
+        "displayName":"Height",
+        "datakey":"height"
+    }
+]

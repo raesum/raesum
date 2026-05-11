@@ -106,16 +106,30 @@ class raesumMigrate {
             if (Object.keys(jsonData[i]).length > 0) {
                 // Get a list of the fields
                 const fields = Object.keys(jsonData[i]);
+
+                logger.verbose("Loading " + filename + " into " + targetTable + " with fields: " + fields.join(', '), Date.now() - start);
+
+                // Determine primary key
+                let primaryKey = "id";
+                if(fields.includes("id")){
+                    primaryKey = "id";
+                }else if(fields.includes("uuid")){
+                    primaryKey = "uuid";
+                }else{
+                    primaryKey = "datakey";
+                }
+
                 let placeholders = [];
                 for (let j = 0; j < fields.length; j++) {
                     placeholders.push("$" + (j + 1));
                 }
 
                 // create an insert statement with on conflict update
-                const insertStatement = "INSERT INTO " + targetTable + " (" + fields.join(',') + ") VALUES (" + placeholders.join(',') + ") ON CONFLICT (id) DO UPDATE SET " + fields.map((el) => el + " = EXCLUDED." + el).join(',');
+                const insertStatement = "INSERT INTO " + targetTable + " (" + fields.join(',') + ") VALUES (" + placeholders.join(',') + ") ON CONFLICT (" + primaryKey + ") DO UPDATE SET " + fields.map((el) => el + " = EXCLUDED." + el).join(',');
 
                 // Run the query
                 const params = fields.map((el) => jsonData[i][el]);
+
                 try {
                     await raesumDB.query(insertStatement, params);
                 }catch(e){
@@ -141,6 +155,9 @@ class raesumMigrate {
             {filename: 'authorization/action.json', targetTable: 'raesum_auth_action_type'},
             {filename: 'authorization/object.json', targetTable: 'raesum_auth_object_type'},
             {filename: 'authorization/scope.json', targetTable: 'raesum_auth_scope_type'},
+            {filename: 'file/fileStatus.json', targetTable: 'raesum_file_status'},
+            {filename: 'file/fileMetadata.json', targetTable: 'raesum_file_metadata_keys'},
+
         ]
 
         // Lop through static content list

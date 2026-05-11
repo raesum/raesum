@@ -1,0 +1,23 @@
+[
+    {
+        "id":1,
+        "active_status":true,
+        "description":"File uploaded but not yet processed",
+        "displayName":"Initial",
+        "datakey":"init"
+    },
+    {
+        "id":2,
+        "active_status":true,
+        "description":"File processed and ready for use",
+        "displayName":"done",
+        "datakey":"done"
+    },
+    {
+        "id":3,
+        "active_status":true,
+        "description":"File validated against constraints",
+        "displayName":"Validating",
+        "datakey":"validating"
+    }
+]
