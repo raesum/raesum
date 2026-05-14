@@ -246,8 +246,136 @@ class raseumFileObject{
 
 
 
+    /**
+     * Uploads the file to the S3 quarantine bucket. When uploaded, it will update the file record status from uploading to validating when complete. Before returning it will call the validateFileAsync but not wait for it complete. 
+     * @param  {string} fileId The ID of the file to update
+     * @param  {string} s3Path This is the expected path that the object will be stored in including the final file ID/name.
+     * @param  {String} bufferStream The new status of the file
+     * @param  {String} mimetype The identified mimetype of the file being uploaded
+     * @return {Boolean} True if the file was was successfully uploaded, false otherwise
+     * @throws {Error} If any of the params are missing or invalid
+     * @throws {Error} If the S3 bucket doesn't exist or the file cannot be uploaded
+     * @throws {Error} If the object already exists in the bucket AND the s3Path doesn't match the file record
+     * @throws {Error} If the s3Path is not unique AND is in the database AND not attached to the current file record
+     */
+    async upload(fileId, s3Path, bufferStream, mimetype){
+        const start = Date.now();
 
-    async upload(s3Path, bufferStream, mimetype){}
+        // Validate fileId
+        fileId = parseInt(fileId);
+        if (isNaN(fileId) || fileId < 1 || !Number.isInteger(fileId)) {
+            throw new Error("File ID must be a positive integer");
+        }
+
+        // Validate s3Path - must be a valid S3 object key
+        if (typeof s3Path !== 'string' || s3Path.trim().length === 0) {
+            throw new Error("S3 path must be a non-empty string");
+        }
+        
+        // Validate S3 path format (no leading/trailing slashes, no consecutive slashes)
+        const s3PathRegex = /^[a-zA-Z0-9\-_.\/]+$/;
+        if (!s3PathRegex.test(s3Path)) {
+            throw new Error("Invalid S3 object key format");
+        }
+        
+        // Check for consecutive slashes or leading/trailing slashes
+        if (s3Path.startsWith('/') || s3Path.endsWith('/') || s3Path.includes('//')) {
+            throw new Error("Invalid S3 object key format");
+        }
+
+        // Validate bufferStream
+        if (!bufferStream) {
+            throw new Error("Buffer stream is required");
+        }
+
+        // Validate mimetype
+        if (typeof mimetype !== 'string' || mimetype.trim().length === 0) {
+            throw new Error("Mimetype must be a non-empty string");
+        }
+
+        logger.debug(`Starting file upload for fileId: ${fileId} to S3 path: ${s3Path}`, Date.now() - start);
+
+        // Check if file exists and get current status
+        let fileRecord;
+        try {
+            const fileResult = await raesumDB.query("SELECT * FROM raesum_file WHERE id = $1", [fileId]);
+            if (fileResult.rows.length === 0) {
+                throw new Error("File not found");
+            }
+            fileRecord = fileResult.rows[0];
+        } catch (e) {
+            logger.error(`Error getting file record: ${e.message}`, Date.now() - start);
+            throw new Error("File not found");
+        }
+
+        // Check if s3Path is unique in database (unless it's the current file's path)
+        try {
+            const pathCheckResult = await raesumDB.query(
+                "SELECT id FROM raesum_file WHERE s3path = $1 AND id != $2",
+                [s3Path, fileId]
+            );
+            if (pathCheckResult.rows.length > 0) {
+                throw new Error("S3 path already exists in database");
+            }
+        } catch (e) {
+            if (e.message === "S3 path already exists in database") {
+                throw e;
+            }
+            logger.warning(`Error checking S3 path uniqueness: ${e.message}`, Date.now() - start);
+        }
+
+        // Get S3 configuration
+        let s3Client;
+        try {
+            const awsRegion = await raesumConfig.get("aws.region");
+            const quarantineBucket = await raesumConfig.get("aws.s3.quarantine.bucketName");
+            
+            // Import and configure S3 client
+            const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+            s3Client = new S3Client({ region: awsRegion });
+            
+            // Upload file to S3
+            const putCommand = new PutObjectCommand({
+                Bucket: quarantineBucket,
+                Key: s3Path,
+                Body: bufferStream,
+                ContentType: mimetype
+            });
+            
+            await s3Client.send(putCommand);
+            logger.info(`File uploaded to S3: ${s3Path}`, Date.now() - start);
+            
+        } catch (e) {
+            logger.error(`Error uploading file to S3: ${e.message}`, Date.now() - start);
+            throw new Error("Failed to upload file to S3");
+        }
+
+        // Update file record with S3 path and change status to validating
+        try {
+            // Update s3path first
+            await raesumDB.query(
+                "UPDATE raesum_file SET s3path = $1 WHERE id = $2",
+                [s3Path, fileId]
+            );
+            
+            // Use updateFileStatus to change status to validating
+            await this.updateFileStatus(fileId, "validating", "File uploaded successfully");
+            
+            logger.info(`File record updated for fileId: ${fileId} with status: validating`, Date.now() - start);
+            
+        } catch (e) {
+            logger.error(`Error updating file record: ${fileId} with error ${e.message}`, Date.now() - start);
+            throw new Error("Failed to update file record");
+        }
+
+        // Trigger async validation (don't wait for completion)
+        this.validateFileAsync(fileId).catch(e => {
+            logger.error(`Async validation failed for fileId: ${fileId}: ${e.message}`);
+        });
+
+        logger.verbose(`File upload completed for fileId: ${fileId}`, Date.now() - start);
+        return true;
+    }
 
         /**
      * This function is called when the 'external' validation process is complete and the file needs to be moved to the bucket type specified by the file type, quarantined, or deleted.
