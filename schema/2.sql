@@ -8,7 +8,8 @@ create table public.raesum_file_status
             unique,
     active_status boolean,
     description   varchar(4096),
-    displayname   varchar(255)
+    displayname   varchar(255),
+    purge_file    boolean
 );
 
 
@@ -27,6 +28,7 @@ create table public.raesum_file
     awsregion  varchar(256)                                               not null,
     bucket     varchar(512)                                               not null,
     path       varchar(2048)                                              not null,
+    original_file_name       varchar(1024)                                              null,
     created_at timestamp default now(),
     status_id  integer
         constraint raesum_file_raesum_file_status_id_fk

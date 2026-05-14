@@ -1,5 +1,6 @@
 import express from 'express';
 import raesumFile from '../controllers/raesumFile.js';
+import raesumFileValidationMiddleware from '../middleware/raesumFileValidator.js';
 import multer from 'multer';
 
 const upload = multer({});
@@ -21,7 +22,7 @@ raesumFileRouter.get('/metadata/get/:fileId', raesumFile.getAllFileMetaData);
 raesumFileRouter.post('/metadata/set/byKey/:key/:fileId', raesumFile.setOneFileMetaData);
 raesumFileRouter.post('/metadata/delete/byKey/:key/:fileId', raesumFile.deleteOneFileMetaData);
 
-raesumFileRouter.post('/upload/', upload.single('file'), raesumFile.upload);
+raesumFileRouter.post('/upload/', upload.single('file'), raesumFileValidationMiddleware, raesumFile.upload);
 
 raesumFileRouter.post('/delete/:fileId', raesumFile.delete);
 

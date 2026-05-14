@@ -2,6 +2,9 @@ import {raesumLogger} from "../modules/raesumLogger.js";
 import {fileURLToPath} from "url";
 import raesumDB from "../modules/raesumDB.js";
 import raesumCache from "../modules/raesumCache.js";
+import raesumConfig from "../modules/raesumConfig.js";
+import raesumUser from "./raesumUser.js";
+import raesumOrganization from "./raesumOrganization.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -14,21 +17,86 @@ class raseumFileObject{
      * @throws {Error} If unable to get file types
      */
     async getFileTypes(){
-        // Start the timer
+        const start = Date.now();
 
-        // Get the file types from the cache
+        logger.debug("Getting file types", Date.now() - start);
+        
+        // Check to see if file types are in cache
+        const cacheKey = "raesumFileTypes";
+        const cachedTypes = await raesumCache.get(cacheKey);
+        if (cachedTypes && Object.keys(cachedTypes).length > 0) {
+            logger.verbose(`Returning cached file types`, Date.now() - start);
+            logger.debug(`File types with ${Object.keys(cachedTypes).length} types: ${JSON.stringify(cachedTypes)}`, Date.now() - start);
+            return cachedTypes;
+        }
 
-        // If the cache is empty, get the file types from the json file
+        // If cache is empty, get the file types from the json file
+        logger.debug("Getting file types from controlled data", Date.now() - start);
+        try {
+            const fileTypesData = await import('../../controlledData/file/allowedUploadTypes.json', {
+                assert: { type: 'json' }
+            });
+            
+            // Build object of file types by key
+            const fileTypes = {};
+            for (const [key, config] of Object.entries(fileTypesData.default)) {
+                fileTypes[key] = {
+                    ...config,
+                    datakey: key
+                };
+            }
 
-        // Save the file types to the cache
-
-        // Return the file types
-
+            // Save to cache
+            await raesumCache.set(cacheKey, fileTypes);
+            
+            logger.debug(`Got ${Object.keys(fileTypes).length} file types from controlled data`, Date.now() - start);
+            logger.verbose(`Returning ${Object.keys(fileTypes).length} file types`, Date.now() - start);
+            
+            return fileTypes;
+        } catch (e) {
+            logger.error(`Error getting file types: ${e.message}`, Date.now() - start);
+            throw new Error("Unable to get file types");
+        }
     }
+
+            /**
+     * Gets single file type definition. Throws an error if it fails
+     * @param  {String} fileTypeKey The org that will be the nominal owner of the file
+     * @return {Object} Object one file type definition. Returns false if no type found
+     * @throws {Error} If unable to get file types
+     */
+    async getOneFileType(fileTypeKey){
+        const start = Date.now();
+
+        // Validate fileTypeKey
+        if (typeof fileTypeKey !== 'string' || fileTypeKey.trim().length === 0) {
+            throw new Error("File type key must be a non-empty string");
+        }
+
+        logger.debug(`Getting file type for key: ${fileTypeKey}`, Date.now() - start);
+
+        try {
+            // Get all file types
+            const fileTypes = await this.getFileTypes();
+            
+            // Check if the requested file type exists
+            if (fileTypes[fileTypeKey]) {
+                logger.verbose(`Found file type: ${fileTypeKey}`, Date.now() - start);
+                return fileTypes[fileTypeKey];
+            } else {
+                logger.warning(`File type not found: ${fileTypeKey}`, Date.now() - start);
+                return false;
+            }
+        } catch (e) {
+            logger.error(`Error getting file type ${fileTypeKey}: ${e.message}`, Date.now() - start);
+            throw new Error("Unable to get file type");
+        }
+    }
+    
 
     /**
      * Creates a record for the file. The record will assume that the file is sent to the quarantine bucket initially.
-     * @param  {String} fileTypeKey The ID of the metadata key
+     * @param  {String} fileTypeKey The type of file being created
      * @param  {Number} orgId The org that will be the nominal owner of the file
      * @param  {Number} userId The user that owns the file
      * @param  {String} originalFileName The original name of the file (this will not be kept after upload)
@@ -37,28 +105,286 @@ class raseumFileObject{
      * @throws {Error} If unable to create the record
      */
     async createFileEntry(fileTypeKey,orgId, userId, originalFileName){
+        const start = Date.now();
 
+        logger.verbose(`Attempting to create file entry for fileType: ${fileTypeKey}, orgId: ${orgId}, userId: ${userId}`, Date.now() - start);
+
+        // Validate fileTypeKey
+        if (typeof fileTypeKey !== 'string' || fileTypeKey.trim().length === 0) {
+            throw new Error("File type key must be a non-empty string");
+        }
+
+        // Validate orgId
+        orgId = parseInt(orgId);
+        if (isNaN(orgId) || orgId < 1 || !Number.isInteger(orgId)) {
+            throw new Error("Organization ID must be a positive integer");
+        }
+
+        // Validate userId
+        userId = parseInt(userId);
+        if (isNaN(userId) || userId < 1 || !Number.isInteger(userId)) {
+            throw new Error("User ID must be a positive integer");
+        }
+
+        // Validate originalFileName - allow null/undefined or non-empty string
+        if (originalFileName !== null && originalFileName !== undefined) {
+            if (typeof originalFileName !== 'string' || originalFileName.trim().length === 0) {
+                throw new Error("Original file name must be null, undefined, or a non-empty string");
+            }
+        }
+
+        // Validate that the file type exists
+        const fileType = await this.getOneFileType(fileTypeKey);
+        if (!fileType) {
+            throw new Error("Invalid file type key");
+        }
+
+        // Check that the user exists
+        try {
+            await raesumUser.getUserById(userId);
+        } catch (e) {
+            logger.error(`User with ID: ${userId} does not exist`, Date.now() - start);
+            throw new Error("User does not exist");
+        }
+
+        // Check that the organization exists
+        try {
+            await raesumOrganization.getById(orgId);
+        } catch (e) {
+            logger.error(`Organization with ID: ${orgId} does not exist`, Date.now() - start);
+            throw new Error("Organization does not exist");
+        }
+
+        // Get AWS configuration for quarantine bucket
+        const awsRegion = await raesumConfig.get("aws.region");
+        const quarantineBucket = await raesumConfig.get("aws.s3.quarantine.bucketName");
+
+        // Create the file entry with quarantine = true (default)
+        try {
+            const query = `INSERT INTO raesum_file (user_id, org_id, quarantine, awsregion, bucket, path, original_file_name, status_id) 
+                          VALUES ($1, $2, true, $3, $4, '', $5, 1) 
+                          RETURNING id`;
+            const result = await raesumDB.query(query, [userId, orgId, awsRegion, quarantineBucket, originalFileName]);
+            const fileId = parseInt(result.rows[0].id);
+            logger.info(`File entry created with ID: ${fileId}`, Date.now() - start);
+            return fileId;
+        } catch (e) {
+            logger.error(`Error creating file entry: ${e.message}`, Date.now() - start);
+            throw new Error("Unable to create file entry");
+        }
+    }
+
+
+    // This function updates the file status in the database. It will only allow for valid status values but any 'reason' can be supplied as a string
+    /**
+     * Updates the file status in the database
+     * @param  {Number} fileId The ID of the file to update
+     * @param  {String} status The new status of the file
+     * @param  {String} reason The reason for the status change
+     * @return {Boolean} True if the update was successful, false otherwise
+     * @throws {Error} If the fileId, status, or reason is invalid
+     * @throws {Error} If unable to update the record
+     */
+    async updateFileStatus(fileId,status,reason){
+        const start = Date.now();
+
+        logger.verbose(`Attempting to update file status for fileId: ${fileId} to status: ${status}`, Date.now() - start);
+
+        // Validate fileId
+        fileId = parseInt(fileId);
+        if (isNaN(fileId) || fileId < 1 || !Number.isInteger(fileId)) {
+            throw new Error("File ID must be a positive integer");
+        }
+
+        // Validate status
+        if (typeof status !== 'string' || status.trim().length === 0) {
+            throw new Error("Status must be a non-empty string");
+        }
+
+        // Validate reason
+        if (typeof reason !== 'string' || reason.trim().length === 0) {
+            throw new Error("Reason must be a non-empty string");
+        }
+
+        // Check if the file exists
+        try {
+            const checkQuery = "SELECT * FROM raesum_file WHERE id = $1";
+            const checkResult = await raesumDB.query(checkQuery, [fileId]);
+            if (checkResult.rows.length === 0) {
+                throw new Error("File not found");
+            }
+        } catch (e) {
+            logger.error(`Error checking file existence: ${e.message}`, Date.now() - start);
+            throw new Error("File not found");
+        }
+
+        // Get the status_id from raesum_file_status table based on status datakey
+        let statusId;
+        try {
+            const statusQuery = "SELECT id FROM raesum_file_status WHERE datakey = $1";
+            const statusResult = await raesumDB.query(statusQuery, [status]);
+            if (statusResult.rows.length === 0) {
+                throw new Error("Invalid status");
+            }
+            statusId = statusResult.rows[0].id;
+        } catch (e) {
+            logger.error(`Error getting status ID: ${e.message}`, Date.now() - start);
+            throw new Error("Invalid status");
+        }
+
+        // Update the file status
+        try {
+            const updateQuery = "UPDATE raesum_file SET status_id = $1 WHERE id = $2";
+            await raesumDB.query(updateQuery, [statusId, fileId]);
+            logger.info(`File status updated for fileId: ${fileId} to status: ${status}`, Date.now() - start);
+            return true;
+        } catch (e) {
+            logger.error(`Error updating file status: ${e.message}`, Date.now() - start);
+            throw new Error("Unable to update file status");
+        }
     }
 
 
 
-    async updateFileStatus(fileId,status,reason){}
-
-
-
-    async getFileStatus(fileId){}
-
 
     async upload(s3Path, bufferStream, mimetype){}
 
+        /**
+     * This function is called when the 'external' validation process is complete and the file needs to be moved to the bucket type specified by the file type, quarantined, or deleted.
+     * @param  {Number} fileId The ID of the file to update
+     * @param  {String} status The new status of the file
+     * @param  {String} reason The reason for the status change
+     * @return {Boolean} True if the update was successful, false otherwise
+     * @throws {Error} If the fileId, status, or reason is invalid
+     * @throws {Error} If unable to update the record
+     */
+    async uploadDisposition(fileId,status,reason){}
 
+        /**
+     * Deletes the file from the S3 bucket and marks it as deleted in the database. It will NOT delete the record. It will update the database status to deleted if the file doesn't exist in S3.
+     * @param  {Number} fileId The ID of the file to update
+     * @return {Boolean} True if the update was successful, false otherwise. Note it will return true if the file already has been deleted from the S3 bucket.
+     * @throws {Error} If the fileId is invalid or missing from database
+     * @throws {Error} If the file cannot be deleted from the database due to foreign key contraints. The DB check occurs before attempting to delete from S3 bucket. If foreign key constraints are present, delete must be done via the model/object that governs the constraints.
+     * @throws {Error} If the file cannot be deleted from the S3 bucket but the file exists.
+     * @throws {Error} If unable to update the record
+     */
     async delete(fileId){}
 
 
-    async getEntryById(fileId){}
+    /**
+     * Gets the information of one file
+     * @param  {Number} fileId The ID of the file to update
+     * @return {Object} Returns a single record of the file from the database
+     * @throws {Error} If the fileId is invalid
+     * @throws {Error} If unable to update the record
+     */
+    async getEntryById(fileId){
+        const start = Date.now();
 
+        logger.verbose(`Getting file entry by ID: ${fileId}`, Date.now() - start);
 
-    async getEntriesByUserAndOrg(userId, orgId){}
+        // Validate fileId
+        fileId = parseInt(fileId);
+        if (isNaN(fileId) || fileId < 1 || !Number.isInteger(fileId)) {
+            throw new Error("File ID must be a positive integer");
+        }
+
+        // Get the file entry
+        try {
+            const query = "SELECT * FROM raesum_file WHERE id = $1";
+            const result = await raesumDB.query(query, [fileId]);
+            
+            if (result.rows.length === 0) {
+                logger.warning(`File with ID: ${fileId} not found`, Date.now() - start);
+                throw new Error("File not found");
+            }
+
+            const file = result.rows[0];
+            // Parse integer fields
+            file.id = parseInt(file.id);
+            file.user_id = parseInt(file.user_id);
+            file.org_id = parseInt(file.org_id);
+            if (file.status_id) {
+                file.status_id = parseInt(file.status_id);
+            }
+
+            logger.info(`File with ID: ${fileId} found`, Date.now() - start);
+            return file;
+        } catch (e) {
+            logger.error(`Error getting file entry by ID: ${e.message}`, Date.now() - start);
+            throw new Error("Unable to get file entry");
+        }
+    }
+
+    /**
+     * Gets the information of several files. 
+     * @param  {userId} userId The ID of the user
+     * @param  {orgId} orgId The ID of the organization
+     * @return {Array} Returns an array of file records of from the database
+     * @throws {Error} If the userId or orgId is invalid
+     * @throws {Error} If the userId or orgId are not set (either can be null but not BOTH)
+     * @throws {Error} If unable to update the record
+     */
+    async getEntriesByUserAndOrg(userId, orgId){
+        const start = Date.now();
+
+        logger.verbose(`Getting file entries for userId: ${userId}, orgId: ${orgId}`, Date.now() - start);
+
+        // Validate that at least one parameter is provided
+        if ((userId === null || userId === undefined) && (orgId === null || orgId === undefined)) {
+            throw new Error("At least one of userId or orgId must be provided");
+        }
+
+        // Build the query dynamically based on which parameters are provided
+        let query = "SELECT * FROM raesum_file WHERE ";
+        let params = [];
+        let paramCount = 0;
+
+        if (userId !== null && userId !== undefined) {
+            userId = parseInt(userId);
+            if (isNaN(userId) || userId < 1 || !Number.isInteger(userId)) {
+                throw new Error("User ID must be a positive integer");
+            }
+            query += `user_id = $${paramCount + 1}`;
+            params.push(userId);
+            paramCount++;
+        }
+
+        if (orgId !== null && orgId !== undefined) {
+            orgId = parseInt(orgId);
+            if (isNaN(orgId) || orgId < 1 || !Number.isInteger(orgId)) {
+                throw new Error("Organization ID must be a positive integer");
+            }
+            if (paramCount > 0) {
+                query += " AND ";
+            }
+            query += `org_id = $${paramCount + 1}`;
+            params.push(orgId);
+            paramCount++;
+        }
+
+        try {
+            const result = await raesumDB.query(query, params);
+            
+            // Parse integer fields for each result
+            const files = result.rows.map(file => {
+                file.id = parseInt(file.id);
+                file.user_id = parseInt(file.user_id);
+                file.org_id = parseInt(file.org_id);
+                if (file.status_id) {
+                    file.status_id = parseInt(file.status_id);
+                }
+                return file;
+            });
+
+            logger.info(`Found ${files.length} file entries`, Date.now() - start);
+            return files;
+        } catch (e) {
+            logger.error(`Error getting file entries by user and org: ${e.message}`, Date.now() - start);
+            throw new Error("Unable to get file entries");
+        }
+    }
 
 
     /*

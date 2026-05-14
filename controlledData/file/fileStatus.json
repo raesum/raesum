@@ -4,7 +4,8 @@
         "active_status":true,
         "description":"File uploaded but not yet processed",
         "displayName":"Uploading",
-        "datakey":"uploading"
+        "datakey":"uploading",
+        "purge_file":false
     },
 
     {
@@ -12,27 +13,48 @@
         "active_status":true,
         "description":"File validated against constraints",
         "displayName":"Validating",
-        "datakey":"validating"
+        "datakey":"validating",
+        "purge_file":false
     },
     {
         "id":3,
         "active_status":true,
         "description":"File processed and ready for use",
         "displayName":"Accepted",
-        "datakey":"accepted"
+        "datakey":"accepted",
+        "purge_file":false
     },
     {
         "id":4,
         "active_status":true,
         "description":"File processed and has been rejected",
         "displayName":"Rejected",
-        "datakey":"rejected"
+        "datakey":"rejected",
+        "purge_file":true
     },
     {
         "id":5,
         "active_status":true,
         "description":"File upload has failed",
         "displayName":"Failed",
-        "datakey":"failed"
+        "datakey":"failed",
+        "purge_file":true
+    },
+    {
+        "id":6,
+        "active_status":true,
+        "description":"File has been quarantined",
+        "displayName":"Quarantined",
+        "datakey":"quarantined",
+        "purge_file":false
+    },
+    {
+        "id":7,
+        "active_status":true,
+        "description":"File has been deleted",
+        "displayName":"Deleted",
+        "datakey":"deleted",
+        "purge_file":true
     }
+    
 ]
