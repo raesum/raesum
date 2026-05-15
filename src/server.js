@@ -3,35 +3,37 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import http from 'http';
-import config from "config";
+import config from 'config';
 import { fileURLToPath } from 'url';
-import { unless } from "express-unless";
-import raesumDB from "./modules/raesumDB.js";
-import raesumAuth from "./middleware/cognitoAuthentication.js";
-import {raesumLogger} from "./modules/raesumLogger.js";
-import raesumStartup from "./modules/raesumStartup.js";
-import raesumLoggerRequestFinishMiddleware from "./middleware/raesumRequestLogger.js";
-import raesumHealthRouter from "./routes/raesumHealth.js";
-import raesumAuthRouter from "./routes/raesumAuth.js";
-import raesumAuditRouter from "./routes/raesumAudit.js";
-import raesumUserRouter from "./routes/raesumUser.js";
-import swaggerRouter from "./routes/swagger.js";
-import raesumCache from "./modules/raesumCache.js";
-import raesumCognito from "./modules/raesumCognito.js";
-import raesumConfig from "./modules/raesumConfig.js";
-import raesumServer from "./modules/raesumServer.js";
-import raesumSession from "./modules/raesumSession.js";
-import raesumMetadata from "./models/raesumMetadata.js";
+import { unless } from 'express-unless';
+import raesumDB from './modules/raesumDB.js';
+import raesumAuth from './middleware/cognitoAuthentication.js';
+import { raesumLogger } from './modules/raesumLogger.js';
+import raesumStartup from './modules/raesumStartup.js';
+import raesumLoggerRequestFinishMiddleware from './middleware/raesumRequestLogger.js';
+import raesumHealthRouter from './routes/raesumHealth.js';
+import raesumAuthRouter from './routes/raesumAuth.js';
+import raesumAuditRouter from './routes/raesumAudit.js';
+import raesumUserRouter from './routes/raesumUser.js';
+import swaggerRouter from './routes/swagger.js';
+import raesumCache from './modules/raesumCache.js';
+import raesumCognito from './modules/raesumCognito.js';
+import raesumConfig from './modules/raesumConfig.js';
+import raesumServer from './modules/raesumServer.js';
+import raesumSession from './modules/raesumSession.js';
+import raesumMetadata from './models/raesumMetadata.js';
 import session from 'express-session';
-import raesumLimiterMiddleware from "./middleware/raesumRateLimiter.js";
-
+import raesumLimiterMiddleware from './middleware/raesumRateLimiter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
 
 export async function createApp() {
     const start = Date.now();
-    logger.info(`Starting Raesum Environment ${process.env.NODE_ENV}`, Date.now()-start);
+    logger.info(
+        `Starting Raesum Environment ${process.env.NODE_ENV}`,
+        Date.now() - start
+    );
 
     // Initialize Express
     const app = express();
@@ -39,72 +41,76 @@ export async function createApp() {
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
-
     // Run startup tasks
-    logger.info("Running Raesum startup tasks", Date.now()-start);
+    logger.info('Running Raesum startup tasks', Date.now() - start);
     const startup = new raesumStartup();
-    try{
+    try {
         await startup.initialize();
-    }catch(e){
-        logger.critical(`Raesum failed critical startup task to initialize: ${e}`, Date.now() - start);
+    } catch (e) {
+        logger.critical(
+            `Raesum failed critical startup task to initialize: ${e}`,
+            Date.now() - start
+        );
         // Critical failure, exit Raesum
         process.exit(1);
     }
 
-    logger.info("Running Raesum startup tasks complete. Proceeding to security initialization", Date.now()-start);
+    logger.info(
+        'Running Raesum startup tasks complete. Proceeding to security initialization',
+        Date.now() - start
+    );
 
     // Check configuration for potential security or stability issues
     const configCheck = await raesumServer.serverSettingsSafetyChecks();
-    if(!configCheck){
-        logger.warning("Raesum configuration failed safety checks.", Date.now()-start);
+    if (!configCheck) {
+        logger.warning(
+            'Raesum configuration failed safety checks.',
+            Date.now() - start
+        );
     }
 
     // Clear caches
-    logger.info("Clearing Caches",Date.now()-start);
+    logger.info('Clearing Caches', Date.now() - start);
     await raesumCache.deleteSet('raesumServer');
     await raesumCache.deleteSet('cognito');
     await raesumCache.deleteSet('cache');
 
-    logger.info("Clearing Caches Finished",Date.now()-start);
-
+    logger.info('Clearing Caches Finished', Date.now() - start);
 
     // Test cognito connection and update list of user metadata keys
-    try{
+    try {
         await raesumCognito.synchronizeCognitoUserMetadata();
-    }catch(e){
-        logger.critical(`Failed to connect to Cognito or synchronize Cognito User Metadata: ${e}`, Date.now()-start);
+    } catch (e) {
+        logger.critical(
+            `Failed to connect to Cognito or synchronize Cognito User Metadata: ${e}`,
+            Date.now() - start
+        );
     }
-
-
-
 
     // Initialize Sessions
 
-        // If proxy in use set the trust proxy flag
-        const proxyPortInUse = await raesumConfig.get('server.proxyInUse');
-        if(proxyPortInUse){
-            app.set('trust proxy', 1);
-        }
+    // If proxy in use set the trust proxy flag
+    const proxyPortInUse = await raesumConfig.get('server.proxyInUse');
+    if (proxyPortInUse) {
+        app.set('trust proxy', 1);
+    }
 
-        // Start the session and exclude paths
-        const raesumSessionInstance = new raesumSession();
-        const raesumSessionConfig = await raesumSessionInstance.createSessionConfig();
-        
-        const theSession = session(raesumSessionConfig);
-        theSession.unless = unless;
+    // Start the session and exclude paths
+    const raesumSessionInstance = new raesumSession();
+    const raesumSessionConfig =
+        await raesumSessionInstance.createSessionConfig();
 
+    const theSession = session(raesumSessionConfig);
+    theSession.unless = unless;
 
-        // Start session and exclude certain urls
-        app.use(theSession.unless({
-            path: [
-                "/api/v1/health"
-                ]
-        }));
-      
+    // Start session and exclude certain urls
+    app.use(
+        theSession.unless({
+            path: ['/api/v1/health'],
+        })
+    );
 
     // Initialize Security with Helmet
-
-
 
     // Add timing decorator for requests
     app.use((req, res, next) => {
@@ -119,52 +125,56 @@ export async function createApp() {
     // Log all requests except health
     app.use(
         raesumLoggerRequestFinishMiddleware.unless({
-            path: [
-                "/api/v1/health"
-                ]
+            path: ['/api/v1/health'],
         })
     );
 
-
     // Rate limiter
-    const useRateLimitConfig = await raesumConfig.get('ratelimiter.useRateLimiter');
+    const useRateLimitConfig = await raesumConfig.get(
+        'ratelimiter.useRateLimiter'
+    );
 
-    if(useRateLimitConfig){
+    if (useRateLimitConfig) {
         app.use(raesumLimiterMiddleware);
     }
 
     // List of paths to exclude from authentication
     const excludePaths = {
         path: [
-            "/api/v1/health",
-            "/api/v1/auth/login",
-            "/api/v1/auth/callbackSession",
-            "/api/v1/auth/callbackJWT",
-            "/api/swagger",
-            /\/api\/swagger\/.*/
-        ]
+            '/api/v1/health',
+            '/api/v1/auth/login',
+            '/api/v1/auth/callbackSession',
+            '/api/v1/auth/callbackJWT',
+            '/api/swagger',
+            /\/api\/swagger\/.*/,
+        ],
     };
 
     // Check login methods
-            const loginMethods = await raesumConfig.get('login');
+    const loginMethods = await raesumConfig.get('login');
 
-            if(loginMethods.jwt == true){
-                logger.info("JWT Authentication is enabled", Date.now()-start);
-            }else{
-                logger.info("JWT Authentication is disabled", Date.now()-start);
-            }
-            if(loginMethods.useSessionCookie == true){
-                logger.info("Session Cookie Authentication is enabled", Date.now()-start);
-            }else{
-                logger.info("Session Cookie Authentication is disabled", Date.now()-start);
-            }
+    if (loginMethods.jwt == true) {
+        logger.info('JWT Authentication is enabled', Date.now() - start);
+    } else {
+        logger.info('JWT Authentication is disabled', Date.now() - start);
+    }
+    if (loginMethods.useSessionCookie == true) {
+        logger.info(
+            'Session Cookie Authentication is enabled',
+            Date.now() - start
+        );
+    } else {
+        logger.info(
+            'Session Cookie Authentication is disabled',
+            Date.now() - start
+        );
+    }
 
-        // Add unless to the Cognito required middleware
-        raesumAuth.cognitoAuth.unless = unless;
+    // Add unless to the Cognito required middleware
+    raesumAuth.cognitoAuth.unless = unless;
 
-        // Add Authentication Required Middleware
-        app.use(raesumAuth.cognitoAuth.unless(excludePaths))
-
+    // Add Authentication Required Middleware
+    app.use(raesumAuth.cognitoAuth.unless(excludePaths));
 
     // Routes
     app.use('/api/v1/health', raesumHealthRouter);
@@ -172,23 +182,25 @@ export async function createApp() {
     app.use('/api/v1/audit', raesumAuditRouter);
     app.use('/api/v1/user', raesumUserRouter);
 
-
     // If the system is not a production environment add a swagger/openapi route
-    const isProductionDatabase = await raesumMetadata.getByKey("isProductionDatabase");
-    
+    const isProductionDatabase = await raesumMetadata.getByKey(
+        'isProductionDatabase'
+    );
+
     if (!isProductionDatabase) {
-        logger.info("Swagger/OpenAPI documentation is enabled", Date.now()-start);
+        logger.info(
+            'Swagger/OpenAPI documentation is enabled',
+            Date.now() - start
+        );
         app.use('/api/swagger', swaggerRouter);
-    }else{
-        logger.info("Swagger/OpenAPI documentation is disabled in production environment for security reasons.", Date.now()-start);
+    } else {
+        logger.info(
+            'Swagger/OpenAPI documentation is disabled in production environment for security reasons.',
+            Date.now() - start
+        );
     }
 
-
-
-
-
-
-    logger.info("Finished initializing Raesum", Date.now()-start);
+    logger.info('Finished initializing Raesum', Date.now() - start);
     return app;
 }
 
@@ -202,4 +214,3 @@ const app = createApp().then((app) => {
         logger.info(`Server listening at port: ${port}!`, Date.now() - start);
     });
 });
-

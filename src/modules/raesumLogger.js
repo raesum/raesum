@@ -13,71 +13,69 @@ const consoleLogEnabled = config.get('logging.logsEnabled.console');
 const fileLogEnabled = config.get('logging.logsEnabled.file');
 
 let loggerTransports = [];
-const logLevel = config.get("logging.level");
+const logLevel = config.get('logging.level');
 
 // Set up Colors and Levels
 const colorSet = {
-    critical: "bold redBG white",
-    error: "red",
-    warning: "yellow",
-    route: "black greenBG",
-    info: "green",
-    verbose: "cyan",
-    debug: "grey"
-}
+    critical: 'bold redBG white',
+    error: 'red',
+    warning: 'yellow',
+    route: 'black greenBG',
+    info: 'green',
+    verbose: 'cyan',
+    debug: 'grey',
+};
 winston.addColors(colorSet);
 
-const levelSet ={
-        critical: 0,
-        error: 1,
-        warning: 2,
-        route: 3,
-        info: 4,
-        verbose: 5,
-        debug: 6,
-
-}
+const levelSet = {
+    critical: 0,
+    error: 1,
+    warning: 2,
+    route: 3,
+    info: 4,
+    verbose: 5,
+    debug: 6,
+};
 
 // Console Logger
-if(consoleLogEnabled){
-    loggerTransports.push(new winston.transports.Console(
-        {
+if (consoleLogEnabled) {
+    loggerTransports.push(
+        new winston.transports.Console({
             level: logLevel,
             format: winston.format.combine(
                 winston.format.colorize({
-                    all: true
+                    all: true,
                 }),
                 winston.format.simple()
-            )
-        }));
+            ),
+        })
+    );
 }
 
-
 // File Logger
-if(fileLogEnabled){
-
+if (fileLogEnabled) {
     // Get file and path configuration
-    const filename = config.get("logging.filename");
-    let filePath = config.get("logging.filePath");
+    const filename = config.get('logging.filename');
+    let filePath = config.get('logging.filePath');
 
     // Build the path
-        // If the file setting does not being with / then build as a path relative to the root of the project
-        if (!filePath.startsWith('/')) {
-            filePath = path.join(__dirname, '../../', filePath);
-        }
+    // If the file setting does not being with / then build as a path relative to the root of the project
+    if (!filePath.startsWith('/')) {
+        filePath = path.join(__dirname, '../../', filePath);
+    }
 
-        // Add the file name
-        const fullFilePath = path.join(filePath,filename);
+    // Add the file name
+    const fullFilePath = path.join(filePath, filename);
 
-        loggerTransports.push(
-            new winston.transports.File({
-                filename: fullFilePath,
-                level: logLevel,
-                format: winston.format.json(),
-            })
-        );
+    loggerTransports.push(
+        new winston.transports.File({
+            filename: fullFilePath,
+            level: logLevel,
+            format: winston.format.json(),
+        })
+    );
 
-        // Test to see if log folder and file is writable
+    // Test to see if log folder and file is writable
     try {
         // Does folder exist?
 
@@ -87,15 +85,15 @@ if(fileLogEnabled){
                 recursive: true,
             });
         }
-
-
-    }catch(e){
+    } catch (e) {
         // Cannot create the folder. Stop loading of system
-        console.log(JSON.stringify({
-            "level": "critical",
-            "message": "Unable to create log folder. Cannot start logger",
-            "duration": 0
-        }));
+        console.log(
+            JSON.stringify({
+                level: 'critical',
+                message: 'Unable to create log folder. Cannot start logger',
+                duration: 0,
+            })
+        );
         process.exit(20);
     }
 
@@ -105,52 +103,51 @@ if(fileLogEnabled){
             fs.openSync(fullFilePath, 'w');
         }
 
-        fs.accessSync(fullFilePath, fs.constants.R_OK | fs.constants.W_OK)
-        console.log(JSON.stringify({
-            "level": "info",
-            "message": `${fullFilePath} is writable.`,
-            "duration": 0
-        }));
+        fs.accessSync(fullFilePath, fs.constants.R_OK | fs.constants.W_OK);
+        console.log(
+            JSON.stringify({
+                level: 'info',
+                message: `${fullFilePath} is writable.`,
+                duration: 0,
+            })
+        );
     } catch (err) {
         // Cannot write to logs. Stop loading of system
-        console.error(`!`)
-        console.log(JSON.stringify({
-            "level": "critical",
-            "message": `${fullFilePath} is not accessible. Cannot start logger`,
-            "duration": 0
-        }));
+        console.error(`!`);
+        console.log(
+            JSON.stringify({
+                level: 'critical',
+                message: `${fullFilePath} is not accessible. Cannot start logger`,
+                duration: 0,
+            })
+        );
         process.exit(20);
     }
-
 }
-
 
 // Start the logging system
 const logger = winston.createLogger({
     levels: levelSet,
 
-    format: winston.format.combine(
-        winston.format.timestamp(),
-        ),
+    format: winston.format.combine(winston.format.timestamp()),
     transports: loggerTransports,
 });
 
-
 // Standard intra-module and intra-function logger
-export const raesumLogger = function(fileName){
+export const raesumLogger = function (fileName) {
     const originFile = path.basename(fileName);
 
-    function log ( level, message, duration, statusCode, route, userId
-    ) {
-
+    function log(level, message, duration, statusCode, route, userId) {
         // Set a default user
-        if(typeof usesrID === 'undefined'){
+        if (typeof usesrID === 'undefined') {
             userId = 0;
         }
 
         // If req is set and there is a userID, log that user ID
         if (typeof req != 'undefined') {
-            if (req.hasOwnProperty('user') && req.user.hasOwnProperty('id')) {
+            // eslint-disable-next-line no-undef
+            if (Object.hasOwn(req, 'user') && Object.hasOwn(req.user, 'id')) {
+                // eslint-disable-next-line no-undef
                 userId = req.user.id;
             }
         }
@@ -162,11 +159,11 @@ export const raesumLogger = function(fileName){
             userId: userId,
             originFile: originFile,
             statusCode: statusCode,
-            route: route
+            route: route,
         };
-        
+
         logger.log(logEntry);
-    };
+    }
 
     return {
         route: (
@@ -176,88 +173,26 @@ export const raesumLogger = function(fileName){
             statusCode = 0,
             userId = 0
         ) => {
-            log(
-                'route',
-                message,
-                duration,
-                statusCode,
-                route,
-                userId
-            );
+            log('route', message, duration, statusCode, route, userId);
         },
-        critical: (
-            message = '',
-            duration = 0,
-            statusCode = 0
-        ) => {
-            log(
-                'critical',
-                message,
-                duration,
-                statusCode
-            );
+        critical: (message = '', duration = 0, statusCode = 0) => {
+            log('critical', message, duration, statusCode);
         },
-        error: (
-            message = '',
-            duration = 0,
-            statusCode = 0
-        ) => {
-            log(
-                'error',
-                message,
-                duration,
-                statusCode
-            );
+        error: (message = '', duration = 0, statusCode = 0) => {
+            log('error', message, duration, statusCode);
         },
-        warning: (
-            message = '',
-            duration = 0,
-            statusCode = 0
-        ) => {
-            log(
-                'warning',
-                message,
-                duration,
-                statusCode
-            );
+        warning: (message = '', duration = 0, statusCode = 0) => {
+            log('warning', message, duration, statusCode);
         },
-        info: (
-            message = '',
-            duration = 0,
-            statusCode = 0
-        ) => {
-            log(
-                'info',
-                message,
-                duration,
-                statusCode
-            );
+        info: (message = '', duration = 0, statusCode = 0) => {
+            log('info', message, duration, statusCode);
         },
-        
-        debug: (
-            message = '',
-            duration = 0,
-            statusCode = 0
-        ) => {
-            log(
-                'debug',
-                message,
-                duration,
-                statusCode
-            );
-        },
-        verbose: (
-            message = '',
-            duration = 0,
-            statusCode = 0
-        ) => {
-            log(
-                'verbose',
-                message,
-                duration,
-                statusCode
-            );
-        },
-    }
 
-}
+        debug: (message = '', duration = 0, statusCode = 0) => {
+            log('debug', message, duration, statusCode);
+        },
+        verbose: (message = '', duration = 0, statusCode = 0) => {
+            log('verbose', message, duration, statusCode);
+        },
+    };
+};
