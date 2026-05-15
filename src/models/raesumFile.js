@@ -587,7 +587,7 @@ class raseumFileObject {
 
         // Build the query dynamically based on which parameters are provided
         let query = 'SELECT * FROM raesum_file WHERE ';
-        let params = [];
+        const params = [];
         let paramCount = 0;
 
         if (userId !== null && userId !== undefined) {
@@ -692,6 +692,7 @@ class raseumFileObject {
             'Getting file metadata keys from database',
             Date.now() - start
         );
+
         let sql = 'SELECT * FROM raesum_file_metadata_keys';
         if (!show_inactive) {
             sql += ' WHERE active_status = true';
@@ -705,7 +706,7 @@ class raseumFileObject {
             Date.now() - start
         );
         // Loop through results to build object
-        let keys = {};
+        const keys = {};
         for (let i = 0; i < response.rows.length; i++) {
             keys[response.rows[i]['datakey']] = response.rows[i];
         }
