@@ -2,7 +2,7 @@ import readline from 'readline';
 
 const readLineAsync = () => {
     const rl = readline.createInterface({
-        input: process.stdin
+        input: process.stdin,
     });
 
     return new Promise((resolve) => {
