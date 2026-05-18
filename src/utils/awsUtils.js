@@ -90,12 +90,12 @@ export async function buildAWSClientConfig(version = 3) {
 
     return clientConfig;
 
-    let awsV3Config = {
-        region: awsConfig.region,
-        credentials: {
-            accessKeyId: awsConfig.accessKeyId,
-            secretAccessKey: awsConfig.secretAccessKey,
-        },
-    };
-    return awsV3Config;
+    // let awsV3Config = {
+    //     region: awsConfig.region,
+    //     credentials: {
+    //         accessKeyId: awsConfig.accessKeyId,
+    //         secretAccessKey: awsConfig.secretAccessKey,
+    //     },
+    // };
+    // return awsV3Config;
 }
