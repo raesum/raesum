@@ -297,7 +297,8 @@ class raesumAuthorizationObject {
         objectTypeString,
         actionString,
         orgID,
-        objectOwnerUserID
+        objectOwnerUserID,
+        scopesRequired = []
     ) {
         const start = Date.now();
 
@@ -812,7 +813,7 @@ class raesumAuthorizationObject {
      * Gets the roles for a user
      * @param {Number} userID The ID of the user
      * @param  {Number} [orgID=currentOrgID] The ID of the organization. Defaults to the user's current orgID
-     * @param {Boolean} [showInactive=false] Whether to include inactive roles AND inactive orgs
+     * @param {Boolean} [activeOnly=false] Whether to include inactive roles AND inactive orgs
      * @returns {Object} An Object of role IDs, org IDs, and role keys
      * @throws {Error} If the user ID is not a number or is not a valid user ID
      */
@@ -860,7 +861,7 @@ class raesumAuthorizationObject {
                         AND RO.active_status = $4
                         AND RAUXOXR.org_id = $2
                         ORDER BY RAUXOXR.org_id ASC, RAUXOXR.role_id ASC;`;
-        const params = [userID, orgID, activeOnly, showInactive];
+        const params = [userID, orgID, activeOnly, activeOnly];
         try {
             const result = await raesumDB.query(query, params);
 
@@ -877,7 +878,6 @@ class raesumAuthorizationObject {
             );
             throw e;
         }
-        return [];
     }
 
     /**
