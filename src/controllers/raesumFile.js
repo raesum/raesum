@@ -15,62 +15,159 @@ class raesumFileController {
     async upload(req, res, next) {
         const start = Date.now();
 
-        // Check for permissions - create action on raesum_file
-        const isAuthorized = await raesumAuthorization.checkUserPermission(
-            req.user.id,
-            'raesum_file',
-            'create',
-            req.user.current_organization_id,
-            req.user.id
-        );
-
-        if (!isAuthorized) {
-            const message = await raesumResponses.get('notAuthorized', [
-                'create',
-                'raesum_file',
-            ]);
-            return res.status(message.code).json(message);
-        }
-
         // Get file type and original filename from request
         const fileTypeKey = req.body.fileType;
         const originalFileName = req.file ? req.file.originalname : null;
 
-        try {
-            // Create file entry in database
-            const fileInfo = await raesumFile.createFileEntry(
-                fileTypeKey,
-                req.user.current_organization_id,
+        // Check if fileId parameter is specified
+        let fileId;
+        if (req.params.fileId) {
+            // Validate the fileId
+            if (
+                isNaN(req.params.fileId) ||
+                parseInt(req.params.fileId) < 1 ||
+                !Number.isInteger(parseInt(req.params.fileId))
+            ) {
+                const message = await raesumResponses.get(
+                    'requestInvalidFields',
+                    ['fileId']
+                );
+                return res.status(message.code).json(message);
+            }
+            fileId = parseInt(req.params.fileId);
+
+            // Get the existing file entry
+            let fileInfo;
+            try {
+                fileInfo = await raesumFile.getEntryById(fileId);
+            } catch (e) {
+                logger.error(
+                    `Error getting file ${fileId}: ${e.message}`,
+                    Date.now() - start
+                );
+                const message = await raesumResponses.get('notFound');
+                return res.status(message.code).json(message);
+            }
+
+            // Check if user IDs match
+            if (fileInfo.user_id !== req.user.id) {
+                const message = await raesumResponses.get('notAuthorized', [
+                    'upload',
+                    'raesum_file',
+                ]);
+                return res.status(message.code).json(message);
+            }
+
+            // Check if file types match
+            if (fileInfo.file_type_key !== fileTypeKey) {
+                const message = await raesumResponses.get('fileTypeNotAllowed');
+                return res.status(message.code).json(message);
+            }
+
+            // Check for permissions - update action on raesum_file
+            const isAuthorized = await raesumAuthorization.checkUserPermission(
                 req.user.id,
-                originalFileName
-            );
-
-            // Upload file to S3
-            await raesumFile.upload(
-                fileInfo.id,
-                fileInfo.path,
-                req.file.buffer,
-                req.file.mimetype
-            );
-
-            // Create audit log
-            await raesumAudit.create(
-                'create',
                 'raesum_file',
-                fileInfo.id,
+                'update',
+                req.user.current_organization_id,
+                fileInfo.user_id
+            );
+
+            if (!isAuthorized) {
+                const message = await raesumResponses.get('notAuthorized', [
+                    'update',
+                    'raesum_file',
+                ]);
+                return res.status(message.code).json(message);
+            }
+
+            try {
+                // Upload file to S3 using existing file info
+                await raesumFile.upload(
+                    fileInfo.id,
+                    fileInfo.path,
+                    req.file.buffer,
+                    req.file.mimetype
+                );
+
+                // Create audit log
+                await raesumAudit.create(
+                    'update',
+                    'raesum_file',
+                    fileInfo.id,
+                    req.user.id
+                );
+
+                const message = await raesumResponses.get('success');
+                message.data = { fileId: fileInfo.id };
+                return res.status(message.code).json(message);
+            } catch (e) {
+                logger.error(
+                    `Error uploading file: ${e.message}`,
+                    Date.now() - start
+                );
+                const message = await raesumResponses.get(
+                    'internalServerError'
+                );
+                return res.status(message.code).json(message);
+            }
+        } else {
+            // No fileId specified - create new file entry
+            // Check for permissions - create action on raesum_file
+            const isAuthorized = await raesumAuthorization.checkUserPermission(
+                req.user.id,
+                'raesum_file',
+                'create',
+                req.user.current_organization_id,
                 req.user.id
             );
 
-            const message = await raesumResponses.get('success');
-            message.data = { fileId: fileInfo.id };
-            return res.status(message.code).json(message);
-        } catch (e) {
-            logger.error(
-                `Error uploading file: ${e.message}`,
-                Date.now() - start
-            );
-            const message = await raesumResponses.get('internalServerError');
-            return res.status(message.code).json(message);
+            if (!isAuthorized) {
+                const message = await raesumResponses.get('notAuthorized', [
+                    'create',
+                    'raesum_file',
+                ]);
+                return res.status(message.code).json(message);
+            }
+
+            try {
+                // Create file entry in database
+                const fileInfo = await raesumFile.createFileEntry(
+                    fileTypeKey,
+                    req.user.current_organization_id,
+                    req.user.id,
+                    originalFileName
+                );
+
+                // Upload file to S3
+                await raesumFile.upload(
+                    fileInfo.id,
+                    fileInfo.path,
+                    req.file.buffer,
+                    req.file.mimetype
+                );
+
+                // Create audit log
+                await raesumAudit.create(
+                    'create',
+                    'raesum_file',
+                    fileInfo.id,
+                    req.user.id
+                );
+
+                const message = await raesumResponses.get('success');
+                message.data = { fileId: fileInfo.id };
+                return res.status(message.code).json(message);
+            } catch (e) {
+                logger.error(
+                    `Error uploading file: ${e.message}`,
+                    Date.now() - start
+                );
+                const message = await raesumResponses.get(
+                    'internalServerError'
+                );
+                return res.status(message.code).json(message);
+            }
         }
     }
 

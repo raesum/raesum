@@ -13,7 +13,7 @@ import {
     PutObjectCommand,
     DeleteObjectCommand,
     HeadObjectCommand,
-    GetBucketLocationCommand,
+    HeadBucketCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -257,7 +257,14 @@ class raseumFileObject {
                 fileTypeKey,
                 newPath,
             ]);
-            const newFileInfo = result.rows[0];
+
+            // Get the file record that was just created
+            const nextQuery = `SELECT * FROM raesum_file WHERE id = $1`;
+            const result2 = await raesumDB.query(nextQuery, [
+                result.rows[0].id,
+            ]);
+
+            const newFileInfo = result2.rows[0];
             newFileInfo.id = parseInt(result.rows[0].id);
             logger.info(
                 `File entry created with ID: ${newFileInfo.id}`,
@@ -1184,6 +1191,7 @@ class raseumFileObject {
             return false;
         }
 
+        // Check if this has been cached
         const cacheKey = this.#publicURLCacheKey(fileId);
         const cachedURL = await raesumCache.get(cacheKey);
         if (cachedURL) {
@@ -1194,6 +1202,7 @@ class raseumFileObject {
             return cachedURL;
         }
 
+        // Not cached, building URL with AWS assistance
         const prefixedS3Path = this.#prependKeyPrefix(
             fileRecord.key_prefix,
             fileRecord.path
@@ -1202,12 +1211,15 @@ class raseumFileObject {
         const publicURLBase = await raesumConfig.get('aws.s3.public.baseUrl');
         let publicURL;
 
+        // Do we have a baseURL set in settings?
         if (
             typeof publicURLBase === 'string' &&
             publicURLBase.trim().length > 0
         ) {
+            // Yes, use the baseURL
             publicURL = `${publicURLBase.replace(/\/+$/, '')}/${prefixedS3Path}`;
         } else {
+            // No, get the public facing url from AWS
             const accessKey = await raesumConfig.get('aws.accessKeyId');
             const secretKey = await raesumConfig.get('aws.secretAccessKey');
             const s3Client = new S3Client({
@@ -1217,19 +1229,14 @@ class raseumFileObject {
                     secretAccessKey: secretKey,
                 },
             });
-            const locationResult = await s3Client.send(
-                new GetBucketLocationCommand({ Bucket: publicBucket })
+            const headResult = await s3Client.send(
+                new HeadBucketCommand({ Bucket: publicBucket })
             );
-            let bucketRegion =
-                locationResult.LocationConstraint || fileRecord.awsregion;
-            if (bucketRegion === 'EU') {
-                bucketRegion = 'eu-west-1';
-            }
+            const bucketRegion =
+                headResult.$metadata.httpHeaders?.['x-amz-bucket-region'] ||
+                fileRecord.awsregion;
 
-            const bucketBaseURL =
-                bucketRegion === 'us-east-1'
-                    ? `https://${publicBucket}.s3.amazonaws.com`
-                    : `https://${publicBucket}.s3.${bucketRegion}.amazonaws.com`;
+            const bucketBaseURL = `https://${publicBucket}.s3.${bucketRegion}.amazonaws.com`;
             publicURL = `${bucketBaseURL}/${prefixedS3Path}`;
         }
 
@@ -1333,14 +1340,24 @@ class raseumFileObject {
             'raesumFileMetadataKeysfalse',
         ];
 
-        for (const cacheKey of cacheKeyStrings) {
-            await raesumCache.delete(cacheKey);
+        try {
+            for (const cacheKey of cacheKeyStrings) {
+                await raesumCache.delete(cacheKey);
+            }
+        } catch (e) {
+            logger.error(
+                `Error clearing file metadata key cache: ${e.message}`,
+                Date.now() - start
+            );
+            throw new Error('Unable to clear file metadata key cache');
         }
 
         logger.verbose(
             'File Metadata key list cache cleared',
             Date.now() - start
         );
+
+        return true;
     }
 
     async getMetaDataKeys(show_inactive = false) {
