@@ -5,6 +5,16 @@ import raesumCache from '../modules/raesumCache.js';
 import raesumConfig from '../modules/raesumConfig.js';
 import raesumUser from './raesumUser.js';
 import raesumOrganization from './raesumOrganization.js';
+import {
+    S3Client,
+    GetObjectCommand,
+    CopyObjectCommand,
+    PutObjectCommand,
+    DeleteObjectCommand,
+    HeadObjectCommand,
+    GetBucketLocationCommand,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -20,6 +30,14 @@ class raseumFileObject {
             return path;
         }
         return `${keyPrefix.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
+    }
+
+    #publicURLCacheKey(fileId) {
+        return `raesumFilePublicURL${fileId}`;
+    }
+
+    async #clearPublicURLCache(fileId) {
+        await raesumCache.delete(this.#publicURLCacheKey(fileId));
     }
 
     /**
@@ -445,10 +463,16 @@ class raseumFileObject {
                 s3Path
             );
 
-            // Import and configure S3 client
-            const { S3Client, PutObjectCommand } =
-                await import('@aws-sdk/client-s3');
-            s3Client = new S3Client({ region: awsRegion });
+            // Configure S3 client
+            const accessKey = await raesumConfig.get('aws.accessKeyId');
+            const secretKey = await raesumConfig.get('aws.secretAccessKey');
+            s3Client = new S3Client({
+                region: awsRegion,
+                credentials: {
+                    accessKeyId: accessKey,
+                    secretAccessKey: secretKey,
+                },
+            });
 
             // Upload file to S3
             const putCommand = new PutObjectCommand({
@@ -509,6 +533,7 @@ class raseumFileObject {
             `File upload completed for fileId: ${fileId}`,
             Date.now() - start
         );
+        await this.#clearPublicURLCache(fileId);
         return true;
     }
 
@@ -583,10 +608,16 @@ class raseumFileObject {
             let deletionFailed = false;
             if (s3Path && s3Path.trim().length > 0) {
                 try {
-                    const { S3Client, DeleteObjectCommand } =
-                        await import('@aws-sdk/client-s3');
+                    const accessKey = await raesumConfig.get('aws.accessKeyId');
+                    const secretKey = await raesumConfig.get(
+                        'aws.secretAccessKey'
+                    );
                     const s3Client = new S3Client({
                         region: fileRecord.awsregion,
+                        credentials: {
+                            accessKeyId: accessKey,
+                            secretAccessKey: secretKey,
+                        },
                     });
 
                     await s3Client.send(
@@ -700,9 +731,15 @@ class raseumFileObject {
             );
 
             try {
-                const { S3Client, CopyObjectCommand, DeleteObjectCommand } =
-                    await import('@aws-sdk/client-s3');
-                const s3Client = new S3Client({ region: fileRecord.awsregion });
+                const accessKey = await raesumConfig.get('aws.accessKeyId');
+                const secretKey = await raesumConfig.get('aws.secretAccessKey');
+                const s3Client = new S3Client({
+                    region: fileRecord.awsregion,
+                    credentials: {
+                        accessKeyId: accessKey,
+                        secretAccessKey: secretKey,
+                    },
+                });
 
                 // Copy file to target bucket
                 await s3Client.send(
@@ -778,6 +815,7 @@ class raseumFileObject {
             `Upload disposition completed for fileId: ${fileId}`,
             Date.now() - start
         );
+        await this.#clearPublicURLCache(fileId);
         return true;
     }
 
@@ -887,10 +925,14 @@ class raseumFileObject {
         );
         if (s3Path && s3Path.trim().length > 0) {
             try {
-                const { S3Client, DeleteObjectCommand, HeadObjectCommand } =
-                    await import('@aws-sdk/client-s3');
+                const accessKey = await raesumConfig.get('aws.accessKeyId');
+                const secretKey = await raesumConfig.get('aws.secretAccessKey');
                 const s3Client = new S3Client({
                     region: fileRecord.awsregion,
+                    credentials: {
+                        accessKeyId: accessKey,
+                        secretAccessKey: secretKey,
+                    },
                 });
 
                 // Check if the object exists in S3 before attempting deletion
@@ -959,9 +1001,10 @@ class raseumFileObject {
         }
 
         logger.verbose(
-            `File delete completed for fileId: ${fileId}`,
+            `File deletion completed for fileId: ${fileId}`,
             Date.now() - start
         );
+        await this.#clearPublicURLCache(fileId);
         return true;
     }
 
@@ -1017,6 +1060,179 @@ class raseumFileObject {
             );
             throw new Error('Unable to get file entry');
         }
+    }
+
+    /**
+     * Builds/gets signed private URL of file. Do NOT use this for results shared outside the system.
+     * @param  {Number} fileId The ID of the file to update
+     * @param  {Number} duration The number of seconds the url is valid for
+     * @return {string} Returns the public URL of the file in the S3 bucket
+     * @return {boolean} Returns false if the file is not available publically
+     * @throws {Error} If the fileId is invalid
+     * @throws {Error} If unable to update the record
+     */
+    async getSignedURL(fileId, duration = 900) {
+        const start = Date.now();
+
+        fileId = parseInt(fileId);
+        if (isNaN(fileId) || fileId < 1 || !Number.isInteger(fileId)) {
+            throw new Error('File ID must be a positive integer');
+        }
+
+        if (isNaN(duration) || duration < 1 || !Number.isInteger(duration)) {
+            duration = 900;
+        }
+
+        let fileRecord;
+        try {
+            fileRecord = await this.getEntryById(fileId);
+        } catch (e) {
+            logger.error(
+                `Error getting file record for signed URL: ${e.message}`,
+                Date.now() - start
+            );
+            throw new Error('File not found');
+        }
+
+        if (
+            typeof fileRecord.path !== 'string' ||
+            fileRecord.path.trim().length === 0
+        ) {
+            throw new Error('File has no S3 path');
+        }
+
+        const prefixedS3Path = this.#prependKeyPrefix(
+            fileRecord.key_prefix,
+            fileRecord.path
+        );
+
+        try {
+            const accessKey = await raesumConfig.get('aws.accessKeyId');
+            const secretKey = await raesumConfig.get('aws.secretAccessKey');
+            const s3Client = new S3Client({
+                region: fileRecord.awsregion,
+                credentials: {
+                    accessKeyId: accessKey,
+                    secretAccessKey: secretKey,
+                },
+            });
+
+            const params = {
+                Bucket: fileRecord.bucket,
+                Key: prefixedS3Path,
+            };
+
+            const command = new GetObjectCommand(params);
+            // expiresIn is optional; default is 900 seconds (15 minutes)
+            const url = await getSignedUrl(s3Client, command, {
+                expiresIn: duration,
+            });
+
+            logger.verbose(
+                `Built signed URL for file ${fileId}`,
+                Date.now() - start
+            );
+            return url;
+        } catch (e) {
+            logger.error(
+                `Error building signed URL for file ${fileId}: ${e.message}`,
+                Date.now() - start
+            );
+            throw new Error('Unable to build signed URL');
+        }
+    }
+
+    /**
+     * Builds/gets public URL of file
+     * @param  {Number} fileId The ID of the file to update
+     * @return {string} Returns the public URL of the file in the S3 bucket
+     * @return {boolean} Returns false if the file is not available publically
+     * @throws {Error} If the fileId is invalid
+     * @throws {Error} If unable to update the record
+     */
+    async getPublicURL(fileId) {
+        const start = Date.now();
+
+        fileId = parseInt(fileId);
+        if (isNaN(fileId) || fileId < 1 || !Number.isInteger(fileId)) {
+            throw new Error('File ID must be a positive integer');
+        }
+
+        let fileRecord;
+        try {
+            fileRecord = await this.getEntryById(fileId);
+        } catch (e) {
+            logger.error(
+                `Error getting file record for public URL: ${e.message}`,
+                Date.now() - start
+            );
+            throw new Error('File not found');
+        }
+        const publicBucket = await raesumConfig.get('aws.s3.public.bucketName');
+
+        if (fileRecord.bucket !== publicBucket) {
+            logger.info(
+                `File ${fileId} is not in the public S3 bucket`,
+                Date.now() - start
+            );
+            return false;
+        }
+
+        const cacheKey = this.#publicURLCacheKey(fileId);
+        const cachedURL = await raesumCache.get(cacheKey);
+        if (cachedURL) {
+            logger.verbose(
+                `Returning cached public URL for file ${fileId}`,
+                Date.now() - start
+            );
+            return cachedURL;
+        }
+
+        const prefixedS3Path = this.#prependKeyPrefix(
+            fileRecord.key_prefix,
+            fileRecord.path
+        );
+
+        const publicURLBase = await raesumConfig.get('aws.s3.public.baseUrl');
+        let publicURL;
+
+        if (
+            typeof publicURLBase === 'string' &&
+            publicURLBase.trim().length > 0
+        ) {
+            publicURL = `${publicURLBase.replace(/\/+$/, '')}/${prefixedS3Path}`;
+        } else {
+            const accessKey = await raesumConfig.get('aws.accessKeyId');
+            const secretKey = await raesumConfig.get('aws.secretAccessKey');
+            const s3Client = new S3Client({
+                region: fileRecord.awsregion,
+                credentials: {
+                    accessKeyId: accessKey,
+                    secretAccessKey: secretKey,
+                },
+            });
+            const locationResult = await s3Client.send(
+                new GetBucketLocationCommand({ Bucket: publicBucket })
+            );
+            let bucketRegion =
+                locationResult.LocationConstraint || fileRecord.awsregion;
+            if (bucketRegion === 'EU') {
+                bucketRegion = 'eu-west-1';
+            }
+
+            const bucketBaseURL =
+                bucketRegion === 'us-east-1'
+                    ? `https://${publicBucket}.s3.amazonaws.com`
+                    : `https://${publicBucket}.s3.${bucketRegion}.amazonaws.com`;
+            publicURL = `${bucketBaseURL}/${prefixedS3Path}`;
+        }
+
+        await raesumCache.set(cacheKey, publicURL);
+        logger.verbose(
+            `Built public URL for file ${fileId}`,
+            Date.now() - start
+        );
+        return publicURL;
     }
 
     /**

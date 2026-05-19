@@ -8,24 +8,25 @@ const upload = multer({});
 const raesumFileRouter = express.Router();
 
 raesumFileRouter.get('/get/:fileId', raesumFile.getById);
-raesumFileRouter.get('/get/', raesumFile.getList);
+raesumFileRouter.get('/get/byUser/:userId', raesumFile.getList);
+raesumFileRouter.get('/get/byUser/', raesumFile.getList);
 
 raesumFileRouter.get('/data/:fileId', raesumFile.getFileById);
 
-raesumFileRouter.get('/metadata/get/keys/', raesumFile.getMetaDataKeys);
+raesumFileRouter.get('/metadata/get/keys/', raesumFile.getMetadataKeys);
 raesumFileRouter.get(
     '/metadata/get/byKey/:key/:fileId',
-    raesumFile.getOneFileMetaData
+    raesumFile.getOneFileMetadata
 );
-raesumFileRouter.get('/metadata/get/:fileId', raesumFile.getAllFileMetaData);
+raesumFileRouter.get('/metadata/get/:fileId', raesumFile.getAllFileMetadata);
 
 raesumFileRouter.post(
     '/metadata/set/byKey/:key/:fileId',
-    raesumFile.setOneFileMetaData
+    raesumFile.setOneFileMetadata
 );
 raesumFileRouter.post(
     '/metadata/delete/byKey/:key/:fileId',
-    raesumFile.deleteOneFileMetaData
+    raesumFile.deleteOneFileMetadata
 );
 
 raesumFileRouter.post(
