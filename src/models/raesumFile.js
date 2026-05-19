@@ -242,7 +242,7 @@ class raseumFileObject {
      * @throws {Error} If the fileId, status, or reason is invalid
      * @throws {Error} If unable to update the record
      */
-    async updateFileStatus(fileId, status, reason) {
+    async updateFileStatus(fileId, status, reason = '') {
         const start = Date.now();
 
         logger.verbose(
@@ -262,8 +262,8 @@ class raseumFileObject {
         }
 
         // Validate reason
-        if (typeof reason !== 'string' || reason.trim().length === 0) {
-            throw new Error('Reason must be a non-empty string');
+        if (typeof reason !== 'string') {
+            throw new Error('Reason must be a string');
         }
 
         // Check if the file exists
@@ -487,13 +487,260 @@ class raseumFileObject {
     /**
      * This function is called when the 'external' validation process is complete and the file needs to be moved to the bucket type specified by the file type, quarantined, or deleted.
      * @param  {Number} fileId The ID of the file to update
-     * @param  {String} status The new status of the file
-     * @param  {String} reason The reason for the status change
+     * @param  {String} status The new status of the file. This MUST be 'accepted' or 'rejected'.
+     * @param  {String} fileTypeKey The file type key to determine which bucket the file should be moved to (required for accepted status)
+     * @param  {String} reason The reason for the status change. If this is empty and the file is rejected, warnings will be logged (this really shouldn't be empty but nothing should stop a rejection).
      * @return {Boolean} True if the update was successful, false otherwise
      * @throws {Error} If the fileId, status, or reason is invalid
      * @throws {Error} If unable to update the record
      */
-    async uploadDisposition(fileId, status, reason) {}
+    async uploadDisposition(fileId, status, fileTypeKey, reason = '') {
+        const start = Date.now();
+
+        logger.verbose(
+            `Processing upload disposition for fileId: ${fileId}, status: ${status}`,
+            Date.now() - start
+        );
+
+        // Validate fileId
+        fileId = parseInt(fileId);
+        if (isNaN(fileId) || fileId < 1 || !Number.isInteger(fileId)) {
+            throw new Error('File ID must be a positive integer');
+        }
+
+        // Validate status
+        if (typeof status !== 'string' || status.trim().length === 0) {
+            throw new Error('Status must be a non-empty string');
+        }
+
+        // Validate reason
+        if (typeof reason !== 'string') {
+            throw new Error('Reason must be a string');
+        }
+
+        // Validate fileTypeKey if status is accepted
+        if (status === 'accepted') {
+            if (
+                typeof fileTypeKey !== 'string' ||
+                fileTypeKey.trim().length === 0
+            ) {
+                throw new Error(
+                    'File type key is required when status is accepted'
+                );
+            }
+        }
+
+        // Get the file record
+        let fileRecord;
+        try {
+            const fileResult = await raesumDB.query(
+                'SELECT * FROM raesum_file WHERE id = $1',
+                [fileId]
+            );
+            if (fileResult.rows.length === 0) {
+                throw new Error('File not found');
+            }
+            fileRecord = fileResult.rows[0];
+        } catch (e) {
+            logger.error(
+                `Error getting file record for fileId ${fileId}: ${e.message}`,
+                Date.now() - start
+            );
+            throw new Error('File not found');
+        }
+
+        // Process based on status
+        if (status === 'rejected') {
+            // Log warning if reason is empty
+            if (reason.trim().length === 0) {
+                logger.warning(
+                    `File ${fileId} is being rejected without a reason`,
+                    Date.now() - start
+                );
+            }
+
+            // Delete from quarantine bucket
+            const s3Path = fileRecord.path;
+            let deletionFailed = false;
+            if (s3Path && s3Path.trim().length > 0) {
+                try {
+                    const { S3Client, DeleteObjectCommand } =
+                        await import('@aws-sdk/client-s3');
+                    const s3Client = new S3Client({
+                        region: fileRecord.awsregion,
+                    });
+
+                    await s3Client.send(
+                        new DeleteObjectCommand({
+                            Bucket: fileRecord.bucket,
+                            Key: s3Path,
+                        })
+                    );
+                    logger.info(
+                        `File ${fileId} deleted from quarantine bucket at path: ${s3Path}`,
+                        Date.now() - start
+                    );
+                } catch (e) {
+                    logger.error(
+                        `Error deleting file ${fileId} from quarantine bucket: ${e.message}`,
+                        Date.now() - start
+                    );
+                    deletionFailed = true;
+                }
+            }
+
+            // Update status - if deletion failed, set to failed; otherwise set to rejected
+            try {
+                if (deletionFailed) {
+                    await this.updateFileStatus(
+                        fileId,
+                        'failed',
+                        'Rejected but cannot delete from bucket'
+                    );
+                    logger.warning(
+                        `File ${fileId} status updated to failed due to deletion error`,
+                        Date.now() - start
+                    );
+                } else {
+                    await this.updateFileStatus(fileId, 'rejected', reason);
+                    logger.info(
+                        `File ${fileId} status updated to rejected`,
+                        Date.now() - start
+                    );
+                }
+            } catch (e) {
+                logger.error(
+                    `Error updating file status for fileId ${fileId}: ${e.message}`,
+                    Date.now() - start
+                );
+                throw new Error('Unable to update file record');
+            }
+        } else if (status === 'accepted') {
+            // Get the file type definition
+            let fileType;
+            try {
+                fileType = await this.getOneFileType(fileTypeKey);
+                if (!fileType) {
+                    throw new Error('Invalid file type key');
+                }
+            } catch (e) {
+                logger.error(
+                    `Error getting file type ${fileTypeKey}: ${e.message}`,
+                    Date.now() - start
+                );
+                throw new Error('Invalid file type key');
+            }
+
+            // Determine target bucket based on publicByDefault
+            const targetBucketType = fileType.publicByDefault
+                ? 'public'
+                : 'private';
+
+            // Get bucket configuration
+            let targetBucket;
+            try {
+                targetBucket = await raesumConfig.get(
+                    `aws.s3.${targetBucketType}.bucketName`
+                );
+                logger.debug(
+                    `Target bucket for file ${fileId}: ${targetBucket}`,
+                    Date.now() - start
+                );
+            } catch (e) {
+                logger.error(
+                    `Error getting ${targetBucketType} bucket configuration: ${e.message}`,
+                    Date.now() - start
+                );
+                throw new Error('Unable to get bucket configuration');
+            }
+
+            // Move file from quarantine to target bucket
+            const s3Path = fileRecord.path;
+            if (!s3Path || s3Path.trim().length === 0) {
+                throw new Error('File has no S3 path');
+            }
+
+            try {
+                const { S3Client, CopyObjectCommand, DeleteObjectCommand } =
+                    await import('@aws-sdk/client-s3');
+                const s3Client = new S3Client({ region: fileRecord.awsregion });
+
+                // Copy file to target bucket
+                await s3Client.send(
+                    new CopyObjectCommand({
+                        Bucket: targetBucket,
+                        CopySource: `${fileRecord.bucket}/${s3Path}`,
+                        Key: s3Path,
+                    })
+                );
+                logger.info(
+                    `File ${fileId} copied from ${fileRecord.bucket} to ${targetBucket}`,
+                    Date.now() - start
+                );
+
+                // Delete from quarantine bucket
+                await s3Client.send(
+                    new DeleteObjectCommand({
+                        Bucket: fileRecord.bucket,
+                        Key: s3Path,
+                    })
+                );
+                logger.info(
+                    `File ${fileId} deleted from quarantine bucket`,
+                    Date.now() - start
+                );
+            } catch (e) {
+                logger.error(
+                    `Error moving file ${fileId} to ${targetBucket}: ${e.message}`,
+                    Date.now() - start
+                );
+                throw new Error('Failed to move file to target bucket');
+            }
+
+            // Update file record with new bucket information
+            try {
+                await raesumDB.query(
+                    'UPDATE raesum_file SET bucket = $1, quarantine = false WHERE id = $2',
+                    [targetBucket, fileId]
+                );
+                logger.info(
+                    `File ${fileId} record updated with bucket: ${targetBucket}`,
+                    Date.now() - start
+                );
+            } catch (e) {
+                logger.error(
+                    `Error updating file record for fileId ${fileId}: ${e.message}`,
+                    Date.now() - start
+                );
+                throw new Error('Unable to update file record');
+            }
+
+            // Update status to accepted
+            try {
+                await this.updateFileStatus(fileId, 'accepted', reason);
+                logger.info(
+                    `File ${fileId} status updated to accepted`,
+                    Date.now() - start
+                );
+            } catch (e) {
+                logger.error(
+                    `Error updating file status for fileId ${fileId}: ${e.message}`,
+                    Date.now() - start
+                );
+                throw new Error('Unable to update file record');
+            }
+        } else {
+            throw new Error(
+                `Invalid status: ${status}. Status must be 'accepted' or 'rejected'`
+            );
+        }
+
+        logger.verbose(
+            `Upload disposition completed for fileId: ${fileId}`,
+            Date.now() - start
+        );
+        return true;
+    }
 
     /**
      * Deletes the file from the S3 bucket and marks it as deleted in the database. It will NOT delete the record. It will update the database status to deleted if the file doesn't exist in S3.
@@ -504,7 +751,176 @@ class raseumFileObject {
      * @throws {Error} If the file cannot be deleted from the S3 bucket but the file exists.
      * @throws {Error} If unable to update the record
      */
-    async delete(fileId) {}
+    async delete(fileId) {
+        const start = Date.now();
+
+        logger.verbose(
+            `Attempting to delete file with ID: ${fileId}`,
+            Date.now() - start
+        );
+
+        // Validate fileId
+        fileId = parseInt(fileId);
+        if (isNaN(fileId) || fileId < 1 || !Number.isInteger(fileId)) {
+            throw new Error('File ID must be a positive integer');
+        }
+
+        // Get the file record
+        let fileRecord;
+        try {
+            const fileResult = await raesumDB.query(
+                'SELECT * FROM raesum_file WHERE id = $1',
+                [fileId]
+            );
+            if (fileResult.rows.length === 0) {
+                throw new Error('File not found');
+            }
+            fileRecord = fileResult.rows[0];
+        } catch (e) {
+            logger.error(
+                `Error getting file record for fileId ${fileId}: ${e.message}`,
+                Date.now() - start
+            );
+            throw new Error('File not found');
+        }
+
+        // Check for foreign key constraints before attempting S3 deletion
+        // Dynamically discover all tables with a FK referencing raesum_file(id)
+        let referencingTables;
+        try {
+            const fkDiscoveryResult = await raesumDB.query(
+                `SELECT kcu.table_name, kcu.column_name
+                 FROM information_schema.referential_constraints rc
+                 JOIN information_schema.key_column_usage kcu
+                   ON kcu.constraint_name = rc.constraint_name
+                  AND kcu.table_schema = rc.constraint_schema
+                 JOIN information_schema.key_column_usage ccu
+                   ON ccu.constraint_name = rc.unique_constraint_name
+                  AND ccu.table_schema = rc.unique_constraint_schema
+                 WHERE ccu.table_name = 'raesum_file'
+                   AND ccu.column_name = 'id'`
+            );
+            referencingTables = fkDiscoveryResult.rows;
+        } catch (e) {
+            logger.error(
+                `Error discovering foreign key constraints for fileId ${fileId}: ${e.message}`,
+                Date.now() - start
+            );
+            throw new Error('Unable to check foreign key constraints');
+        }
+
+        // For each referencing table, check whether any records point to this fileId
+        const constrainedTables = [];
+        for (const { table_name, column_name } of referencingTables) {
+            try {
+                const countResult = await raesumDB.query(
+                    `SELECT COUNT(*) FROM "${table_name}" WHERE "${column_name}" = $1`,
+                    [fileId]
+                );
+                const count = parseInt(countResult.rows[0].count);
+                if (count > 0) {
+                    constrainedTables.push(table_name);
+                }
+            } catch (e) {
+                logger.error(
+                    `Error checking FK records in ${table_name} for fileId ${fileId}: ${e.message}`,
+                    Date.now() - start
+                );
+                throw new Error('Unable to check foreign key constraints');
+            }
+        }
+
+        if (constrainedTables.length > 0) {
+            logger.warning(
+                `File ${fileId} has referencing records in: ${constrainedTables.join(', ')}. Foreign key constraints prevent deletion.`,
+                Date.now() - start
+            );
+            throw new Error(
+                `File has foreign key constraints in: ${constrainedTables.join(', ')}. Remove associated records before deleting.`
+            );
+        }
+
+        // Delete from S3 if the file has a stored path
+        const s3Path = fileRecord.path;
+        if (s3Path && s3Path.trim().length > 0) {
+            try {
+                const { S3Client, DeleteObjectCommand, HeadObjectCommand } =
+                    await import('@aws-sdk/client-s3');
+                const s3Client = new S3Client({
+                    region: fileRecord.awsregion,
+                });
+
+                // Check if the object exists in S3 before attempting deletion
+                let fileExistsInS3 = false;
+                try {
+                    await s3Client.send(
+                        new HeadObjectCommand({
+                            Bucket: fileRecord.bucket,
+                            Key: s3Path,
+                        })
+                    );
+                    fileExistsInS3 = true;
+                } catch (headError) {
+                    if (
+                        headError.name === 'NotFound' ||
+                        headError.$metadata?.httpStatusCode === 404
+                    ) {
+                        logger.verbose(
+                            `File ${fileId} does not exist in S3, treating as already deleted`,
+                            Date.now() - start
+                        );
+                    } else {
+                        throw headError;
+                    }
+                }
+
+                if (fileExistsInS3) {
+                    await s3Client.send(
+                        new DeleteObjectCommand({
+                            Bucket: fileRecord.bucket,
+                            Key: s3Path,
+                        })
+                    );
+                    logger.info(
+                        `File ${fileId} deleted from S3 at path: ${s3Path}`,
+                        Date.now() - start
+                    );
+                }
+            } catch (e) {
+                logger.error(
+                    `Error deleting file ${fileId} from S3: ${e.message}`,
+                    Date.now() - start
+                );
+                throw new Error('Failed to delete file from S3');
+            }
+        } else {
+            logger.verbose(
+                `File ${fileId} has no S3 path, skipping S3 deletion`,
+                Date.now() - start
+            );
+        }
+
+        // Update the database status to deleted
+        try {
+            await this.updateFileStatus(fileId, 'deleted');
+            logger.info(
+                `File ${fileId} status updated to deleted`,
+                Date.now() - start
+            );
+        } catch (e) {
+            logger.error(
+                `Error updating file status for fileId ${fileId}: ${e.message}`,
+                Date.now() - start
+            );
+            throw new Error('Unable to update file record');
+        }
+
+        logger.verbose(
+            `File delete completed for fileId: ${fileId}`,
+            Date.now() - start
+        );
+        return true;
+    }
 
     /**
      * Gets the information of one file
