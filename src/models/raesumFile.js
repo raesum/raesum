@@ -1,5 +1,6 @@
 import { raesumLogger } from '../modules/raesumLogger.js';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 import raesumDB from '../modules/raesumDB.js';
 import raesumCache from '../modules/raesumCache.js';
 import raesumConfig from '../modules/raesumConfig.js';
@@ -157,7 +158,7 @@ class raseumFileObject {
      * @param  {Number} orgId The org that will be the nominal owner of the file
      * @param  {Number} userId The user that owns the file
      * @param  {String} originalFileName The original name of the file (this will not be kept after upload)
-     * @return {Number} the ID of the file in the raesum_file table.
+     * @return {Object} the record of the file in the raesum_file table.
      * @throws {Error} If the fileTypeKey, orgId, or userId is invalid
      * @throws {Error} If unable to create the record
      */
@@ -238,10 +239,13 @@ class raseumFileObject {
             await raesumConfig.get('aws.s3.quarantine.keyPrefix')
         );
 
+        // Generate a UUID and combine with the orgId for the file path
+        const newPath = orgId + '/' + crypto.randomUUID();
+
         // Create the file entry with quarantine = true (default)
         try {
             const query = `INSERT INTO raesum_file (user_id, org_id, quarantine, awsregion, bucket, key_prefix, path, original_file_name, status_id, file_type_key) 
-                          VALUES ($1, $2, true, $3, $4, $5, '', $6, 1, $7) 
+                          VALUES ($1, $2, true, $3, $4, $5, $8, $6, 1, $7) 
                           RETURNING id`;
             const result = await raesumDB.query(query, [
                 userId,
@@ -251,13 +255,15 @@ class raseumFileObject {
                 quarantineKeyPrefix,
                 originalFileName,
                 fileTypeKey,
+                newPath,
             ]);
-            const fileId = parseInt(result.rows[0].id);
+            const newFileInfo = result.rows[0];
+            newFileInfo.id = parseInt(result.rows[0].id);
             logger.info(
-                `File entry created with ID: ${fileId}`,
+                `File entry created with ID: ${newFileInfo.id}`,
                 Date.now() - start
             );
-            return fileId;
+            return newFileInfo;
         } catch (e) {
             logger.error(
                 `Error creating file entry: ${e.message}`,

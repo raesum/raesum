@@ -12,7 +12,67 @@ const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
 
 class raesumFileController {
-    async upload(req, res, next) {}
+    async upload(req, res, next) {
+        const start = Date.now();
+
+        // Check for permissions - create action on raesum_file
+        const isAuthorized = await raesumAuthorization.checkUserPermission(
+            req.user.id,
+            'raesum_file',
+            'create',
+            req.user.current_organization_id,
+            req.user.id
+        );
+
+        if (!isAuthorized) {
+            const message = await raesumResponses.get('notAuthorized', [
+                'create',
+                'raesum_file',
+            ]);
+            return res.status(message.code).json(message);
+        }
+
+        // Get file type and original filename from request
+        const fileTypeKey = req.body.fileType;
+        const originalFileName = req.file ? req.file.originalname : null;
+
+        try {
+            // Create file entry in database
+            const fileInfo = await raesumFile.createFileEntry(
+                fileTypeKey,
+                req.user.current_organization_id,
+                req.user.id,
+                originalFileName
+            );
+
+            // Upload file to S3
+            await raesumFile.upload(
+                fileInfo.id,
+                fileInfo.path,
+                req.file.buffer,
+                req.file.mimetype
+            );
+
+            // Create audit log
+            await raesumAudit.create(
+                'create',
+                'raesum_file',
+                fileInfo.id,
+                req.user.id
+            );
+
+            const message = await raesumResponses.get('success');
+            message.data = { fileId: fileInfo.id };
+            return res.status(message.code).json(message);
+        } catch (e) {
+            logger.error(
+                `Error uploading file: ${e.message}`,
+                Date.now() - start
+            );
+            const message = await raesumResponses.get('internalServerError');
+            return res.status(message.code).json(message);
+        }
+    }
 
     // Gets a list of files for the current user and organization.
     async getList(req, res, next) {
@@ -208,6 +268,18 @@ class raesumFileController {
                 return res.status(message.code).json(message);
             }
 
+            // If the file status is deleted, get the deleted message and return that
+            if (file.status_id === 5) {
+                const message = await raesumResponses.get('fileFailed');
+                return res.status(message.code).json(message);
+            }
+
+            // If the file status is NOT accepted, get the quarantine message and return that (don't expose the true status if it's been rejected)
+            if (file.status_id !== 3) {
+                const message = await raesumResponses.get('fileInQuarantine');
+                return res.status(message.code).json(message);
+            }
+
             // Get the file types
             const fileType = await raesumFile.getOneFileType(
                 file.file_type_key
@@ -242,7 +314,81 @@ class raesumFileController {
         }
     }
 
-    async delete(req, res, next) {}
+    async delete(req, res, next) {
+        const start = Date.now();
+
+        // Validate the file ID
+        let fileId;
+        if (
+            !req.params.fileId ||
+            isNaN(parseInt(req.params.fileId)) ||
+            parseInt(req.params.fileId) < 1
+        ) {
+            const message = await raesumResponses.get('requestInvalidFields', [
+                'fileId',
+            ]);
+            return res.status(message.code).json(message);
+        }
+        fileId = parseInt(req.params.fileId);
+
+        let file;
+        try {
+            file = await raesumFile.getEntryById(fileId);
+        } catch (e) {
+            logger.error(
+                `Error getting file ${fileId}: ${e.message}`,
+                Date.now() - start
+            );
+            const message = await raesumResponses.get('internalServerError');
+            return res.status(message.code).json(message);
+        }
+
+        // Check for permissions
+        const isAuthorized = await raesumAuthorization.checkUserPermission(
+            req.user.id,
+            'raesum_file',
+            'delete',
+            req.user.current_organization_id,
+            file.user_id
+        );
+
+        if (!isAuthorized) {
+            const message = await raesumResponses.get('notAuthorized', [
+                'delete',
+                'raesum_file',
+            ]);
+            return res.status(message.code).json(message);
+        }
+
+        try {
+            await raesumFile.delete(fileId);
+            await raesumAudit.create(
+                'delete',
+                'raesum_file',
+                fileId,
+                req.user.id
+            );
+            const message = await raesumResponses.get('success');
+            return res.status(message.code).json(message);
+        } catch (e) {
+            // Check if the error is due to foreign key constraints
+            if (e.message && e.message.includes('foreign key constraints')) {
+                logger.warning(
+                    `Cannot delete file ${fileId} due to dependencies: ${e.message}`,
+                    Date.now() - start
+                );
+                const message = await raesumResponses.get('deleteDependency');
+                return res.status(message.code).json(message);
+            }
+
+            logger.error(
+                `Error deleting file ${fileId}: ${e.message}`,
+                Date.now() - start
+            );
+            const message = await raesumResponses.get('internalServerError');
+            return res.status(message.code).json(message);
+        }
+    }
 
     async getFileMetadata(req, res, next) {
         return this.getAllFileMetadata(req, res, next);

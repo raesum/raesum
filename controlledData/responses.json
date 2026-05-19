@@ -166,5 +166,19 @@
         "description": "The requested resource was not found.",
         "code": 404,
         "keycode": 24
+    },
+    "deleteDependency": {
+        "title": "Cannot Delete Dependency",
+        "message": "This cannot be deleted as it is used by another record.",
+        "description": "Another record requires this one. Usually this is a file that is ALSO part of another record which cannot be deleted until the parent record is deleted.",
+        "code": 400,
+        "keycode": 25
+    },
+    "fileFailed": {
+        "title": "Upload Failed",
+        "message": "The file has failed to upload.",
+        "description": "The file has failed to upload for some reason and has not gotten to the validation/quarantine stage.",
+        "code": 400,
+        "keycode": 26
     }
 }
