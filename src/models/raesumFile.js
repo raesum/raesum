@@ -10,6 +10,18 @@ const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
 
 class raseumFileObject {
+    #normalizeKeyPrefix(keyPrefix) {
+        return keyPrefix === null || keyPrefix === undefined ? '' : keyPrefix;
+    }
+
+    #prependKeyPrefix(keyPrefix, path) {
+        keyPrefix = this.#normalizeKeyPrefix(keyPrefix);
+        if (keyPrefix.length === 0) {
+            return path;
+        }
+        return `${keyPrefix.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
+    }
+
     /**
      * Gets a list of allowed file types. Throws an error if it fails
      * @return {Object} Object of all file types by key
@@ -204,17 +216,21 @@ class raseumFileObject {
         const quarantineBucket = await raesumConfig.get(
             'aws.s3.quarantine.bucketName'
         );
+        const quarantineKeyPrefix = this.#normalizeKeyPrefix(
+            await raesumConfig.get('aws.s3.quarantine.keyPrefix')
+        );
 
         // Create the file entry with quarantine = true (default)
         try {
-            const query = `INSERT INTO raesum_file (user_id, org_id, quarantine, awsregion, bucket, path, original_file_name, status_id, file_type_key) 
-                          VALUES ($1, $2, true, $3, $4, '', $5, 1, $6) 
+            const query = `INSERT INTO raesum_file (user_id, org_id, quarantine, awsregion, bucket, key_prefix, path, original_file_name, status_id, file_type_key) 
+                          VALUES ($1, $2, true, $3, $4, $5, '', $6, 1, $7) 
                           RETURNING id`;
             const result = await raesumDB.query(query, [
                 userId,
                 orgId,
                 awsRegion,
                 quarantineBucket,
+                quarantineKeyPrefix,
                 originalFileName,
                 fileTypeKey,
             ]);
@@ -397,7 +413,7 @@ class raseumFileObject {
         // Check if s3Path is unique in database (unless it's the current file's path)
         try {
             const pathCheckResult = await raesumDB.query(
-                'SELECT id FROM raesum_file WHERE s3path = $1 AND id != $2',
+                'SELECT id FROM raesum_file WHERE path = $1 AND id != $2',
                 [s3Path, fileId]
             );
             if (pathCheckResult.rows.length > 0) {
@@ -415,10 +431,18 @@ class raseumFileObject {
 
         // Get S3 configuration
         let s3Client;
+        let quarantineKeyPrefix;
         try {
             const awsRegion = await raesumConfig.get('aws.region');
             const quarantineBucket = await raesumConfig.get(
                 'aws.s3.quarantine.bucketName'
+            );
+            quarantineKeyPrefix = this.#normalizeKeyPrefix(
+                await raesumConfig.get('aws.s3.quarantine.keyPrefix')
+            );
+            const prefixedS3Path = this.#prependKeyPrefix(
+                quarantineKeyPrefix,
+                s3Path
             );
 
             // Import and configure S3 client
@@ -429,13 +453,16 @@ class raseumFileObject {
             // Upload file to S3
             const putCommand = new PutObjectCommand({
                 Bucket: quarantineBucket,
-                Key: s3Path,
+                Key: prefixedS3Path,
                 Body: bufferStream,
                 ContentType: mimetype,
             });
 
             await s3Client.send(putCommand);
-            logger.info(`File uploaded to S3: ${s3Path}`, Date.now() - start);
+            logger.info(
+                `File uploaded to S3: ${prefixedS3Path}`,
+                Date.now() - start
+            );
         } catch (e) {
             logger.error(
                 `Error uploading file to S3: ${e.message}`,
@@ -448,8 +475,8 @@ class raseumFileObject {
         try {
             // Update s3path first
             await raesumDB.query(
-                'UPDATE raesum_file SET s3path = $1 WHERE id = $2',
-                [s3Path, fileId]
+                'UPDATE raesum_file SET path = $1, key_prefix = $2 WHERE id = $3',
+                [s3Path, quarantineKeyPrefix, fileId]
             );
 
             // Use updateFileStatus to change status to validating
@@ -549,6 +576,10 @@ class raseumFileObject {
 
             // Delete from quarantine bucket
             const s3Path = fileRecord.path;
+            const prefixedS3Path = this.#prependKeyPrefix(
+                fileRecord.key_prefix,
+                s3Path
+            );
             let deletionFailed = false;
             if (s3Path && s3Path.trim().length > 0) {
                 try {
@@ -561,11 +592,11 @@ class raseumFileObject {
                     await s3Client.send(
                         new DeleteObjectCommand({
                             Bucket: fileRecord.bucket,
-                            Key: s3Path,
+                            Key: prefixedS3Path,
                         })
                     );
                     logger.info(
-                        `File ${fileId} deleted from quarantine bucket at path: ${s3Path}`,
+                        `File ${fileId} deleted from quarantine bucket at path: ${prefixedS3Path}`,
                         Date.now() - start
                     );
                 } catch (e) {
@@ -632,9 +663,15 @@ class raseumFileObject {
 
             // Get bucket configuration
             let targetBucket;
+            let targetKeyPrefix;
             try {
                 targetBucket = await raesumConfig.get(
                     `aws.s3.${targetBucketType}.bucketName`
+                );
+                targetKeyPrefix = this.#normalizeKeyPrefix(
+                    await raesumConfig.get(
+                        `aws.s3.${targetBucketType}.keyPrefix`
+                    )
                 );
                 logger.debug(
                     `Target bucket for file ${fileId}: ${targetBucket}`,
@@ -653,6 +690,14 @@ class raseumFileObject {
             if (!s3Path || s3Path.trim().length === 0) {
                 throw new Error('File has no S3 path');
             }
+            const sourceS3Path = this.#prependKeyPrefix(
+                fileRecord.key_prefix,
+                s3Path
+            );
+            const targetS3Path = this.#prependKeyPrefix(
+                targetKeyPrefix,
+                s3Path
+            );
 
             try {
                 const { S3Client, CopyObjectCommand, DeleteObjectCommand } =
@@ -663,8 +708,8 @@ class raseumFileObject {
                 await s3Client.send(
                     new CopyObjectCommand({
                         Bucket: targetBucket,
-                        CopySource: `${fileRecord.bucket}/${s3Path}`,
-                        Key: s3Path,
+                        CopySource: `${fileRecord.bucket}/${sourceS3Path}`,
+                        Key: targetS3Path,
                     })
                 );
                 logger.info(
@@ -676,7 +721,7 @@ class raseumFileObject {
                 await s3Client.send(
                     new DeleteObjectCommand({
                         Bucket: fileRecord.bucket,
-                        Key: s3Path,
+                        Key: sourceS3Path,
                     })
                 );
                 logger.info(
@@ -694,8 +739,8 @@ class raseumFileObject {
             // Update file record with new bucket information
             try {
                 await raesumDB.query(
-                    'UPDATE raesum_file SET bucket = $1, quarantine = false WHERE id = $2',
-                    [targetBucket, fileId]
+                    'UPDATE raesum_file SET bucket = $1, key_prefix = $2, quarantine = false WHERE id = $3',
+                    [targetBucket, targetKeyPrefix, fileId]
                 );
                 logger.info(
                     `File ${fileId} record updated with bucket: ${targetBucket}`,
@@ -836,6 +881,10 @@ class raseumFileObject {
 
         // Delete from S3 if the file has a stored path
         const s3Path = fileRecord.path;
+        const prefixedS3Path = this.#prependKeyPrefix(
+            fileRecord.key_prefix,
+            s3Path
+        );
         if (s3Path && s3Path.trim().length > 0) {
             try {
                 const { S3Client, DeleteObjectCommand, HeadObjectCommand } =
@@ -850,7 +899,7 @@ class raseumFileObject {
                     await s3Client.send(
                         new HeadObjectCommand({
                             Bucket: fileRecord.bucket,
-                            Key: s3Path,
+                            Key: prefixedS3Path,
                         })
                     );
                     fileExistsInS3 = true;
@@ -872,11 +921,11 @@ class raseumFileObject {
                     await s3Client.send(
                         new DeleteObjectCommand({
                             Bucket: fileRecord.bucket,
-                            Key: s3Path,
+                            Key: prefixedS3Path,
                         })
                     );
                     logger.info(
-                        `File ${fileId} deleted from S3 at path: ${s3Path}`,
+                        `File ${fileId} deleted from S3 at path: ${prefixedS3Path}`,
                         Date.now() - start
                     );
                 }

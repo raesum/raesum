@@ -26,6 +26,7 @@ create table public.raesum_file
     quarantine boolean   default true                                     not null,
     awsregion  varchar(256)                                               not null,
     bucket     varchar(512)                                               not null,
+    key_prefix     varchar(256)                                               not null,
     path       varchar(2048)                                              not null,
     file_type_key     varchar(512)                                               not null,
 

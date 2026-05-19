@@ -6,9 +6,22 @@ import raesumUser from '../../src/models/raesumUser.js';
 import raesumOrganization from '../../src/models/raesumOrganization.js';
 import raesumCache from '../../src/modules/raesumCache.js';
 
+const s3SendMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@aws-sdk/client-s3', () => ({
+    S3Client: vi.fn(() => ({
+        send: s3SendMock,
+    })),
+    PutObjectCommand: vi.fn((input) => ({ input })),
+    CopyObjectCommand: vi.fn((input) => ({ input })),
+    DeleteObjectCommand: vi.fn((input) => ({ input })),
+    HeadObjectCommand: vi.fn((input) => ({ input })),
+}));
+
 describe('Raesum File Model', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        s3SendMock.mockResolvedValue({});
     });
 
     afterEach(() => {
@@ -23,6 +36,7 @@ describe('Raesum File Model', () => {
             const originalFileName = 'test.pdf';
             const awsRegion = 'us-east-1';
             const quarantineBucket = 'localhost-quarantine';
+            const quarantineKeyPrefix = 'quarantine-prefix';
 
             // Mock file type validation
             const fileTypeMock = vi
@@ -43,7 +57,8 @@ describe('Raesum File Model', () => {
             const configMock = vi
                 .spyOn(raesumConfig, 'get')
                 .mockResolvedValueOnce(awsRegion)
-                .mockResolvedValueOnce(quarantineBucket);
+                .mockResolvedValueOnce(quarantineBucket)
+                .mockResolvedValueOnce(quarantineKeyPrefix);
 
             // Mock database insert
             const dbMock = vi.spyOn(raesumDB, 'query').mockResolvedValue({
@@ -61,11 +76,15 @@ describe('Raesum File Model', () => {
             expect(fileTypeMock).toHaveBeenCalledWith(fileTypeKey);
             expect(userMock).toHaveBeenCalledWith(userId);
             expect(orgMock).toHaveBeenCalledWith(orgId);
-            expect(configMock).toHaveBeenCalledTimes(2);
+            expect(configMock).toHaveBeenCalledTimes(3);
             expect(configMock).toHaveBeenNthCalledWith(1, 'aws.region');
             expect(configMock).toHaveBeenNthCalledWith(
                 2,
                 'aws.s3.quarantine.bucketName'
+            );
+            expect(configMock).toHaveBeenNthCalledWith(
+                3,
+                'aws.s3.quarantine.keyPrefix'
             );
             expect(dbMock).toHaveBeenCalledWith(
                 expect.stringContaining('INSERT INTO raesum_file'),
@@ -74,6 +93,7 @@ describe('Raesum File Model', () => {
                     orgId,
                     awsRegion,
                     quarantineBucket,
+                    quarantineKeyPrefix,
                     originalFileName,
                     fileTypeKey,
                 ]
@@ -110,6 +130,18 @@ describe('Raesum File Model', () => {
             );
 
             expect(result).toBe(456);
+            expect(raesumDB.query).toHaveBeenCalledWith(
+                expect.stringContaining('INSERT INTO raesum_file'),
+                [
+                    userId,
+                    orgId,
+                    'us-east-1',
+                    'localhost-quarantine',
+                    '',
+                    originalFileName,
+                    fileTypeKey,
+                ]
+            );
         });
 
         test('should create file entry with undefined originalFileName', async () => {
@@ -129,7 +161,8 @@ describe('Raesum File Model', () => {
             });
             vi.spyOn(raesumConfig, 'get')
                 .mockResolvedValueOnce('us-east-1')
-                .mockResolvedValueOnce('localhost-quarantine');
+                .mockResolvedValueOnce('localhost-quarantine')
+                .mockResolvedValueOnce(null);
             vi.spyOn(raesumDB, 'query').mockResolvedValue({
                 rows: [{ id: 456 }],
             });
@@ -241,7 +274,8 @@ describe('Raesum File Model', () => {
             });
             vi.spyOn(raesumConfig, 'get')
                 .mockResolvedValueOnce('us-east-1')
-                .mockResolvedValueOnce('localhost-quarantine');
+                .mockResolvedValueOnce('localhost-quarantine')
+                .mockResolvedValueOnce(null);
             vi.spyOn(raesumDB, 'query').mockRejectedValue(
                 new Error('DB Error')
             );
@@ -249,6 +283,207 @@ describe('Raesum File Model', () => {
             await expect(
                 raesumFile.createFileEntry('pdf', 1, 123, 'test.pdf')
             ).rejects.toThrow('Unable to create file entry');
+        });
+    });
+
+    describe('upload keyPrefix handling', () => {
+        test('should upload using quarantine keyPrefix and store key_prefix in database', async () => {
+            const fileId = 456;
+            const s3Path = 'uploads/test.pdf';
+            const quarantineKeyPrefix = 'quarantine';
+            const bufferStream = Buffer.from('test');
+
+            vi.spyOn(raesumConfig, 'get')
+                .mockResolvedValueOnce('us-east-1')
+                .mockResolvedValueOnce('localhost-quarantine')
+                .mockResolvedValueOnce(quarantineKeyPrefix);
+            vi.spyOn(raesumDB, 'query')
+                .mockResolvedValueOnce({ rows: [{ id: fileId }] })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({});
+            vi.spyOn(raesumFile, 'updateFileStatus').mockResolvedValue(true);
+            raesumFile.validateFileAsync = vi.fn().mockResolvedValue(true);
+
+            const result = await raesumFile.upload(
+                fileId,
+                s3Path,
+                bufferStream,
+                'application/pdf'
+            );
+
+            expect(result).toBe(true);
+            expect(s3SendMock).toHaveBeenCalledWith({
+                input: {
+                    Bucket: 'localhost-quarantine',
+                    Key: 'quarantine/uploads/test.pdf',
+                    Body: bufferStream,
+                    ContentType: 'application/pdf',
+                },
+            });
+            expect(raesumDB.query).toHaveBeenCalledWith(
+                'UPDATE raesum_file SET path = $1, key_prefix = $2 WHERE id = $3',
+                [s3Path, quarantineKeyPrefix, fileId]
+            );
+        });
+
+        test('should upload without prefix when quarantine keyPrefix is null', async () => {
+            const fileId = 456;
+            const s3Path = 'uploads/test.pdf';
+
+            vi.spyOn(raesumConfig, 'get')
+                .mockResolvedValueOnce('us-east-1')
+                .mockResolvedValueOnce('localhost-quarantine')
+                .mockResolvedValueOnce(null);
+            vi.spyOn(raesumDB, 'query')
+                .mockResolvedValueOnce({ rows: [{ id: fileId }] })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({});
+            vi.spyOn(raesumFile, 'updateFileStatus').mockResolvedValue(true);
+            raesumFile.validateFileAsync = vi.fn().mockResolvedValue(true);
+
+            await raesumFile.upload(
+                fileId,
+                s3Path,
+                Buffer.from('test'),
+                'application/pdf'
+            );
+
+            expect(s3SendMock).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({
+                        Key: s3Path,
+                    }),
+                })
+            );
+            expect(raesumDB.query).toHaveBeenCalledWith(
+                'UPDATE raesum_file SET path = $1, key_prefix = $2 WHERE id = $3',
+                [s3Path, '', fileId]
+            );
+        });
+    });
+
+    describe('uploadDisposition keyPrefix handling', () => {
+        test('should move accepted upload from quarantine prefix to target prefix and update database', async () => {
+            const fileId = 456;
+            const fileRecord = {
+                id: fileId,
+                path: 'uploads/test.pdf',
+                key_prefix: 'quarantine',
+                bucket: 'localhost-quarantine',
+                awsregion: 'us-east-1',
+                file_type_key: 'pdf',
+            };
+
+            vi.spyOn(raesumDB, 'query')
+                .mockResolvedValueOnce({ rows: [fileRecord] })
+                .mockResolvedValueOnce({});
+            vi.spyOn(raesumFile, 'getOneFileType').mockResolvedValue({
+                datakey: 'pdf',
+                publicByDefault: true,
+            });
+            vi.spyOn(raesumConfig, 'get')
+                .mockResolvedValueOnce('localhost-public')
+                .mockResolvedValueOnce('public');
+            vi.spyOn(raesumFile, 'updateFileStatus').mockResolvedValue(true);
+
+            const result = await raesumFile.uploadDisposition(
+                fileId,
+                'accepted',
+                'ok'
+            );
+
+            expect(result).toBe(true);
+            expect(s3SendMock).toHaveBeenNthCalledWith(1, {
+                input: {
+                    Bucket: 'localhost-public',
+                    CopySource:
+                        'localhost-quarantine/quarantine/uploads/test.pdf',
+                    Key: 'public/uploads/test.pdf',
+                },
+            });
+            expect(s3SendMock).toHaveBeenNthCalledWith(2, {
+                input: {
+                    Bucket: 'localhost-quarantine',
+                    Key: 'quarantine/uploads/test.pdf',
+                },
+            });
+            expect(raesumDB.query).toHaveBeenCalledWith(
+                'UPDATE raesum_file SET bucket = $1, key_prefix = $2, quarantine = false WHERE id = $3',
+                ['localhost-public', 'public', fileId]
+            );
+        });
+
+        test('should delete rejected upload using stored key_prefix', async () => {
+            const fileId = 456;
+            const fileRecord = {
+                id: fileId,
+                path: 'uploads/test.pdf',
+                key_prefix: 'quarantine',
+                bucket: 'localhost-quarantine',
+                awsregion: 'us-east-1',
+            };
+
+            vi.spyOn(raesumDB, 'query').mockResolvedValueOnce({
+                rows: [fileRecord],
+            });
+            vi.spyOn(raesumFile, 'updateFileStatus').mockResolvedValue(true);
+
+            const result = await raesumFile.uploadDisposition(
+                fileId,
+                'rejected',
+                'bad'
+            );
+
+            expect(result).toBe(true);
+            expect(s3SendMock).toHaveBeenCalledWith({
+                input: {
+                    Bucket: 'localhost-quarantine',
+                    Key: 'quarantine/uploads/test.pdf',
+                },
+            });
+            expect(raesumFile.updateFileStatus).toHaveBeenCalledWith(
+                fileId,
+                'rejected',
+                'bad'
+            );
+        });
+    });
+
+    describe('delete keyPrefix handling', () => {
+        test('should delete using stored key_prefix', async () => {
+            const fileId = 456;
+            const fileRecord = {
+                id: fileId,
+                path: 'uploads/test.pdf',
+                key_prefix: 'private',
+                bucket: 'localhost-private',
+                awsregion: 'us-east-1',
+            };
+
+            vi.spyOn(raesumDB, 'query')
+                .mockResolvedValueOnce({ rows: [fileRecord] })
+                .mockResolvedValueOnce({ rows: [] });
+            vi.spyOn(raesumFile, 'updateFileStatus').mockResolvedValue(true);
+
+            const result = await raesumFile.delete(fileId);
+
+            expect(result).toBe(true);
+            expect(s3SendMock).toHaveBeenNthCalledWith(1, {
+                input: {
+                    Bucket: 'localhost-private',
+                    Key: 'private/uploads/test.pdf',
+                },
+            });
+            expect(s3SendMock).toHaveBeenNthCalledWith(2, {
+                input: {
+                    Bucket: 'localhost-private',
+                    Key: 'private/uploads/test.pdf',
+                },
+            });
+            expect(raesumFile.updateFileStatus).toHaveBeenCalledWith(
+                fileId,
+                'deleted'
+            );
         });
     });
 
