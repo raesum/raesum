@@ -69,7 +69,14 @@ describe('Raesum File Model', () => {
             );
             expect(dbMock).toHaveBeenCalledWith(
                 expect.stringContaining('INSERT INTO raesum_file'),
-                [userId, orgId, awsRegion, quarantineBucket, originalFileName]
+                [
+                    userId,
+                    orgId,
+                    awsRegion,
+                    quarantineBucket,
+                    originalFileName,
+                    fileTypeKey,
+                ]
             );
         });
 

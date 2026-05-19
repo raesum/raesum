@@ -57,13 +57,22 @@ class raesumFileValidator {
     ];
 
     /**
-     * This function is called by upload and is NOT awaited. It will get the file information from the database and call either internal or external services to validate the file. It will update the file record with the validation results and finally call the uploadDisposition function to move/delete the file to the end location
+     * This function is called by upload and is NOT awaited. It will get the file information from the database and call either internal or external services to validate the file. It will update the file record with the validation results and finally call the uploadDisposition function to move/delete the file to the end location. It is a stub function that can be expanded for antivirus and/or any other required processes.
      * @param  {String} fileId The ID of the file to update
      * @return {Boolean} Returns true if the file successfully completes validation, false otherwise
      * @throws {Error} If unable to get file types
      */
     async validateFileAsync(fileId) {
+        const start = Date.now();
+        logger.debug(
+            `Validating file ${fileId} asynchronously`,
+            Date.now() - Date.now()
+        );
+
         // TODO: Implement async validation
+
+        // Call the file disposition service if the file is accepted
+        await raesumFile.uploadDisposition(fileId, 'accepted');
     }
 
     /**

@@ -207,8 +207,8 @@ class raseumFileObject {
 
         // Create the file entry with quarantine = true (default)
         try {
-            const query = `INSERT INTO raesum_file (user_id, org_id, quarantine, awsregion, bucket, path, original_file_name, status_id) 
-                          VALUES ($1, $2, true, $3, $4, '', $5, 1) 
+            const query = `INSERT INTO raesum_file (user_id, org_id, quarantine, awsregion, bucket, path, original_file_name, status_id, file_type_key) 
+                          VALUES ($1, $2, true, $3, $4, '', $5, 1, $6) 
                           RETURNING id`;
             const result = await raesumDB.query(query, [
                 userId,
@@ -216,6 +216,7 @@ class raseumFileObject {
                 awsRegion,
                 quarantineBucket,
                 originalFileName,
+                fileTypeKey,
             ]);
             const fileId = parseInt(result.rows[0].id);
             logger.info(
@@ -488,13 +489,12 @@ class raseumFileObject {
      * This function is called when the 'external' validation process is complete and the file needs to be moved to the bucket type specified by the file type, quarantined, or deleted.
      * @param  {Number} fileId The ID of the file to update
      * @param  {String} status The new status of the file. This MUST be 'accepted' or 'rejected'.
-     * @param  {String} fileTypeKey The file type key to determine which bucket the file should be moved to (required for accepted status)
      * @param  {String} reason The reason for the status change. If this is empty and the file is rejected, warnings will be logged (this really shouldn't be empty but nothing should stop a rejection).
      * @return {Boolean} True if the update was successful, false otherwise
      * @throws {Error} If the fileId, status, or reason is invalid
      * @throws {Error} If unable to update the record
      */
-    async uploadDisposition(fileId, status, fileTypeKey, reason = '') {
+    async uploadDisposition(fileId, status, reason = '') {
         const start = Date.now();
 
         logger.verbose(
@@ -516,18 +516,6 @@ class raseumFileObject {
         // Validate reason
         if (typeof reason !== 'string') {
             throw new Error('Reason must be a string');
-        }
-
-        // Validate fileTypeKey if status is accepted
-        if (status === 'accepted') {
-            if (
-                typeof fileTypeKey !== 'string' ||
-                fileTypeKey.trim().length === 0
-            ) {
-                throw new Error(
-                    'File type key is required when status is accepted'
-                );
-            }
         }
 
         // Get the file record
@@ -616,6 +604,12 @@ class raseumFileObject {
                 throw new Error('Unable to update file record');
             }
         } else if (status === 'accepted') {
+            // Get the file type key from the file record
+            const fileTypeKey = fileRecord.file_type_key;
+            if (!fileTypeKey || fileTypeKey.trim().length === 0) {
+                throw new Error('File type key not found in file record');
+            }
+
             // Get the file type definition
             let fileType;
             try {
