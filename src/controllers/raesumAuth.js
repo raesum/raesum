@@ -410,6 +410,20 @@ class raesumAuthController {
         // Delete post_login_url from session
         delete req.session.post_login_uri;
 
+        // Set last_login metadata
+        const now = new Date();
+        const timestamp = now.toISOString().slice(0, 19).replace('T', ' ');
+        try {
+            await raesumUser.setUserMetadataValues(user.id, {
+                last_login: timestamp,
+            });
+        } catch (error) {
+            logger.warning(
+                `Failed to set last_login metadata for user ${user.id}: ${error.message}`,
+                Date.now() - start
+            );
+        }
+
         // Add audit log entry
         await raesumAudit.create('log_in', 'raesum_user', user.id, user.id);
 
@@ -495,6 +509,20 @@ class raesumAuthController {
             } catch (error) {
                 logger.warning(
                     `Failed to sync user from Cognito to Raesum: ${error.message}`,
+                    Date.now() - start
+                );
+            }
+
+            // Set last_login metadata
+            const now = new Date();
+            const timestamp = now.toISOString().slice(0, 19).replace('T', ' ');
+            try {
+                await raesumUser.setUserMetadataValues(user.id, {
+                    last_login: timestamp,
+                });
+            } catch (error) {
+                logger.warning(
+                    `Failed to set last_login metadata for user ${user.id}: ${error.message}`,
                     Date.now() - start
                 );
             }
