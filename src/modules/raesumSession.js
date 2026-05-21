@@ -4,6 +4,7 @@ import Redis from 'ioredis';
 import { raesumLogger } from './raesumLogger.js';
 import { fileURLToPath } from 'url';
 import raesumServer from './raesumServer.js';
+import raesumMetadata from './raesumMetadata.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -30,11 +31,20 @@ class raesumSession {
         };
 
         // If development mode is enabled, set the secure flag to false
+        // Get the server's database metadata tattoo on whether it can be used for development
+        const isProdDb = await raesumMetadata.get('isProductionDatabase');
+
         if (await raesumConfig.get('developmentAndTesting.developmentMode')) {
-            logger.warning(
-                'Development mode enabled, setting session secure flag to false'
-            );
-            sessionConfiguration.cookie.secure = false;
+            if (!isProdDb) {
+                logger.warning(
+                    'Development mode enabled, setting session secure flag to false'
+                );
+                sessionConfiguration.cookie.secure = false;
+            } else {
+                logger.critical(
+                    'Server has been marked as a produciton database. CANNOT set the session cookie to insecure mode.'
+                );
+            }
         } else if (
             serverConfig.protocol == 'https' &&
             serverConfig.host !== 'localhost'

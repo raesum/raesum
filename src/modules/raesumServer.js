@@ -445,7 +445,7 @@ class raesumServer {
                                 Date.now() - start
                             );
                         } catch (s3Error) {
-                            logger.error(
+                            logger.critical(
                                 `Failed to test S3 bucket ${bucketType}: ${s3Error.message}`,
                                 Date.now() - start
                             );
@@ -454,13 +454,13 @@ class raesumServer {
                     }
                 }
             } else {
-                logger.warning(
+                logger.critical(
                     'S3 configuration is incomplete, skipping S3 bucket tests',
                     Date.now() - start
                 );
             }
         } catch (s3ConfigError) {
-            logger.warning(
+            logger.critical(
                 `Failed to test S3 bucket configuration: ${s3ConfigError.message}`,
                 Date.now() - start
             );
