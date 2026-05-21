@@ -4,6 +4,11 @@ import raesumConfig from '../modules/raesumConfig.js';
 import raesumCache from './raesumCache.js';
 import raesumMetadata from '../models/raesumMetadata.js';
 import raesumCognito from './raesumCognito.js';
+import {
+    S3Client,
+    PutObjectCommand,
+    DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -373,6 +378,90 @@ class raesumServer {
         } catch (configError) {
             logger.warning(
                 `Failed to check Cognito callback URL configuration: ${configError.message}`,
+                Date.now() - start
+            );
+        }
+
+        // Test S3 bucket configuration
+        try {
+            logger.info('Testing S3 bucket configuration', Date.now() - start);
+
+            const s3Config = await raesumConfig.get('aws.s3');
+            const awsRegion = await raesumConfig.get('aws.region');
+            const accessKey = await raesumConfig.get('aws.accessKeyId');
+            const secretKey = await raesumConfig.get('aws.secretAccessKey');
+
+            if (s3Config && accessKey && secretKey) {
+                const bucketTypes = ['public', 'quarantine', 'private'];
+                const timestamp = Date.now();
+
+                for (const bucketType of bucketTypes) {
+                    const bucketConfig = s3Config[bucketType];
+                    if (bucketConfig && bucketConfig.bucketName) {
+                        try {
+                            logger.info(
+                                `Testing S3 bucket: ${bucketType} (${bucketConfig.bucketName})`,
+                                Date.now() - start
+                            );
+
+                            // Create S3 client
+                            const s3Client = new S3Client({
+                                region: awsRegion,
+                                credentials: {
+                                    accessKeyId: accessKey,
+                                    secretAccessKey: secretKey,
+                                },
+                            });
+
+                            // Build test file path with key prefix, raesumStartup, and timestamp
+                            const keyPrefix = bucketConfig.keyPrefix || '';
+                            const testFileName = `raesumStartup/${timestamp}.txt`;
+                            const testFilePath = keyPrefix
+                                ? `${keyPrefix}/${testFileName}`
+                                : testFileName;
+
+                            // Upload test file
+                            const putCommand = new PutObjectCommand({
+                                Bucket: bucketConfig.bucketName,
+                                Key: testFilePath,
+                                Body: 'S3 bucket test file for raesum startup',
+                            });
+
+                            await s3Client.send(putCommand);
+                            logger.info(
+                                `Successfully uploaded test file to S3 bucket: ${bucketType}`,
+                                Date.now() - start
+                            );
+
+                            // Delete test file
+                            const deleteCommand = new DeleteObjectCommand({
+                                Bucket: bucketConfig.bucketName,
+                                Key: testFilePath,
+                            });
+
+                            await s3Client.send(deleteCommand);
+                            logger.info(
+                                `Successfully deleted test file from S3 bucket: ${bucketType}`,
+                                Date.now() - start
+                            );
+                        } catch (s3Error) {
+                            logger.error(
+                                `Failed to test S3 bucket ${bucketType}: ${s3Error.message}`,
+                                Date.now() - start
+                            );
+                            noErrors = false;
+                        }
+                    }
+                }
+            } else {
+                logger.warning(
+                    'S3 configuration is incomplete, skipping S3 bucket tests',
+                    Date.now() - start
+                );
+            }
+        } catch (s3ConfigError) {
+            logger.warning(
+                `Failed to test S3 bucket configuration: ${s3ConfigError.message}`,
                 Date.now() - start
             );
         }
