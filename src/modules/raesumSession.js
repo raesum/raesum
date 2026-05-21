@@ -4,7 +4,7 @@ import Redis from 'ioredis';
 import { raesumLogger } from './raesumLogger.js';
 import { fileURLToPath } from 'url';
 import raesumServer from './raesumServer.js';
-import raesumMetadata from './raesumMetadata.js';
+import raesumMetadata from '../models/raesumMetadata.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -32,7 +32,14 @@ class raesumSession {
 
         // If development mode is enabled, set the secure flag to false
         // Get the server's database metadata tattoo on whether it can be used for development
-        const isProdDb = await raesumMetadata.get('isProductionDatabase');
+        let isProdDb = true;
+        try {
+            isProdDb = await raesumMetadata.getByKey('isProductionDatabase');
+        } catch (e) {
+            logger.error(
+                'Could not get isProductionDatabase. Assuming that this is a production system for safety.'
+            );
+        }
 
         if (await raesumConfig.get('developmentAndTesting.developmentMode')) {
             if (!isProdDb) {
