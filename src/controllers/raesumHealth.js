@@ -1,5 +1,6 @@
 import raesumDB from '../modules/raesumDB.js';
 import raesumConfig from '../modules/raesumConfig.js';
+import raesumCache from '../modules/raesumCache.js';
 import { raesumLogger } from '../modules/raesumLogger.js';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -34,9 +35,40 @@ export default async function raesumHealthController(req, res, next) {
     }
 
     // If Redis or PSQL Cache, Check Cache Connection
-    const redisOrPSQL = await raesumConfig.get('cache.type');
-    if (redisOrPSQL == 'redis') {
-        // TO-DO: Add cache client health test
+    const cacheType = await raesumConfig.get('cache.type');
+    if (cacheType != 'memory' && healthy == true) {
+        try {
+            const testKey = 'health-check-test';
+            const testValue = 'test';
+            const setResult = await raesumCache.set(
+                testKey,
+                testValue,
+                60,
+                'health'
+            );
+            if (setResult === undefined) {
+                healthy = false;
+                logger.critical(
+                    `Health Check Fail: Cache set operation failed`,
+                    Date.now() - start
+                );
+            } else {
+                const getResult = await raesumCache.get(testKey, 'health');
+                if (getResult !== testValue) {
+                    healthy = false;
+                    logger.critical(
+                        `Health Check Fail: Cache get operation failed`,
+                        Date.now() - start
+                    );
+                }
+            }
+        } catch (e) {
+            healthy = false;
+            logger.critical(
+                `Health Check Fail: Cache health check error: ${e}`,
+                Date.now() - start
+            );
+        }
     }
 
     if (healthy) {
