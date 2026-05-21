@@ -181,15 +181,12 @@ class raesumAuth {
                 }
             } catch {
                 // If no profile is found,
-                // Use the externalID to get the user's profile data from AWS
-                // If found in AWS
-                //create user profile
-                // get user profile
-                req.session.loggedIn = true;
-                req.session.cognitoUserID = cognitoUserID;
-                res.locals.user = userProfile;
-                req.user = userProfile;
-                // Else assume it's inactive and delete the session
+                // The profile should have been created on the login process. This means something very wrong has occured. Force a logout.
+                logger.error(
+                    `Authentication Middleware - No Raesum User Profile found for CognitoUserID: ${cognitoUserID}. Forcing logout.`,
+                    Date.now() - start
+                );
+                req.session.unset();
             }
         }
 
