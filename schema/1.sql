@@ -223,6 +223,7 @@ create table raesum_user_metadata_keys
     cognito_attribute boolean default false not null,
     cognito_writable  boolean default false not null,
     active_status  boolean default true not null,
+    display_name varchar(256),
     description varchar(4096)
 );
 
@@ -262,7 +263,7 @@ create table public.raesum_organization_metadata_keys
             unique,
     active_status boolean default true not null,
     description   varchar(4096),
-    displayname   varchar(255)
+    display_name   varchar(255)
 );
 
 alter table public.raesum_organization_metadata_keys

@@ -88,11 +88,11 @@ class raesumOrganizationObject {
                         Date.now() - start
                     );
                     await raesumDB.query(
-                        `UPDATE public.raesum_organization_metadata_keys SET active_status = $1, description = $2, displayname = $3 WHERE datakey = $4`,
+                        `UPDATE public.raesum_organization_metadata_keys SET active_status = $1, description = $2, display_name = $3 WHERE datakey = $4`,
                         [
                             jsonData[i].active_status,
                             jsonData[i].description,
-                            jsonData[i].displayname,
+                            jsonData[i].display_name,
                             jsonData[i].datakey,
                         ]
                     );
@@ -104,12 +104,12 @@ class raesumOrganizationObject {
                     );
                     // Insert the metadata key
                     await raesumDB.query(
-                        `INSERT INTO public.raesum_organization_metadata_keys (datakey, active_status, description, displayname) VALUES ($1, $2, $3, $4)`,
+                        `INSERT INTO public.raesum_organization_metadata_keys (datakey, active_status, description, display_name) VALUES ($1, $2, $3, $4)`,
                         [
                             jsonData[i].datakey,
                             jsonData[i].active_status,
                             jsonData[i].description,
-                            jsonData[i].displayname,
+                            jsonData[i].display_name,
                         ]
                     );
                 }

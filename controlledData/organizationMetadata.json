@@ -1,7 +1,8 @@
-[{
-        "active_status":true,
-        "desciption":"Description of the organization",
-        "displayName":"Organization Description",
-        "datakey":"description"
+[
+    {
+        "active_status": true,
+        "description": "Description of the organization",
+        "display_name": "Organization Description",
+        "datakey": "description"
     }
 ]

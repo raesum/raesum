@@ -522,13 +522,13 @@ describe('Raesum Organization System', () => {
                         datakey: 'orgName',
                         active_status: true,
                         description: 'Organization name',
-                        displayname: 'Organization Name',
+                        display_name: 'Organization Name',
                     },
                     {
                         datakey: 'orgType',
                         active_status: true,
                         description: 'Organization type',
-                        displayname: 'Organization Type',
+                        display_name: 'Organization Type',
                     },
                 ];
 
@@ -560,13 +560,13 @@ describe('Raesum Organization System', () => {
                             datakey: 'orgName',
                             active_status: true,
                             description: 'Organization name',
-                            displayname: 'Organization Name',
+                            display_name: 'Organization Name',
                         },
                         {
                             datakey: 'oldKey',
                             active_status: false,
                             description: 'Old key',
-                            displayname: 'Old Key',
+                            display_name: 'Old Key',
                         },
                     ];
 

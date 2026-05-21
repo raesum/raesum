@@ -209,6 +209,10 @@ class raesumMigrate {
                 filename: 'file/fileMetadata.json',
                 targetTable: 'raesum_file_metadata_keys',
             },
+            {
+                filename: 'userMetadata.json',
+                targetTable: 'raesum_user_metadata_keys',
+            },
         ];
 
         // Lop through static content list

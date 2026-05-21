@@ -262,7 +262,7 @@ class raesumCognito {
             Date.now() - start
         );
         try {
-            var cognitoClient = await this.getCognitoClientDescription();
+            var cognitoClient = await this.getCognitoClientDescription(); //eslint-disable-line no-var
         } catch (e) {
             logger.critical(
                 'Unable to connect to Cognito: ' + e,
@@ -295,7 +295,10 @@ class raesumCognito {
             }
         }
 
-        logger.info('Cognito connection successful.', Date.now() - start);
+        logger.info(
+            `Cognito connection successful. ${attrList.length} key(s) identified`,
+            Date.now() - start
+        );
 
         // Get list of metadata keys
         const metadataKeys = await raesumUser.getMetadataKeyList(true);
@@ -311,19 +314,24 @@ class raesumCognito {
 
         // Set all metadata cognito attributes to false where not in the cognito list
         logger.verbose(
-            'Updating metadata keys in raesum from cognito',
+            'Cognito Updating metadata keys in raesum from cognito',
             Date.now() - start
         );
         const updatesql =
             'UPDATE raesum_user_metadata_keys SET cognito_attribute = false, cognito_writable = false WHERE datakey ILIKE ANY($1);';
 
         try {
+            logger.debug(
+                'Cognito setting all non-cognito user metadata keys: ' +
+                    nonCognitoMetadataKeys.join(','),
+                Date.now() - start
+            );
             const response = await raesumDB.query(updatesql, [
                 nonCognitoMetadataKeys,
             ]);
         } catch (e) {
             logger.critical(
-                'Error updating metadata keys: ' + e,
+                'Cognito Error updating metadata keys: ' + e,
                 Date.now() - start
             );
             throw new Error('Error updating metadata keys: ' + e);
@@ -362,10 +370,14 @@ class raesumCognito {
 
         try {
             // Run transaction
+            logger.debug(
+                'Cognito attempting to update user metadata keys in database',
+                Date.now() - start
+            );
             await raesumDB.query(sql);
         } catch (e) {
             logger.critical(
-                'Error updating metadata keys: ' + e,
+                'CognitoError updating metadata keys: ' + e,
                 Date.now() - start
             );
             throw new Error('Error updating metadata keys: ' + e);
@@ -718,6 +730,12 @@ class raesumCognito {
                 let cacheTTL;
 
                 if (enableTokenRevocation) {
+                    // Calculate the remaining time from the access token
+                    const decodedToken = jwt.decode(accessToken);
+                    const currentTime = Math.floor(Date.now() / 1000);
+                    const remainingTime =
+                        (decodedToken.exp - currentTime) * 1000;
+
                     // Use token's remaining time when AWS revocation is enabled
                     cacheTTL = Math.ceil(remainingTime / 1000);
                     logger.verbose(
