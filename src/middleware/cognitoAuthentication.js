@@ -6,6 +6,7 @@ import { raesumLogger } from '../modules/raesumLogger.js';
 import { fileURLToPath } from 'url';
 import raesumUser from '../models/raesumUser.js';
 import raesumCache from '../modules/raesumCache.js';
+import raesumCognito from '../modules/raesumCognito.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -186,6 +187,91 @@ class raesumAuth {
                     `Authentication Middleware - No Raesum User Profile found for CognitoUserID: ${cognitoUserID}. Forcing logout.`,
                     Date.now() - start
                 );
+
+                // If JWT, revoke it
+                // Get allowed login types
+                const loginMethods = await raesumConfig.get('login');
+
+                // Get access token from header or session
+                let accessTokenFromClient = null;
+                let refreshTokenFromClient = null;
+                let userId = null;
+
+                if (
+                    loginMethods.jwt == true &&
+                    !req.headers.authorization &&
+                    !req.session.jwt
+                ) {
+                    logger.warning(
+                        'Unable to logout - JWT not found in header or session',
+                        Date.now() - start
+                    );
+                    const message = await raesumResponses.get('missingHeader', [
+                        'Authorization',
+                    ]);
+                    return res.status(message.code).json(message);
+                }
+
+                // Get JWT from header (Authorization: Bearer token)
+                if (req.headers.authorization) {
+                    accessTokenFromClient = req.headers.authorization.replace(
+                        'Bearer ',
+                        ''
+                    );
+                } else if (req.session.jwt) {
+                    accessTokenFromClient = req.session.jwt;
+                    refreshTokenFromClient = req.session.refreshToken;
+                    userId = req.session.userID;
+                }
+
+                if (!accessTokenFromClient) {
+                    logger.error(
+                        'Unable to logout - JWT not found in session or header but was expected',
+                        Date.now() - start
+                    );
+                    const response = await raesumResponses.get('notLoggedIn');
+                    return res.status(response.httpResponse).json(response);
+                }
+
+                // Calculate remaining time on JWT
+                const tokenExpiration = raesumCognito.getTokenExpiration(
+                    accessTokenFromClient
+                );
+                const currentTime = Date.now();
+                const remainingTime = Math.max(
+                    0,
+                    tokenExpiration - currentTime
+                );
+
+                // Check if token revocation is enabled in cognito configuration
+                const enableTokenRevocation =
+                    (await raesumConfig.get(
+                        'aws.cognito.enableTokenRevocation'
+                    )) || true;
+
+                // Revoke the token via cognito if enabled
+                if (enableTokenRevocation) {
+                    try {
+                        // Perform global sign out to invalidate all tokens
+                        await raesumCognito.globalSignOut(
+                            accessTokenFromClient
+                        );
+
+                        logger.info(
+                            'Successfully revoked tokens in Cognito for userId' +
+                                userId,
+                            Date.now() - start
+                        );
+                    } catch (revokeError) {
+                        logger.warning(
+                            `Failed to revoke token in Cognito for userID ${userId}: ${revokeError.message}`,
+                            Date.now() - start
+                        );
+                        // Continue with logout even if Cognito revocation fails
+                    }
+                }
+
+                // Else, just delete the session
                 req.session.unset();
             }
         }
