@@ -193,9 +193,7 @@ class raesumAuth {
                 const loginMethods = await raesumConfig.get('login');
 
                 // Get access token from header or session
-                let accessTokenFromClient = null;
                 let refreshTokenFromClient = null;
-                let userId = null;
 
                 if (
                     loginMethods.jwt == true &&
@@ -213,16 +211,8 @@ class raesumAuth {
                 }
 
                 // Get JWT from header (Authorization: Bearer token)
-                if (req.headers.authorization) {
-                    accessTokenFromClient = req.headers.authorization.replace(
-                        'Bearer ',
-                        ''
-                    );
-                } else if (req.session.jwt) {
-                    accessTokenFromClient = req.session.jwt;
-                    refreshTokenFromClient = req.session.refreshToken;
-                    userId = req.session.userID;
-                }
+
+                refreshTokenFromClient = req.session.refreshToken;
 
                 if (!accessTokenFromClient) {
                     logger.error(
@@ -258,13 +248,12 @@ class raesumAuth {
                         );
 
                         logger.info(
-                            'Successfully revoked tokens in Cognito for userId' +
-                                userId,
+                            'Successfully revoked tokens in Cognito for user without profile',
                             Date.now() - start
                         );
                     } catch (revokeError) {
                         logger.warning(
-                            `Failed to revoke token in Cognito for userID ${userId}: ${revokeError.message}`,
+                            `Failed to revoke token in Cognito for user without profile: ${revokeError.message}`,
                             Date.now() - start
                         );
                         // Continue with logout even if Cognito revocation fails
