@@ -110,7 +110,63 @@ export async function createApp() {
         })
     );
 
+    // Configure CORS
+
+    let allowedOrigins = [];
+
+    // Add the server's base URL to CORS
+    const serverBaseUrl = await raesumServer.buildBaseServerURL();
+    allowedOrigins.push(serverBaseUrl);
+
+    // Add the server's running URL to CORS
+    const configPort = parseInt(config.get('server.port'));
+    const port = configPort ? configPort : 3000;
+    const serverRunningUrl = `http://localhost:${port}`;
+    allowedOrigins.push(serverRunningUrl);
+
+    // Add any allowed origins from configuration
+    const allowedOriginsConfig = await raesumConfig.get('cors.allowedOrigins');
+    if (allowedOriginsConfig) {
+        allowedOrigins.push(...allowedOriginsConfig);
+    }
+
+    logger.info(
+        `CORS configured with these origins: ${allowedOrigins}`,
+        Date.now() - start
+    );
+
     // Initialize Security with Helmet
+    app.use(helmet());
+
+    // Configure CORS with best practices
+    const corsOptions = {
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps, curl requests, or same-origin)
+            if (!origin) return callback(null, true);
+
+            // Check if the origin is in our allowed list
+            if (allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            }
+
+            // In production, you should whitelist specific origins
+            // For now, allowing all origins for development
+            // TODO: Configure allowed origins from config for production
+            callback(
+                new Error({
+                    message: 'Origin not allowed by CORS',
+                })
+            );
+        },
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+        optionsSuccessStatus: 204,
+        maxAge: 86400, // 24 hours
+    };
+
+    // Add CORS middleware
+    app.use(cors(corsOptions));
 
     // Add timing decorator for requests
     app.use((req, res, next) => {
