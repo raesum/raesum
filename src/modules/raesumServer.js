@@ -9,6 +9,7 @@ import {
     PutObjectCommand,
     DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
+import buildAWSClientConfig from '../utils/awsUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -405,13 +406,8 @@ class raesumServer {
                             );
 
                             // Create S3 client
-                            const s3Client = new S3Client({
-                                region: awsRegion,
-                                credentials: {
-                                    accessKeyId: accessKey,
-                                    secretAccessKey: secretKey,
-                                },
-                            });
+                            const awsConfig = await buildAWSClientConfig();
+                            const s3Client = new S3Client(awsConfig);
 
                             // Build test file path with key prefix, raesumStartup, and timestamp
                             const keyPrefix = bucketConfig.keyPrefix || '';

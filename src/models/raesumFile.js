@@ -16,6 +16,7 @@ import {
     HeadBucketCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import buildAWSClientConfig from '../utils/awsUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -166,7 +167,7 @@ class raseumFileObject {
         const start = Date.now();
 
         logger.verbose(
-            `Attempting to create file entry for fileType: ${fileTypeKey}, orgId: ${orgId}, userId: ${userId}`,
+            `createFileEntry Attempting to create file entry for fileType: ${fileTypeKey}, orgId: ${orgId}, userId: ${userId}`,
             Date.now() - start
         );
 
@@ -213,7 +214,7 @@ class raseumFileObject {
             await raesumUser.getUserById(userId);
         } catch (e) {
             logger.error(
-                `User with ID: ${userId} does not exist`,
+                `createFileEntry User with ID: ${userId} does not exist`,
                 Date.now() - start
             );
             throw new Error('User does not exist');
@@ -224,7 +225,7 @@ class raseumFileObject {
             await raesumOrganization.getById(orgId);
         } catch (e) {
             logger.error(
-                `Organization with ID: ${orgId} does not exist`,
+                `createFileEntry Organization with ID: ${orgId} does not exist`,
                 Date.now() - start
             );
             throw new Error('Organization does not exist');
@@ -258,6 +259,11 @@ class raseumFileObject {
                 newPath,
             ]);
 
+            logger.debug(
+                `createFileEntry Inserted file entry with ID: ${result.rows[0].id}`,
+                Date.now() - start
+            );
+
             // Get the file record that was just created
             const nextQuery = `SELECT * FROM raesum_file WHERE id = $1`;
             const result2 = await raesumDB.query(nextQuery, [
@@ -267,13 +273,13 @@ class raseumFileObject {
             const newFileInfo = result2.rows[0];
             newFileInfo.id = parseInt(result.rows[0].id);
             logger.info(
-                `File entry created with ID: ${newFileInfo.id}`,
+                `createFileEntry File entry created with ID: ${newFileInfo.id}`,
                 Date.now() - start
             );
             return newFileInfo;
         } catch (e) {
             logger.error(
-                `Error creating file entry: ${e.message}`,
+                `createFileEntry Error creating file entry: ${e.message}`,
                 Date.now() - start
             );
             throw new Error('Unable to create file entry');
@@ -477,15 +483,8 @@ class raseumFileObject {
             );
 
             // Configure S3 client
-            const accessKey = await raesumConfig.get('aws.accessKeyId');
-            const secretKey = await raesumConfig.get('aws.secretAccessKey');
-            s3Client = new S3Client({
-                region: awsRegion,
-                credentials: {
-                    accessKeyId: accessKey,
-                    secretAccessKey: secretKey,
-                },
-            });
+            const awsConfig = await buildAWSClientConfig();
+            s3Client = new S3Client(awsConfig);
 
             // Upload file to S3
             const putCommand = new PutObjectCommand({
@@ -621,17 +620,8 @@ class raseumFileObject {
             let deletionFailed = false;
             if (s3Path && s3Path.trim().length > 0) {
                 try {
-                    const accessKey = await raesumConfig.get('aws.accessKeyId');
-                    const secretKey = await raesumConfig.get(
-                        'aws.secretAccessKey'
-                    );
-                    const s3Client = new S3Client({
-                        region: fileRecord.awsregion,
-                        credentials: {
-                            accessKeyId: accessKey,
-                            secretAccessKey: secretKey,
-                        },
-                    });
+                    const awsConfig = await buildAWSClientConfig();
+                    const s3Client = new S3Client(awsConfig);
 
                     await s3Client.send(
                         new DeleteObjectCommand({
@@ -744,15 +734,9 @@ class raseumFileObject {
             );
 
             try {
-                const accessKey = await raesumConfig.get('aws.accessKeyId');
-                const secretKey = await raesumConfig.get('aws.secretAccessKey');
-                const s3Client = new S3Client({
-                    region: fileRecord.awsregion,
-                    credentials: {
-                        accessKeyId: accessKey,
-                        secretAccessKey: secretKey,
-                    },
-                });
+                const awsConfig = await buildAWSClientConfig();
+                awsConfig.region = fileRecord.awsregion;
+                const s3Client = new S3Client(awsConfig);
 
                 // Copy file to target bucket
                 await s3Client.send(
@@ -938,15 +922,9 @@ class raseumFileObject {
         );
         if (s3Path && s3Path.trim().length > 0) {
             try {
-                const accessKey = await raesumConfig.get('aws.accessKeyId');
-                const secretKey = await raesumConfig.get('aws.secretAccessKey');
-                const s3Client = new S3Client({
-                    region: fileRecord.awsregion,
-                    credentials: {
-                        accessKeyId: accessKey,
-                        secretAccessKey: secretKey,
-                    },
-                });
+                const awsConfig = await buildAWSClientConfig();
+                awsConfig.region = fileRecord.awsregion;
+                const s3Client = new S3Client(awsConfig);
 
                 // Check if the object exists in S3 before attempting deletion
                 let fileExistsInS3 = false;
@@ -1097,6 +1075,10 @@ class raseumFileObject {
         }
 
         let fileRecord;
+        logger.debug(
+            'getSignedURL getting file record for file ' + fileId,
+            Date.now() - start
+        );
         try {
             fileRecord = await this.getEntryById(fileId);
         } catch (e) {
@@ -1119,17 +1101,29 @@ class raseumFileObject {
             fileRecord.path
         );
 
-        try {
-            const accessKey = await raesumConfig.get('aws.accessKeyId');
-            const secretKey = await raesumConfig.get('aws.secretAccessKey');
-            const s3Client = new S3Client({
-                region: fileRecord.awsregion,
-                credentials: {
-                    accessKeyId: accessKey,
-                    secretAccessKey: secretKey,
-                },
-            });
+        logger.debug(
+            `getSignedURL prefixed S3 path: ${prefixedS3Path}`,
+            Date.now() - start
+        );
 
+        // Build the S3 client
+        let awsConfig;
+        let s3Client;
+
+        try {
+            awsConfig = await buildAWSClientConfig();
+            awsConfig.region = fileRecord.awsregion;
+            s3Client = new S3Client(awsConfig);
+
+            logger.debug(`getSignedURL created S3 client`, Date.now() - start);
+        } catch (e) {
+            logger.error(
+                `getSignedURL unable to create S3 client with error ${e}`,
+                Date.now() - start
+            );
+        }
+
+        try {
             const params = {
                 Bucket: fileRecord.bucket,
                 Key: prefixedS3Path,
@@ -1142,7 +1136,7 @@ class raseumFileObject {
             });
 
             logger.verbose(
-                `Built signed URL for file ${fileId}`,
+                `Built signed URL for file ${fileId} with url ${url}`,
                 Date.now() - start
             );
             return url;
@@ -1220,15 +1214,10 @@ class raseumFileObject {
             publicURL = `${publicURLBase.replace(/\/+$/, '')}/${prefixedS3Path}`;
         } else {
             // No, get the public facing url from AWS
-            const accessKey = await raesumConfig.get('aws.accessKeyId');
-            const secretKey = await raesumConfig.get('aws.secretAccessKey');
-            const s3Client = new S3Client({
-                region: fileRecord.awsregion,
-                credentials: {
-                    accessKeyId: accessKey,
-                    secretAccessKey: secretKey,
-                },
-            });
+            const awsConfig = await buildAWSClientConfig();
+            awsConfig.region = fileRecord.awsregion;
+            const s3Client = new S3Client(awsConfig);
+
             const headResult = await s3Client.send(
                 new HeadBucketCommand({ Bucket: publicBucket })
             );

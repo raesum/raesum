@@ -8,7 +8,6 @@ import {
 } from '@aws-sdk/client-secrets-manager';
 import jp from 'jsonpath';
 import { conditionallyParseJSON } from '../utils/stringUtils.js';
-import { buildAWSConfigInitializationOnly } from '../utils/awsUtils.js';
 
 import { raesumLogger } from './raesumLogger.js';
 const __filename = fileURLToPath(import.meta.url);
@@ -59,6 +58,45 @@ class raesumConfig {
         }
         delete this.#cacheObject[key];
         return true;
+    }
+
+    buildAWSConfigInitializationOnly() {
+        const start = Date.now();
+        // Create the AWS Secrets Manager Configuration
+        // Note: this line is one of the VERY few exceptions to the always uses raesum config and never config directly rule (because the raseumConfig.get() relies on the AWS client)
+        if (!config.has('aws.region')) {
+            logger.critical(
+                'AWS Region not set. Unable to use AWS Secrets manager',
+                Date.now() - start
+            );
+            return {};
+        }
+
+        let clientConfig = { region: config.get('aws.region') };
+
+        if (
+            config.has('aws.accessKeyId') &&
+            config.has('aws.secretAccessKey')
+        ) {
+            const accessKeyId = config.get('aws.accessKeyId');
+            const secretAccessKey = config.get('aws.secretAccessKey');
+            if (accessKeyId && secretAccessKey) {
+                // If the accessKeyId and secretAccessKey are present, use them
+                clientConfig.accessKeyId = accessKeyId;
+                clientConfig.secretAccessKey = secretAccessKey;
+            }
+            logger.verbose(
+                'AWS Access Key and Secret Access Key are set and included in configuration',
+                Date.now() - start
+            );
+        } else {
+            logger.verbose(
+                'AWS Access Key and Secret Access Key are not set and only AWS region is being used',
+                Date.now() - start
+            );
+        }
+
+        return clientConfig;
     }
 
     async getCloudSecretKey(key) {
@@ -124,7 +162,7 @@ class raesumConfig {
                 );
 
                 // Create the AWS client
-                const clientConfig = buildAWSConfigInitializationOnly();
+                const clientConfig = this.buildAWSConfigInitializationOnly();
                 const client = new SecretsManagerClient(clientConfig);
 
                 // Create the request command to AWS

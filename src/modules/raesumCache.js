@@ -178,8 +178,13 @@ class raesumeCacheRedis {
     }
 
     async set(key, value, ttl) {
+        const start = Date.now();
+
         if (this.#redisRunning) {
-            logger.debug('Setting Key in Redis Cache: ' + key);
+            logger.debug(
+                'Setting Key in Redis Cache: ' + key + ' with TTL: ' + ttl,
+                Date.now() - start
+            );
             // Set the key and return true/false on success/fail
 
             try {
@@ -192,7 +197,8 @@ class raesumeCacheRedis {
                 return returnVal;
             } catch (e) {
                 logger.error(
-                    'Error setting key in Redis Cache: ' + key + ' - ' + e
+                    'Error setting key in Redis Cache: ' + key + ' - ' + e,
+                    Date.now() - start
                 );
                 return undefined;
             }
@@ -364,7 +370,7 @@ class raesumCachePool {
             );
         } else {
             logger.debug(
-                `Cache Key Hit: ${cacheKey} Miss CacheType: ${this.#cacheType}`,
+                `Cache Key Hit: ${cacheKey} CacheType: ${this.#cacheType}`,
                 Date.now() - start
             );
         }
@@ -385,13 +391,32 @@ class raesumCachePool {
         }
 
         // Default the TTL if not set
-        if (ttl === undefined) {
-            logger.debug('Cache TTL not suppled to set request');
+        if (!ttl || isNaN(ttl)) {
+            logger.debug(
+                'Cache TTL not suppled to set request',
+                Date.now() - start
+            );
             // Get the ttl config setting
-            const ttlConfig = await raesumConfig.get(`cache.ttl`);
+            let ttlConfig = await raesumConfig.get(`cache.ttl`);
+            logger.debug(
+                `Cache TTL setting in config is ${ttlConfig}`,
+                Date.now() - start
+            );
+            ttlConfig = parseInt(ttlConfig);
+
             // If the config setting is not available then use 1 hour
-            ttl = ttlConfig || 3600;
-            logger.debug('Cache TTL set to: ' + ttl);
+
+            if (isNaN(ttlConfig) || ttlConfig < 1) {
+                logger.debug(
+                    'Cache TTL using default value of 3600',
+                    Date.now() - start
+                );
+                ttl = 3600;
+            } else {
+                ttl = ttlConfig;
+            }
+
+            logger.debug('Cache TTL set to: ' + ttl, Date.now() - start);
         }
 
         // Create the key
