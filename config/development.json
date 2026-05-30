@@ -1,0 +1,23 @@
+{
+    "server": {
+        "protocol": "https",
+        "host": "api.raesum.com",
+        "proxyInUse": "true"
+    },
+    "cache": {
+        "type": "redis"
+    },
+    "session": {
+        "type": "redis"
+    },
+    "ratelimiter": {
+        "type": "redis"
+    },
+
+    "logging": {
+        "level": "info",
+        "logsEnabled": {
+            "file": false
+        }
+    }
+}
