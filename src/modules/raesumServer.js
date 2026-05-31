@@ -9,7 +9,7 @@ import {
     PutObjectCommand,
     DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
-import buildAWSClientConfig from '../utils/awsUtils.js';
+import { buildAWSClientConfig } from '../utils/awsUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);

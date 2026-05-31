@@ -1,161 +1,160 @@
 {
-  "server": {
-    "port": 3000,
-    "protocol": "http",
-    "host": "localhost",
-    "proxyInUse": "false",
-    "proxyPort": 443
-  },
-  "login": {
-    "jwt":true,
-    "useSessionCookie":true
-  },
-  "session":{
-    "type":"memory",
-    "appName":"raesum",
-    "secret":"changeThisFromDefault",
-    "sessionMaximumAgeSeconds": 864000
-  },
-  "cors": {
-    "allowedOrigins": []
-  },
-  "cache": {
-    "type": "memory",
-    "ttl": 500,
-    "prefix": "raesum_cache_"
-  },
-  "ratelimiter": {
-    "useRateLimiter": true,
-    "type": "memory",
-    "pointsPerSecond":200,
-    "blockDurationMinutes":15,
-    "pathWeights": {
-      "/api/v1/auth/login": 20,
-      "/api/v1/auth/callbackSession": 20,
-      "/api/v1/auth/callbackJWT": 20
-    }
-  },
-  "connections": {
-    "primaryDatabase": {
-      "host": null,
-      "port": 5432,
-      "database": "raesum",
-      "credentials": {
-        "username": null,
-        "password": null
-      },
-      "ssl": false,
-      "maxPoolSize": 20,
-      "timeouts": {
-        "clientForceTimeout": 15000,
-        "idleTimeout": 1000,
-        "connectionTimeout": 1000,
-        "maxUses": 7500
-      }
+    "server": {
+        "port": 3000,
+        "protocol": "http",
+        "host": "localhost",
+        "proxyInUse": "false",
+        "proxyPort": 443
     },
-    "session":{
-      "redis": {
-        "host": null,
-        "port": 6379,
-        "connectTimeout": 10000,
-        "databaseNumber": 1,
-        "credentials": {
-          "username": null,
-          "password": null
-        }
-      }
+    "login": {
+        "jwt": true,
+        "useSessionCookie": true
+    },
+    "session": {
+        "type": "memory",
+        "appName": "raesum",
+        "secret": "changeThisFromDefault",
+        "sessionMaximumAgeSeconds": 864000
+    },
+    "cors": {
+        "allowedOrigins": []
     },
     "cache": {
-      "redis": {
-        "host": null,
-        "port": 6379,
-        "connectTimeout": 10000,
-        "databaseNumber": 0,
-        "credentials": {
-          "username": null,
-          "password": null
-        }
-      },
-      "memory": {}
+        "type": "memory",
+        "ttl": 500,
+        "prefix": "raesum_cache_"
     },
     "ratelimiter": {
-        "redis": {
-          "host": null,
-          "port": 6379,
-          "connectTimeout": 10000,
-          "databaseNumber": 2,
-          "credentials": {
-            "username": null,
-            "password": null
-          }
+        "useRateLimiter": true,
+        "type": "memory",
+        "pointsPerSecond": 200,
+        "blockDurationMinutes": 15,
+        "pathWeights": {
+            "/api/v1/auth/login": 20,
+            "/api/v1/auth/callbackSession": 20,
+            "/api/v1/auth/callbackJWT": 20
         }
-      }
-  },
-  "logging": {
-      "level": "debug",
-      "logsEnabled": {
-        "file": true,
-        "console": true
-      },
-      "filePath": "logs",
-      "filename": "app.log"
-  },
-  "aws": {
-    "region": "us-east-1",
-    "accessKeyId": null,
-    "secretAccessKey": null,
-    "cognito": {
-      "cognitoClientId": null,
-      "userPoolId": null,
-      "tokenExpiration": 3600000,
-      "enableTokenRevocation":true
     },
-    "s3": {
-      "public": {
-        "bucketName": "localhost-public",
-        "baseUrl": null,
-        "keyPrefix":null
-      },
-      "quarantine": {
-        "bucketName": "localhost-quarantine",
-        "baseUrl": null,
-        "keyPrefix":null
-      },
-      "private": {
-        "bucketName": "localhost-private",
-        "baseUrl": null,
-        "keyPrefix":null
-      }
-    }
-  },
-  "cloudBasedSecrets": [
-    "connections.primaryDatabase.credentials"
-  ],
-  "initialization": {
-    "firstUserUsername": "odin",
-    "firstUserRole": "raesumAdmin",
-    "firstUserEmail": "odin@raesum.com",
-    "firstUserPassword": "changeThisFromDefault"
-  },
-  "developmentAndTesting": {
-    "developmentMode":false,
-    "integrationTestEnabled": {
-      "redis": false,
-      "aws": false,
-      "primaryDatabase": false
+    "connections": {
+        "primaryDatabase": {
+            "host": null,
+            "port": 5432,
+            "database": "raesum",
+            "credentials": {
+                "username": null,
+                "password": null
+            },
+            "ssl": false,
+            "maxPoolSize": 20,
+            "timeouts": {
+                "clientForceTimeout": 15000,
+                "idleTimeout": 1000,
+                "connectionTimeout": 1000,
+                "maxUses": 7500
+            }
+        },
+        "session": {
+            "redis": {
+                "host": null,
+                "port": 6379,
+                "connectTimeout": 10000,
+                "databaseNumber": 1,
+                "credentials": {
+                    "username": null,
+                    "password": null
+                }
+            }
+        },
+        "cache": {
+            "redis": {
+                "host": null,
+                "port": 6379,
+                "connectTimeout": 10000,
+                "databaseNumber": 0,
+                "credentials": {
+                    "username": null,
+                    "password": null
+                }
+            },
+            "memory": {}
+        },
+        "ratelimiter": {
+            "redis": {
+                "host": null,
+                "port": 6379,
+                "connectTimeout": 10000,
+                "databaseNumber": 2,
+                "credentials": {
+                    "username": null,
+                    "password": null
+                }
+            }
+        }
     },
-    "seed": {
-      "scaleFactor": 1,
-      "createInCognito": false,
-      "seedRoles": {
-        "orgAdmin": "raesumOrgAdmin",
-        "orgManager": "raesumOrgManager",
-        "baseUser": "raesumMinimalUser"
-      }
+    "logging": {
+        "level": "debug",
+        "logsEnabled": {
+            "file": true,
+            "console": true
+        },
+        "filePath": "logs",
+        "filename": "app.log"
+    },
+    "aws": {
+        "region": "us-east-1",
+        "accessKeyId": null,
+        "secretAccessKey": null,
+        "cognito": {
+            "cognitoClientId": null,
+            "userPoolId": null,
+            "tokenExpiration": 3600000,
+            "enableTokenRevocation": true
+        },
+        "s3": {
+            "public": {
+                "bucketName": "localhost-public",
+                "baseUrl": null,
+                "keyPrefix": null
+            },
+            "quarantine": {
+                "bucketName": "localhost-quarantine",
+                "baseUrl": null,
+                "keyPrefix": null
+            },
+            "private": {
+                "bucketName": "localhost-private",
+                "baseUrl": null,
+                "keyPrefix": null
+            }
+        }
+    },
+    "cloudBasedSecrets": ["connections.primaryDatabase.credentials"],
+    "initialization": {
+        "firstUserUsername": "odin",
+        "firstUserRole": "raesumAdmin",
+        "firstUserEmail": "odin@raesum.com",
+        "firstUserPassword": "changeThisFromDefault",
+        "autoMigrate": false
+    },
+    "developmentAndTesting": {
+        "developmentMode": false,
+        "integrationTestEnabled": {
+            "redis": false,
+            "aws": false,
+            "primaryDatabase": false
+        },
+        "seed": {
+            "scaleFactor": 1,
+            "createInCognito": false,
+            "seedRoles": {
+                "orgAdmin": "raesumOrgAdmin",
+                "orgManager": "raesumOrgManager",
+                "baseUser": "raesumMinimalUser"
+            }
+        }
+    },
+    "newUserDefaults": {
+        "activeStatus": true,
+        "currentOrganizationId": 1
     }
-  },
-  "newUserDefaults":{
-    "activeStatus": true,
-    "currentOrganizationId": 1
-  }
 }

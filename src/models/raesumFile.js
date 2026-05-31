@@ -16,7 +16,7 @@ import {
     HeadBucketCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import buildAWSClientConfig from '../utils/awsUtils.js';
+import { buildAWSClientConfig } from '../utils/awsUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);

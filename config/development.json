@@ -13,7 +13,9 @@
     "ratelimiter": {
         "type": "redis"
     },
-
+    "initialization": {
+        "autoMigrate": true
+    },
     "logging": {
         "level": "info",
         "logsEnabled": {

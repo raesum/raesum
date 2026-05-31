@@ -7,7 +7,8 @@ import raesumUser from '../models/raesumUser.js';
 import raesumMetadata from '../models/raesumMetadata.js';
 import raesumAuthorization from '../models/raesumAuth.js';
 import readLineAsync from '../utils/readlineAsync.js';
-import raesumCognito from './raesumCognito.js';
+import raesumConfig from './raesumConfig.js';
+import raesumMigrate from './raesumMigrate.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +20,21 @@ class raesumStartup {
      * */
     async initialize() {
         const start = Date.now();
+
+        // Check if auto-migration is enabled
+        const autoMigrate = await raesumConfig.get(
+            'initialization.autoMigrate'
+        );
+
+        if (autoMigrate) {
+            logger.info(
+                'Migration is enabled. Running migration.',
+                Date.now() - start
+            );
+            const migrator = new raesumMigrate();
+            await migrator.doMigration();
+            logger.info('Migration completed.', Date.now() - start);
+        }
 
         logger.info(
             'Checking to see if Raesum needs to be initialized',
