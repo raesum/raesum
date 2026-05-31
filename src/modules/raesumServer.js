@@ -462,6 +462,42 @@ class raesumServer {
             );
         }
 
+        // Check CloudWatch logging configuration
+        try {
+            const cloudWatcLoggingEnabled = await raesumConfig.get(
+                'logging.logsEnabled.cloudwatch'
+            );
+            if (cloudWatcLoggingEnabled === true) {
+                const awsAccessKeyId =
+                    await raesumConfig.get('aws.accessKeyId');
+                const awsSecretAccessKey = await raesumConfig.get(
+                    'aws.secretAccessKey'
+                );
+                const cloudBasedSecrets =
+                    await raesumConfig.get('cloudBasedSecrets');
+
+                if (awsAccessKeyId !== null || awsSecretAccessKey !== null) {
+                    if (cloudBasedSecrets && cloudBasedSecrets.length > 0) {
+                        if (
+                            cloudBasedSecrets.includes('aws.accessKeyId') ||
+                            cloudBasedSecrets.includes('aws.secretAccessKey')
+                        ) {
+                            logger.error(
+                                'logging directly to cloudwatch from the application cannot be used with aws.accessKeyId, aws.secretAccessKey being stored as cloud secrets',
+                                Date.now() - start
+                            );
+                            noErrors = false;
+                        }
+                    }
+                }
+            }
+        } catch (loggingConfigError) {
+            logger.warning(
+                `Failed to check CloudWatch logging configuration: ${loggingConfigError.message}`,
+                Date.now() - start
+            );
+        }
+
         if (noErrors) {
             logger.info(
                 'Server settings safety checks passed',

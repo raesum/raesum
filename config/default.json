@@ -95,10 +95,15 @@
         "level": "debug",
         "logsEnabled": {
             "file": true,
-            "console": true
+            "console": true,
+            "cloudwatch": false
         },
         "filePath": "logs",
-        "filename": "app.log"
+        "filename": "app.log",
+        "cloudwatch": {
+            "logGroup": "raesum-logs",
+            "logStream": "raesum-app"
+        }
     },
     "aws": {
         "region": "us-east-1",
