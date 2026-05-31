@@ -69,6 +69,7 @@ This section is used when the server is started for the FIRST time. It will crea
 - `firstUserRole` (string) - This is the role to assign to the user. It should be a superadmin role but can be overriden. Note: If you don't have a superadmin you will need to MANUALLY create one later if one is needed.
 - `firstUserEmail` (string) - The email address of the first user in the system. Default: `odin@raesum.com`
 - `firstUserPassword` (string) - The password for the first user in the system. This should be changed from the default in production. Default: `changeThisFromDefault`
+- `autoMigrate` (boolean) - Whether to automatically run database migrations during initialization. When enabled, the system will run all pending migrations before checking if the system is initialized. This is useful for development and testing environments. Default: `false`
 
 ### login
 
