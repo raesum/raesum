@@ -82,8 +82,10 @@ class raesumConfig {
             const secretAccessKey = config.get('aws.secretAccessKey');
             if (accessKeyId && secretAccessKey) {
                 // If the accessKeyId and secretAccessKey are present, use them
-                clientConfig.accessKeyId = accessKeyId;
-                clientConfig.secretAccessKey = secretAccessKey;
+                clientConfig.credentials = {
+                    accessKeyId: accessKeyId,
+                    secretAccessKey: secretAccessKey,
+                };
             }
             logger.verbose(
                 'AWS Access Key and Secret Access Key are set and included in configuration',
@@ -157,23 +159,60 @@ class raesumConfig {
 
             try {
                 logger.debug(
-                    `Fetching cloud secret ${key} fetched from AWS: ${secretValue}`,
+                    `Fetching cloud secret ${key} from AWS with SecretId: ${secret}`,
                     Date.now() - start
                 );
 
                 // Create the AWS client
                 const clientConfig = this.buildAWSConfigInitializationOnly();
-                const client = new SecretsManagerClient(clientConfig);
+                let client;
+
+                try {
+                    client = new SecretsManagerClient(clientConfig);
+                } catch (clientError) {
+                    logger.error(
+                        `Error creating SecretsManagerClient for key ${key}: ${clientError}`,
+                        Date.now() - start
+                    );
+
+                    return secret;
+                }
 
                 // Create the request command to AWS
-                const command = new GetSecretValueCommand({ SecretId: secret });
+                let command;
+                try {
+                    command = new GetSecretValueCommand({ SecretId: secret });
+                    logger.verbose(
+                        `Created command to get secret from AWS Secrets manager ${JSON.stringify(command)}`
+                    );
+                } catch (commandError) {
+                    logger.error(
+                        `Error creating GetSecretValueCommand for key ${key}: ${commandError}`,
+                        Date.now() - start
+                    );
+
+                    return secret;
+                }
 
                 // Await the response from AWS
-                const response = await client.send(command);
+                let response;
+                try {
+                    response = await client.send(command);
+                } catch (sendError) {
+                    logger.error(
+                        `Error sending GetSecretValueCommand to AWS for key ${key}: ${sendError}`,
+                        Date.now() - start
+                    );
+
+                    return secret;
+                }
 
                 // Parse the response from AWS
-                const secretValue = conditionallyParseJSON(
-                    response.SecretString
+                let secretValue = conditionallyParseJSON(response.SecretString);
+
+                logger.debug(
+                    `Secret value parsed from AWS: ${JSON.stringify(secretValue)}`,
+                    Date.now() - start
                 );
 
                 this.#setCache(key, secretValue);
@@ -184,7 +223,7 @@ class raesumConfig {
                 return secretValue;
             } catch (e) {
                 logger.error(
-                    `Error fetching cloud secret ${key} from AWS: ${e}. Falling back on value in configuration file`,
+                    `Unexpected error fetching cloud secret ${key} from AWS: ${e}. Falling back on value in configuration file`,
                     Date.now() - start
                 );
 

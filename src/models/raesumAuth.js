@@ -4,7 +4,6 @@ import raesumDB from '../modules/raesumDB.js';
 import path from 'path';
 import fs from 'fs';
 import raesumUser from './raesumUser.js';
-import { json } from 'stream/consumers';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
