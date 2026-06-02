@@ -63,9 +63,7 @@
                     "username": null,
                     "password": null
                 },
-                "tls": {
-                    "rejectUnauthorized": false
-                }
+                "tls": false
             }
         },
         "cache": {
@@ -78,9 +76,7 @@
                     "username": null,
                     "password": null
                 },
-                "tls": {
-                    "rejectUnauthorized": false
-                }
+                "tls": false
             },
             "memory": {}
         },
@@ -94,9 +90,7 @@
                     "username": null,
                     "password": null
                 },
-                "tls": {
-                    "rejectUnauthorized": false
-                }
+                "tls": false
             }
         }
     },
