@@ -70,15 +70,9 @@ class raesumServer {
         const start = Date.now();
 
         // List of excluded config keys
-        const excludedKeys = [
-            'credentials',
-            'lazyConnect',
-            'retryStrategy',
-            'tls',
-        ];
+        const excludedKeys = ['credentials', 'lazyConnect', 'retryStrategy'];
 
         // Create new config object
-        // The TLS override exists to allow for self-signed certs (and AWS support)
         let redisConfig = {
             lazyConnect: true,
             // tls: {
@@ -96,6 +90,12 @@ class raesumServer {
                 redisConfig[key] = redisConfigSet[key];
             }
         }
+
+        // The TLS override exists to allow for self-signed certs (and AWS support)
+        if (redisConfigSet.tls !== false) {
+            redisConfig.tls.checkServerIdentity = () => undefined;
+        }
+
         // Get username and password from config if set
         if (
             redisConfigSet.credentials != undefined &&
