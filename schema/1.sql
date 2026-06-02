@@ -266,8 +266,6 @@ create table public.raesum_organization_metadata_keys
     display_name   varchar(255)
 );
 
-alter table public.raesum_organization_metadata_keys
-    owner to seneca;
 
 create index raesum_organization_metadata_keys_datakey_active_status_index
     on public.raesum_organization_metadata_keys (datakey asc, active_status desc);
@@ -289,8 +287,7 @@ create table raesum_organization_x_metadata
         primary key (org_id, datakey)
 );
 
-alter table public.raesum_organization_x_metadata
-    owner to seneca;
+
 
 create index raesum_organization_x_metadata_datakey_index
     on public.raesum_organization_x_metadata (datakey);
