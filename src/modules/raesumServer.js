@@ -246,7 +246,7 @@ class raesumServer {
         const cognitoConfig = await raesumConfig.get('aws.cognito');
         // Get Cognito client description to check allowed OAuth scopes
         const clientDescription =
-            await raesumCognito.getCognitoClientDescription;
+            await raesumCognito.getCognitoClientDescription(true);
 
         try {
             if (cognitoConfig && cognitoConfig.enableTokenRevocation === true) {

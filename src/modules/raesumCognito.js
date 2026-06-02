@@ -161,7 +161,7 @@ class raesumCognito {
      * @return {Array} The cognito client object
      * @throws {Error} if unable to connect to cognito
      */
-    async getCognitoClientDescription() {
+    async getCognitoClientDescription(cacheBust = false) {
         const start = Date.now();
 
         // Get from cache
@@ -169,7 +169,7 @@ class raesumCognito {
 
         const cacheValue = await raesumCache.get(cacheKey, 'cognito');
 
-        if (cacheValue) {
+        if (cacheValue && !cacheBust) {
             logger.debug(
                 'Cognito client information found in cache',
                 Date.now() - start
