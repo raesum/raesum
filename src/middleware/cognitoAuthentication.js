@@ -58,6 +58,14 @@ class raesumAuth {
             Date.now() - start
         );
 
+        // Init cognito if it has not yet been initialized
+        if (
+            typeof this.cognitoExpress == 'undefined' ||
+            this.cognitoExpressExpirationTime < Date.now()
+        ) {
+            await this.initCognito();
+        }
+
         // Get the allowed login types
         const allowedLoginMethods = await raesumConfig.get('login');
 
@@ -77,19 +85,35 @@ class raesumAuth {
                 'JWT Login Enabled and authorization header set',
                 Date.now() - start
             );
+
+            // Strip "Bearer " prefix if present
+            if (accessTokenFromClient.startsWith('Bearer ')) {
+                accessTokenFromClient = accessTokenFromClient.substring(7);
+            }
+
             try {
+                logger.info(`Cognito JWT attempting to validate token`);
                 const response = await this.cognitoExpress.validate(
                     accessTokenFromClient
                 );
 
                 // Check to see if token is on revoked list
                 // Build the key
+                logger.info(
+                    `Cognito JWT checking for revoked key`,
+                    Date.now() - start
+                );
+
                 const key = 'revokedJWT|' + accessTokenFromClient;
 
                 // Request key from cache
                 const cacheResponse = await raesumCache.get(key);
                 if (cacheResponse) {
                     // JWT is on revoke list
+                    logger.info(
+                        `Cognito JWT key has been revoked`,
+                        Date.now() - start
+                    );
                     // get token invalid response and send to user
                     const response =
                         await raesumResponses.get('invalidClientToken');
@@ -297,6 +321,11 @@ class raesumAuth {
             let response = await raesumResponses.get('notLoggedIn');
 
             return res.status(response.code).json(response);
+        }
+
+        // Strip "Bearer " prefix if present
+        if (accessTokenFromClient.startsWith('Bearer ')) {
+            accessTokenFromClient = accessTokenFromClient.substring(7);
         }
 
         try {

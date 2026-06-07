@@ -251,10 +251,11 @@ export async function createApp() {
     }
 
     // Add unless to the Cognito required middleware
-    raesumAuth.cognitoAuth.unless = unless;
+    const boundCognitoAuth = raesumAuth.cognitoAuth.bind(raesumAuth);
+    boundCognitoAuth.unless = unless;
 
     // Add Authentication Required Middleware
-    app.use(raesumAuth.cognitoAuth.unless(excludePaths));
+    app.use(boundCognitoAuth.unless(excludePaths));
 
     // Routes
     app.use('/api/v1/health', raesumHealthRouter);
