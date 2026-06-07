@@ -60,12 +60,22 @@ class raesumAuthController {
         }
 
         // If the requested redirect is NOT allowed set the redirect to the login success API url or if redirect_uri is missing from the req.params
+        logger.verbose(
+            `Login is checking the redirect_uri: ${req.query.redirect_uri} against the allowed callbacks ${allowedCallbacksUpper.join(', ')}`,
+            Date.now() - start
+        );
+
         if (
             !req.query.redirect_uri ||
             !allowedCallbacksUpper.includes(
                 req.query.redirect_uri.toUpperCase()
             )
         ) {
+            logger.info(
+                `Login redirect_uri ${req.query.redirect_uri} is not allowed or missing, using fallbacks`,
+                Date.now() - start
+            );
+
             // If the server's url is in the allowed redirects, default to it
             let raesumServerURL = await raesumServer.buildBaseServerURL();
 
@@ -79,13 +89,13 @@ class raesumAuthController {
             }
 
             logger.debug(
-                `raesumServerURL URI for: ${raesumServerURL} with allowed redirects ${allowedCallbacks.join(', ')}`,
+                `raesumServerURL URI for: ${req.query.redirect_uri} with allowed redirects ${allowedCallbacks.join(', ')}`,
                 Date.now() - start
             );
 
             if (allowedCallbacksUpper.includes(raesumServerURL.toUpperCase())) {
                 logger.warning(
-                    'Login Redirect URI not found or not allowed. Redirecting to server URL',
+                    `Login Redirect URI: ${raesumServerURL} not found or not allowed. Redirecting to server URL`,
                     Date.now() - start
                 );
                 loginURL +=
@@ -101,12 +111,18 @@ class raesumAuthController {
             }
         } else {
             // Use the 'official' redirect from the allowed callbacks so that case is matched
+
             const redirectURL =
                 allowedCallbacks[
                     allowedCallbacksUpper.indexOf(
                         req.query.redirect_uri.toUpperCase()
                     )
                 ];
+
+            logger.verbose(
+                `Login redirect_uri ${req.query.redirect_uri} is allowed, using it`,
+                Date.now() - start
+            );
             loginURL += '&redirect_uri=' + encodeURIComponent(redirectURL);
         }
 
