@@ -180,5 +180,12 @@
         "description": "The file has failed to upload for some reason and has not gotten to the validation/quarantine stage.",
         "code": 400,
         "keycode": 26
+    },
+    "alreadySignedUp": {
+        "title": "Already Signed Up",
+        "message": "You are already signed up and logged in.",
+        "description": "User is already logged in and cannot sign up again.",
+        "code": 400,
+        "keycode": 27
     }
 }

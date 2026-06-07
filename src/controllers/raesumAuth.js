@@ -253,6 +253,117 @@ class raesumAuthController {
         }
     }
 
+    async signUp(req, res, next) {
+        const start = Date.now();
+        logger.verbose(
+            'Sign up request received, starting processing',
+            Date.now() - start
+        );
+
+        // Check if user is already logged in
+        if (req.session.loggedIn == true || req.session.userID) {
+            logger.verbose(
+                'User is already logged in, cannot sign up again',
+                Date.now() - start
+            );
+            const message = await raesumResponses.get('alreadySignedUp');
+            return res.status(message.code).json(message);
+        }
+
+        // Get the signup URL from Cognito
+        let signupURL = await raesumCognito.buildBaseLoginURL();
+        const clientID = await raesumConfig.get('aws.cognito.cognitoClientId');
+
+        // Request admin scope for user management capabilities
+        const scope = 'openid+profile+email+aws.cognito.signin.user.admin';
+        signupURL +=
+            '/signup?client_id=' +
+            clientID +
+            '&response_type=code&scope=' +
+            scope;
+
+        // Get cognito's allowed redirect URL from the environment
+        const allowedCallbacks = await raesumCognito.getAllowedCallbacks();
+        let allowedCallbacksUpper = [];
+
+        // Verify that there is at least one allowed callback
+        if (allowedCallbacks.length == 0) {
+            logger.critical(
+                'No allowed callbacks found in environment',
+                Date.now() - start
+            );
+            throw new Error('No allowed callbacks found in environment');
+        }
+
+        // If session cookie login is enabled and the post_login_uri is supplied, store it in session
+        // Get the allowed login methods from raesume config
+        const loginMethods = await raesumConfig.get('login');
+
+        if (req.query.post_login_uri && loginMethods.useSessionCookie == true) {
+            // Note this is validated by loggedIn function and the ONLY place it will actually be used
+            req.session.post_login_uri = req.query.post_login_uri;
+        }
+
+        // Convert to uppercase to make comparisions case insensitive
+        for (let i = 0; i < allowedCallbacks.length; i++) {
+            allowedCallbacksUpper.push(allowedCallbacks[i].toUpperCase());
+        }
+
+        // If the requested redirect is NOT allowed set the redirect to the login success API url or if redirect_uri is missing from the req.params
+        if (
+            !req.query.redirect_uri ||
+            !allowedCallbacksUpper.includes(
+                req.query.redirect_uri.toUpperCase()
+            )
+        ) {
+            // If the server's url is in the allowed redirects, default to it
+            let raesumServerURL = await raesumServer.buildBaseServerURL();
+
+            // Is session logins enabled?
+            const sessionLoginsEnabled = loginMethods.useSessionCookie == true;
+
+            if (sessionLoginsEnabled) {
+                raesumServerURL += '/api/v1/auth/callbackSession';
+            } else {
+                raesumServerURL += '/';
+            }
+
+            logger.debug(
+                `raesumServerURL URI for: ${raesumServerURL} with allowed redirects ${allowedCallbacks.join(', ')}`,
+                Date.now() - start
+            );
+
+            if (allowedCallbacksUpper.includes(raesumServerURL.toUpperCase())) {
+                logger.warning(
+                    'Signup Redirect URI not found or not allowed. Redirecting to server URL',
+                    Date.now() - start
+                );
+                signupURL +=
+                    '&redirect_uri=' + encodeURIComponent(raesumServerURL);
+            } else {
+                // else use the first allowed redirect from allowedCallbacks
+                logger.warning(
+                    'Signup Redirect URI not allowed. Redirecting to the first allowed callback',
+                    Date.now() - start
+                );
+                signupURL +=
+                    '&redirect_uri=' + encodeURIComponent(allowedCallbacks[0]);
+            }
+        } else {
+            // Use the 'official' redirect from the allowed callbacks so that case is matched
+            const redirectURL =
+                allowedCallbacks[
+                    allowedCallbacksUpper.indexOf(
+                        req.query.redirect_uri.toUpperCase()
+                    )
+                ];
+            signupURL += '&redirect_uri=' + encodeURIComponent(redirectURL);
+        }
+
+        // Redirect to cognito's signup page
+        res.redirect(301, signupURL);
+    }
+
     async callbackSession(req, res, next) {
         const start = Date.now();
         logger.verbose(

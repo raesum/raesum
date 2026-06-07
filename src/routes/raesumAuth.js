@@ -1,6 +1,6 @@
 import express from 'express';
-import raesumUser from "../controllers/raesumUser.js";
-import raesumAuth from "../controllers/raesumAuth.js";
+import raesumUser from '../controllers/raesumUser.js';
+import raesumAuth from '../controllers/raesumAuth.js';
 const raesumAuthRouter = express.Router();
 
 /**
@@ -31,6 +31,37 @@ const raesumAuthRouter = express.Router();
  *         description: Internal server error
  */
 raesumAuthRouter.get('/login', raesumAuth.login);
+
+/**
+ * @swagger
+ * /api/v1/auth/signup:
+ *   get:
+ *     summary: Redirect user to Cognito signup page
+ *     description: Initiates the user registration flow by redirecting the user to the AWS Cognito hosted signup page
+ *     tags:
+ *       - Authentication
+ *     parameters:
+ *       - in: query
+ *         name: redirect_uri
+ *         schema:
+ *           type: string
+ *         description: The URI to redirect to after successful signup
+ *         required: false
+ *       - in: query
+ *         name: post_login_uri
+ *         schema:
+ *           type: string
+ *         description: The URI to redirect to after login (stored in session)
+ *         required: false
+ *     responses:
+ *       301:
+ *         description: Redirect to Cognito signup page
+ *       400:
+ *         description: User is already logged in and signed up
+ *       500:
+ *         description: Internal server error
+ */
+raesumAuthRouter.get('/signup', raesumAuth.signUp);
 
 /**
  * @swagger
@@ -68,7 +99,6 @@ raesumAuthRouter.get('/login', raesumAuth.login);
  *         description: Internal server error
  */
 raesumAuthRouter.get('/logout', raesumAuth.logout);
-
 
 /**
  * @swagger
@@ -270,10 +300,6 @@ raesumAuthRouter.get('/role/get/:organizationId', raesumAuth.getAvailableRoles);
 raesumAuthRouter.get('/role/user/get/', raesumAuth.getUserRoles);
 raesumAuthRouter.get('/role/user/get/:organizationId', raesumAuth.getUserRoles);
 
-
-
-
-
 /**
  * @swagger
  * /api/v1/auth/callbackSession:
@@ -355,7 +381,6 @@ raesumAuthRouter.get('/callbackSession', raesumAuth.callbackSession);
  *         description: Internal server error
  */
 raesumAuthRouter.post('/callbackJWT', raesumAuth.callbackJWT);
-
 
 /**
  * @swagger
@@ -488,8 +513,10 @@ raesumAuthRouter.post('/callbackJWT', raesumAuth.callbackJWT);
  *         description: Internal server error
  */
 raesumAuthRouter.post('/role/user/add/', raesumAuth.addUserRoles);
-raesumAuthRouter.post('/role/user/add/:organizationId', raesumAuth.addUserRoles);
-
+raesumAuthRouter.post(
+    '/role/user/add/:organizationId',
+    raesumAuth.addUserRoles
+);
 
 /**
  * @swagger
@@ -622,8 +649,9 @@ raesumAuthRouter.post('/role/user/add/:organizationId', raesumAuth.addUserRoles)
  *         description: Internal server error
  */
 raesumAuthRouter.post('/role/user/remove/', raesumAuth.deleteUserRoles);
-raesumAuthRouter.post('/role/user/remove/:organizationId', raesumAuth.deleteUserRoles);
-
-
+raesumAuthRouter.post(
+    '/role/user/remove/:organizationId',
+    raesumAuth.deleteUserRoles
+);
 
 export default raesumAuthRouter;
