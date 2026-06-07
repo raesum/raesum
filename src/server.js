@@ -153,8 +153,6 @@ export async function createApp() {
             // For now, allowing all origins for development
             // TODO: Configure allowed origins from config for production
 
-            logger.warning(`Origin not allowed by CORS: ${origin}`);
-
             callback(
                 new Error({
                     message: 'Origin not allowed by CORS',
@@ -182,6 +180,16 @@ export async function createApp() {
             ],
         })
     );
+
+    // Log CORS errors with path
+    app.use((err, req, res, next) => {
+        if (err && err.message === 'Origin not allowed by CORS') {
+            logger.warning(
+                `Origin not allowed by CORS: ${req.headers.origin} - Path: ${req.path}`
+            );
+        }
+        next(err);
+    });
 
     // Add timing decorator for requests
     app.use((req, res, next) => {
