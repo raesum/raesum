@@ -152,6 +152,9 @@ export async function createApp() {
             // In production, you should whitelist specific origins
             // For now, allowing all origins for development
             // TODO: Configure allowed origins from config for production
+
+            logger.warning(`Origin not allowed by CORS: ${origin}`);
+
             callback(
                 new Error({
                     message: 'Origin not allowed by CORS',
