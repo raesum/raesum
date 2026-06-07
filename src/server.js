@@ -168,13 +168,20 @@ export async function createApp() {
         maxAge: 86400, // 24 hours
     };
 
-    // Add CORS middleware
-    const corsExcludedPaths = [
-        '/api/v1/auth/login',
-        '/api/v1/auth/callbackSession',
-        '/api/v1/auth/callbackJWT',
-    ];
-    app.use(cors(corsOptions).unless(corsExcludedPaths));
+    // Create CORS middleware with options
+    const corsMiddleware = cors(corsOptions);
+    corsMiddleware.unless = unless;
+
+    // Add CORS middleware and exclude certain paths
+    app.use(
+        corsMiddleware.unless({
+            path: [
+                '/api/v1/auth/login',
+                '/api/v1/auth/callbackSession',
+                '/api/v1/auth/callbackJWT',
+            ],
+        })
+    );
 
     // Add timing decorator for requests
     app.use((req, res, next) => {
