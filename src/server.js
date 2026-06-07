@@ -169,7 +169,12 @@ export async function createApp() {
     };
 
     // Add CORS middleware
-    app.use(cors(corsOptions));
+    const corsExcludedPaths = [
+        '/api/v1/auth/login',
+        '/api/v1/auth/callbackSession',
+        '/api/v1/auth/callbackJWT',
+    ];
+    app.use(cors(corsOptions).unless(corsExcludedPaths));
 
     // Add timing decorator for requests
     app.use((req, res, next) => {

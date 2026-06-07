@@ -15,9 +15,12 @@ config:
       bypassProxy: ""
 
 request:
+  headers:
+    - name: Origin
+      value: "{{host}}"
   variables:
     - name: host
-      value: https://raesum.kasigi.com
+      value: https://curbconnection.raesum.com
 bundled: false
 extensions:
   bruno:
