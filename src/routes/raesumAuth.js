@@ -380,7 +380,7 @@ raesumAuthRouter.get('/callbackSession', raesumAuth.callbackSession);
  *       500:
  *         description: Internal server error
  */
-raesumAuthRouter.post('/callbackJWT', raesumAuth.callbackJWT);
+raesumAuthRouter.get('/callbackJWT', raesumAuth.callbackJWT);
 
 /**
  * @swagger

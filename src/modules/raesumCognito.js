@@ -520,9 +520,10 @@ class raesumCognito {
     /**
      * Utility function that will attempt to exchange code for user data AND will create a user that exists in cognito but not in Raesum's user database
      * @param  {Object} req Uses the request from the express route
+     * @param  {string} callbackURL The callback URL to use for token exchange (defaults to callbackSession)
      * @return {Object} Returns an object with the following structure {success: boolean, responseMessageKey: string, user: object, jwt: object}
      */
-    async processJWT(req) {
+    async processJWT(req, callbackURL = null) {
         const start = Date.now();
 
         // Attempt to exchange the code for valid JWT tokens
@@ -535,7 +536,13 @@ class raesumCognito {
 
             const allowedCallbacks = await this.getAllowedCallbacks();
             let raesumServerURL = await raesumServer.buildBaseServerURL();
-            raesumServerURL += '/api/v1/auth/callbackSession';
+
+            // Use provided callback URL or default to callbackSession
+            if (callbackURL) {
+                raesumServerURL += callbackURL;
+            } else {
+                raesumServerURL += '/api/v1/auth/callbackSession';
+            }
 
             // Confirm that the raesum server is in the allowed callbacks
             if (!allowedCallbacks.includes(raesumServerURL)) {

@@ -20,7 +20,7 @@ request:
       value: "{{host}}"
   variables:
     - name: host
-      value: https://curbconnection.raesum.com
+      value: https://raesum.kasigi.com
 bundled: false
 extensions:
   bruno:

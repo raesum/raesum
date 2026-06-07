@@ -329,7 +329,7 @@ class raesumServer {
             // if JWT login is allowed, add the JWT callback to the test list
             if (allowedLogin.jwt) {
                 serverCallbackURL.push(
-                    `${serverConfig.protocol}://${serverConfig.host}/`
+                    `${serverConfig.protocol}://${serverConfig.host}/api/v1/auth/callbackJWT`
                 );
             }
 

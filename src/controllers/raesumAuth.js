@@ -422,7 +422,10 @@ class raesumAuthController {
             );
 
             // Process the supplied code into JWT
-            const jwtResult = await raesumCognito.processJWT(req);
+            const jwtResult = await raesumCognito.processJWT(
+                req,
+                '/api/v1/auth/callbackSession'
+            );
             tokenResponse = jwtResult.tokenResponse;
             tokenPayload = jwtResult.tokenPayload;
             user = jwtResult.user;
@@ -578,7 +581,10 @@ class raesumAuthController {
         }
         try {
             // Attempt to exchange the code for valid JWT tokens
-            const jwtResult = await raesumCognito.processJWT(req);
+            const jwtResult = await raesumCognito.processJWT(
+                req,
+                '/api/v1/auth/callbackJWT'
+            );
 
             const tokenResponse = jwtResult.tokenResponse;
             const user = jwtResult.user;
