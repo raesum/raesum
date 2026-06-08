@@ -474,10 +474,11 @@ class raesumCognito {
     /**
      * Validates a JWT token and returns the payload
      * @param {string} token - The JWT token to validate
+     * @param {string} tokenUse - The token type to validate ('id' or 'access')
      * @return {Object} The decoded token payload
      * @throws {Error} if token is invalid
      */
-    async validateJWTToken(token) {
+    async validateJWTToken(token, tokenUse = 'id') {
         const start = Date.now();
 
         try {
@@ -489,14 +490,14 @@ class raesumCognito {
             const region = await raesumConfig.get('aws.region');
 
             logger.debug(
-                `Setting up JWT verifier for user pool: ${userPoolId}`,
+                `Setting up JWT verifier for user pool: ${userPoolId} with tokenUse: ${tokenUse}`,
                 Date.now() - start
             );
 
             // Create the Cognito JWT verifier
             const verifier = CognitoJwtVerifier.create({
                 userPoolId: userPoolId,
-                tokenUse: 'id',
+                tokenUse: tokenUse,
                 clientId: clientId,
                 region: region,
             });
@@ -506,7 +507,10 @@ class raesumCognito {
             // Verify the token using aws-jwt-verify
             const payload = await verifier.verify(token);
 
-            logger.info('JWT token validated successfully', Date.now() - start);
+            logger.info(
+                `JWT token validated successfully (tokenUse: ${tokenUse})`,
+                Date.now() - start
+            );
             return payload;
         } catch (error) {
             logger.error(

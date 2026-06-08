@@ -1,17 +1,17 @@
 info:
-  name: Login - JWTSession
+  name: Signup
   type: http
-  seq: 6
+  seq: 2
 
 http:
   method: GET
-  url: "{{host}}/api/v1/auth/login?redirect_uri={{host}}/api/v1/auth/callbackJWT"
+  url: "{{host}}/api/v1/auth/signup?redirect_uri={{host}}/api/v1/auth/callbackSession"
   headers:
     - name: Origin
       value: "{{host}}"
   params:
     - name: redirect_uri
-      value: "{{host}}/api/v1/auth/callbackJWT"
+      value: "{{host}}/api/v1/auth/callbackSession"
       type: query
   auth: inherit
 

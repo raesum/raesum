@@ -1,0 +1,20 @@
+info:
+  name: Delete Current Metadata
+  type: http
+  seq: 24
+
+http:
+  method: POST
+  url: "{{host}}/api/v1/user/metadata/delete/byKey/family_name/"
+  headers:
+    - name: Origin
+      value: "{{host}}"
+    - name: Authorization
+      value: Bearer {{accessToken}}
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

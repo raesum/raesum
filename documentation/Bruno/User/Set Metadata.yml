@@ -1,0 +1,28 @@
+info:
+  name: Set Metadata
+  type: http
+  seq: 21
+
+http:
+  method: POST
+  url: "{{host}}/api/v1/user/metadata/set/byKey/family_name/1"
+  headers:
+    - name: Origin
+      value: "{{host}}"
+    - name: Authorization
+      value: Bearer {{accessToken}}
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "value": "Aesir"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

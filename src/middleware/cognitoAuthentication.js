@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import raesumUser from '../models/raesumUser.js';
 import raesumCache from '../modules/raesumCache.js';
 import raesumCognito from '../modules/raesumCognito.js';
+import raesumDB from '../modules/raesumDB.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -33,7 +34,7 @@ class raesumAuth {
         awsCognitoConfig.tokenExpiration = await raesumConfig.get(
             'aws.cognito.tokenExpiration'
         );
-        awsCognitoConfig.tokenUse = 'id';
+        awsCognitoConfig.tokenUse = 'access';
 
         try {
             this.cognitoExpress = new CognitoExpress(awsCognitoConfig);
@@ -123,11 +124,10 @@ class raesumAuth {
                 //res.locals.user = response;
                 cognitoUserID = response.sub;
 
-                logger.debug(
-                    `User with id: ${response.id} is authenticated`,
+                logger.verbose(
+                    `User with external id: ${cognitoUserID} is authenticated`,
                     Date.now() - start
                 );
-                next();
             } catch (e) {
                 // Something has malfunctioned or a user is sending an invalid header
                 logger.warning(
@@ -192,6 +192,10 @@ class raesumAuth {
                 const userProfile =
                     await raesumUser.getUserByExternalID(cognitoUserID);
 
+                logger.verbose(
+                    `User found: ${JSON.stringify(userProfile)}`,
+                    Date.now() - start
+                );
                 // Check to see if the user is active in Raesum
                 if (userProfile.active_status) {
                     req.session.loggedIn = true;
@@ -204,11 +208,11 @@ class raesumAuth {
                     req.session.unset();
                     // Deactivate in AWS
                 }
-            } catch {
+            } catch (error) {
                 // If no profile is found,
                 // The profile should have been created on the login process. This means something very wrong has occured. Force a logout.
                 logger.error(
-                    `Authentication Middleware - No Raesum User Profile found for CognitoUserID: ${cognitoUserID}. Forcing logout.`,
+                    `Authentication Middleware - Error getting Raesum User Profile for CognitoUserID: ${cognitoUserID}. Error: ${error.message}`,
                     Date.now() - start
                 );
 
@@ -286,6 +290,10 @@ class raesumAuth {
 
                 // Else, just delete the session
                 req.session.unset();
+
+                // get not logged in response and send to user
+                let response = await raesumResponses.get('notLoggedIn');
+                return res.status(response.code).json(response);
             }
         }
 
@@ -334,7 +342,6 @@ class raesumAuth {
             );
 
             res.locals.user = response;
-
             logger.debug(
                 `User with id: ${response.id} is authenticated`,
                 Date.now() - start

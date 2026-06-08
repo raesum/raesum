@@ -1,0 +1,28 @@
+info:
+  name: Add User Roles by Org
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: "{{host}}/api/v1/auth/role/user/add/1"
+  headers:
+    - name: Origin
+      value: "{{host}}"
+    - name: Authorization
+      value: Bearer {{accessToken}}
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "values": [1, 2, "admin"]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

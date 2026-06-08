@@ -85,7 +85,7 @@ class raesumAuthController {
             if (sessionLoginsEnabled) {
                 raesumServerURL += '/api/v1/auth/callbackSession';
             } else {
-                raesumServerURL += '/';
+                raesumServerURL += '/api/v1/auth/callbackJWT';
             }
 
             logger.debug(

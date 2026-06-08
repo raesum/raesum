@@ -1,18 +1,15 @@
 info:
-  name: GetJWT
+  name: Callback JWT
   type: http
-  seq: 3
+  seq: 2
 
 http:
   method: GET
-  url: "{{host}}/api/v1/auth/getJWT?code=959f71a6-43bb-4461-acac-a9fb39e56648"
+  url: "{{host}}/api/v1/auth/callbackJWT?code=959f71a6-43bb-4461-acac-a9fb39e56648"
   params:
     - name: code
       value: 959f71a6-43bb-4461-acac-a9fb39e56648
       type: query
-  body:
-    type: json
-    data: ""
   auth: inherit
 
 settings:

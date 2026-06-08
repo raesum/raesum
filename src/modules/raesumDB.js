@@ -129,11 +129,12 @@ class dbPool {
         const start = Date.now();
         await this.#initPool();
 
+        logger.debug(`DB Executing Query ${text}`, Date.now() - start);
         const res = await this.#dbPoolInstance.query(text, params);
         const duration = Date.now() - start;
         logger.debug(
-            `Executed Query: ${text} with rows: ${res.rowCount}`,
-            Date.now() - start
+            `DB Executed Query: ${text} with rows: ${res.rowCount} in ${duration}ms`,
+            duration
         );
         return res;
     }

@@ -307,6 +307,8 @@ class raesumUserObject {
             throw new Error('Error getting user by external_id');
         }
 
+        logger.verbose(`User ID has been found: ${theId}`, Date.now() - start);
+
         if (theId && !isNaN(theId) && theId > 0) {
             logger.debug(
                 `User with username: ${external_id} found with ID: ${theId}`,
