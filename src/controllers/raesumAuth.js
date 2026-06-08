@@ -578,7 +578,7 @@ class raesumAuthController {
         const loginMethods = await raesumConfig.get('login');
 
         // If JWT is not allowed return logintypenotallowed
-        if (loginMethods.useJWT == false) {
+        if (loginMethods.jwt == false) {
             // Get the error message
             const message = await raesumResponses.get('loginTypeNotAllowed');
 
