@@ -204,27 +204,18 @@ raesumUserRouter.get('/get/', raesumUser.getUserById);
  *                         type: integer
  *                         example: 1
  *                         description: Internal user ID
- *                       current_organization_id:
- *                         type: integer
- *                         example: 1
- *                         description: Current organization ID
- *                       external_id:
- *                         type: string
- *                         example: "b49884a8-e021-70ee-50eb-817e0a3b634e"
- *                         description: External user ID (Cognito sub)
  *                       username:
  *                         type: string
  *                         example: "odin"
  *                         description: Username
- *                       active_status:
- *                         type: boolean
- *                         example: true
- *                         description: Whether the user is active
- *                       created_at:
+ *                       first_name:
  *                         type: string
- *                         format: date-time
- *                         example: "2026-05-03T17:31:40.531Z"
- *                         description: When the user was created
+ *                         example: "John"
+ *                         description: User first name (if present)
+ *                       last_name:
+ *                         type: string
+ *                         example: "Doe"
+ *                         description: User last name (if present)
  *                   description: Array of users in the organization
  *       400:
  *         description: Bad request - invalid organization ID
@@ -282,27 +273,18 @@ raesumUserRouter.get('/list/:organizationId', raesumUser.list);
  *                         type: integer
  *                         example: 1
  *                         description: Internal user ID
- *                       current_organization_id:
- *                         type: integer
- *                         example: 1
- *                         description: Current organization ID
- *                       external_id:
- *                         type: string
- *                         example: "b49884a8-e021-70ee-50eb-817e0a3b634e"
- *                         description: External user ID (Cognito sub)
  *                       username:
  *                         type: string
  *                         example: "odin"
  *                         description: Username
- *                       active_status:
- *                         type: boolean
- *                         example: true
- *                         description: Whether the user is active
- *                       created_at:
+ *                       first_name:
  *                         type: string
- *                         format: date-time
- *                         example: "2026-05-03T17:31:40.531Z"
- *                         description: When the user was created
+ *                         example: "John"
+ *                         description: User first name (if present)
+ *                       last_name:
+ *                         type: string
+ *                         example: "Doe"
+ *                         description: User last name (if present)
  *                   description: Array of users in the current organization
  *       401:
  *         description: Not authorized to list users

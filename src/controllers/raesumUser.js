@@ -164,6 +164,26 @@ class raesumUserController {
                 true
             );
 
+            // Transform users to only include required fields
+            const filteredUsers = users.map((user) => {
+                const filteredUser = {
+                    id: user.id,
+                    username: user.username,
+                };
+
+                // Add first_name if present
+                if (user.first_name) {
+                    filteredUser.first_name = user.first_name;
+                }
+
+                // Add last_name if present
+                if (user.last_name) {
+                    filteredUser.last_name = user.last_name;
+                }
+
+                return filteredUser;
+            });
+
             logger.info(
                 `Users retrieved for organization ${organizationId}`,
                 Date.now() - start
@@ -178,7 +198,7 @@ class raesumUserController {
             );
 
             const message = await raesumResponses.get('success');
-            message.data = users;
+            message.data = filteredUsers;
             return res.status(message.code).json(message);
         } catch (e) {
             logger.error(
