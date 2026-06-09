@@ -589,4 +589,149 @@ raesumOrganizationRouter.post(
  */
 raesumOrganizationRouter.post('/create/', raesumOrganization.create);
 
+/**
+ * @swagger
+ * /api/v1/organization/addUserToOrg/:organizationId:
+ *   post:
+ *     summary: Add user to organization
+ *     description: Add a user to an organization. The user can be identified by ID, email, or username. Authorization is required - users must have update permission on raesum_organization.
+ *     tags:
+ *       - Organization
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationId
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: The ID of the organization. If not provided, uses the user's current organization.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - value
+ *             properties:
+ *               value:
+ *                 type: string
+ *                 example: "123"
+ *                 description: The user identifier - can be user ID (integer or string), email address, or username
+ *     responses:
+ *       200:
+ *         description: Successfully added user to organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 title:
+ *                   type: string
+ *                   example: "Success"
+ *                   description: Response title
+ *                 message:
+ *                   type: string
+ *                   example: "OK"
+ *                   description: Response message
+ *                 description:
+ *                   type: string
+ *                   example: "The request was successful."
+ *                   description: Response description
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                   description: HTTP status code
+ *                 keycode:
+ *                   type: integer
+ *                   example: 1
+ *                   description: Internal response code
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userId:
+ *                       type: integer
+ *                       example: 123
+ *                       description: The ID of the user added to the organization
+ *                     organizationId:
+ *                       type: integer
+ *                       example: 1
+ *                       description: The ID of the organization
+ *                   description: Object containing the user ID and organization ID
+ */
+raesumOrganizationRouter.post(
+    '/addUserToOrg/:organizationId',
+    raesumOrganization.addUserToOrg
+);
+
+/**
+ * @swagger
+ * /api/v1/organization/addUserToOrg/:
+ *   post:
+ *     summary: Add user to current organization
+ *     description: Add a user to the user's current organization. The user can be identified by ID, email, or username. Authorization is required - users must have update permission on raesum_organization.
+ *     tags:
+ *       - Organization
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - value
+ *             properties:
+ *               value:
+ *                 type: string
+ *                 example: "test@example.com"
+ *                 description: The user identifier - can be user ID (integer or string), email address, or username
+ *     responses:
+ *       200:
+ *         description: Successfully added user to organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 title:
+ *                   type: string
+ *                   example: "Success"
+ *                   description: Response title
+ *                 message:
+ *                   type: string
+ *                   example: "OK"
+ *                   description: Response message
+ *                 description:
+ *                   type: string
+ *                   example: "The request was successful."
+ *                   description: Response description
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                   description: HTTP status code
+ *                 keycode:
+ *                   type: integer
+ *                   example: 1
+ *                   description: Internal response code
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userId:
+ *                       type: integer
+ *                       example: 123
+ *                       description: The ID of the user added to the organization
+ *                     organizationId:
+ *                       type: integer
+ *                       example: 1
+ *                       description: The ID of the organization
+ *                   description: Object containing the user ID and organization ID
+ */
+raesumOrganizationRouter.post(
+    '/addUserToOrg/',
+    raesumOrganization.addUserToOrg
+);
+
 export default raesumOrganizationRouter;

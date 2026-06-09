@@ -325,6 +325,63 @@ class raesumUserObject {
     }
 
     /**
+     * Gets a user by email. It wraps the getUserById.
+     * @param  {String} email The email of the user
+     * @return {Object} The user object
+     * @throw {Error} If the email is not a string
+     * @throw {Error} If the user is not found
+     */
+    async getUserByEmail(email) {
+        const start = Date.now();
+
+        logger.verbose(`Getting user by email: ${email}`, Date.now() - start);
+
+        // Validate the email input
+        if (typeof email !== 'string' || email.length < 1) {
+            throw new Error('Email must be a non-empty string');
+        }
+
+        // Get the user id
+        let theId = null;
+        try {
+            const query = 'SELECT id FROM raesum_user WHERE email = $1';
+            const result = await raesumDB.query(query, [email]);
+
+            if (result.rows.length > 0) {
+                theId = parseInt(result.rows[0].id);
+            } else {
+                logger.verbose(
+                    `User with email: ${email} not found`,
+                    Date.now() - start
+                );
+                throw new Error('User not found');
+            }
+        } catch (e) {
+            logger.verbose(
+                'Error getting user by email: ' + e,
+                Date.now() - start
+            );
+            throw new Error('Error getting user by email');
+        }
+
+        logger.verbose(`User ID has been found: ${theId}`, Date.now() - start);
+
+        if (theId && !isNaN(theId) && theId > 0) {
+            logger.debug(
+                `User with email: ${email} found with ID: ${theId}`,
+                Date.now() - start
+            );
+            return await this.getUserById(theId);
+        } else {
+            logger.warning(
+                `User with email: ${email} not found`,
+                Date.now() - start
+            );
+            throw new Error('User not found');
+        }
+    }
+
+    /**
      * Activates or deactivates a user. This will also change their ability to log in via cognito.
      * @param  {Number} id The ID of the user
      * @param  {Boolean} activeStatus The activation status of the user

@@ -5,11 +5,167 @@ import raesumOrganization from '../models/raesumOrganization.js';
 import raesumResponses from '../modules/raesumResponses.js';
 import raesumAudit from '../models/raesumAudit.js';
 import raesumAuthorization from '../models/raesumAuth.js';
+import raesumUser from '../models/raesumUser.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
 
 class raesumOrganizationController {
+    async addUserToOrg(req, res, next) {
+        const start = Date.now();
+
+        // Get organization ID from params or use current org
+        let organizationId = null;
+        if (req.params.organizationId) {
+            // Validate the organization ID is a number
+            if (
+                isNaN(req.params.organizationId) ||
+                req.params.organizationId < 1 ||
+                !Number.isInteger(parseInt(req.params.organizationId))
+            ) {
+                const message = await raesumResponses.get(
+                    'requestInvalidFields',
+                    ['organizationId']
+                );
+                return res.status(message.code).json(message);
+            }
+            organizationId = parseInt(req.params.organizationId);
+        } else {
+            organizationId = req.user.current_organization_id;
+        }
+
+        // Check if organization exists
+        try {
+            const org = await raesumOrganization.getById(organizationId);
+            if (!org) {
+                const message = await raesumResponses.get(
+                    'requestInvalidFields',
+                    ['organizationId']
+                );
+                return res.status(message.code).json(message);
+            }
+        } catch (e) {
+            const message = await raesumResponses.get('requestInvalidFields', [
+                'organizationId',
+            ]);
+            return res.status(message.code).json(message);
+        }
+
+        // Check user has update permission on raesum_organization
+        let isAuthorized = await raesumAuthorization.checkUserPermission(
+            req.user.id,
+            'raesum_organization',
+            'update',
+            req.user.current_organization_id,
+            organizationId
+        );
+
+        if (!isAuthorized) {
+            const message = await raesumResponses.get('notAuthorized', [
+                'update',
+                'raesum_organization',
+            ]);
+            return res.status(message.code).json(message);
+        }
+
+        // Get value from request body
+        const { value } = req.body;
+        if (!value) {
+            const message = await raesumResponses.get('requestMissingFields', [
+                'value',
+            ]);
+            return res.status(message.code).json(message);
+        }
+
+        // Validate value type
+        const isString = typeof value === 'string';
+        const isInteger =
+            typeof value === 'number' && Number.isInteger(value) && value > 0;
+
+        if (!isString && !isInteger) {
+            const message = await raesumResponses.get('requestInvalidFields', [
+                'value',
+            ]);
+            return res.status(message.code).json(message);
+        }
+
+        if (isString && value.length < 1) {
+            const message = await raesumResponses.get('requestInvalidFields', [
+                'value',
+            ]);
+            return res.status(message.code).json(message);
+        }
+
+        let userId = null;
+
+        try {
+            if (isInteger) {
+                // Value is an integer, use directly as userId
+                userId = value;
+            } else if (isString) {
+                // Check if string converts to integer
+                const parsedInt = parseInt(value);
+                if (
+                    !isNaN(parsedInt) &&
+                    parsedInt > 0 &&
+                    parsedInt.toString() === value
+                ) {
+                    // String is a perfect integer representation
+                    userId = parsedInt;
+                } else {
+                    // Check if it's an email address
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (emailRegex.test(value)) {
+                        // Get user by email
+                        const user = await raesumUser.getUserByEmail(value);
+                        userId = user.id;
+                    } else {
+                        // Get user by username
+                        const user = await raesumUser.getUserByUsername(value);
+                        userId = user.id;
+                    }
+                }
+            }
+
+            // Check if user is active
+            const user = await raesumUser.getUserById(userId);
+            if (!user.active_status) {
+                const message = await raesumResponses.get(
+                    'requestInvalidFields',
+                    ['value']
+                );
+                return res.status(message.code).json(message);
+            }
+
+            // Add user to organization
+            await raesumOrganization.addUserToOrganization(
+                userId,
+                organizationId
+            );
+
+            // Add audit log entry
+            await raesumAudit.create(
+                'create',
+                'raesum_organization_x_user',
+                organizationId,
+                req.user.id
+            );
+
+            const message = await raesumResponses.get('success');
+            message.data = { userId, organizationId };
+            return res.status(message.code).json(message);
+        } catch (e) {
+            logger.error(
+                `Error adding user to organization: ${e.message}`,
+                Date.now() - start
+            );
+            const message = await raesumResponses.get('requestInvalidFields', [
+                'value',
+            ]);
+            return res.status(message.code).json(message);
+        }
+    }
+
     async list(req, res, next) {
         const start = Date.now();
 
