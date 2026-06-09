@@ -17,7 +17,7 @@ http:
     type: json
     data: |-
       {
-        "values": [1, 2, "admin"]
+        "values": [1, 2, "raesumOrgAdmin"]
       }
   auth: inherit
 
