@@ -161,6 +161,36 @@ class raesumOrganizationObject {
     }
 
     /**
+     * Gets a list of organizations ID and names
+     * @param  {Boolean} activeStatus Whether to include inactive organizations (defaults to only showing active)
+     * @return {Array} The id and name of the organizations
+     * @throw {Error} If the organization name is not a string
+     */
+    async getList(activeStatus = true) {
+        const start = Date.now();
+        try {
+            let query = 'SELECT id, name FROM raesum_organization';
+            let params = [];
+
+            if (activeStatus) {
+                query += ' WHERE active_status = $1';
+                params.push(true);
+            }
+
+            query += ' ORDER BY id DESC';
+            const result = await raesumDB.query(query, params);
+            logger.info(`Organization list retrieved`, Date.now() - start);
+            return result.rows;
+        } catch (e) {
+            logger.error(
+                'Error getting organization list: ' + e,
+                Date.now() - start
+            );
+            throw new Error('Error getting organization list');
+        }
+    }
+
+    /**
      * Gets an organization by ID
      * @param  {Number} id The ID of the organization
      * @return {Object} The organization object

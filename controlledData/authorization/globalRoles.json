@@ -10,14 +10,16 @@
                 "read": ["crossorganization"],
                 "update": ["crossorganization"],
                 "create": ["crossorganization"],
-                "set_status": ["crossorganization"]
+                "set_status": ["crossorganization"],
+                "list": ["crossorganization"]
             },
             "raesum_organization": {
                 "read": ["crossorganization"],
                 "update": ["crossorganization"],
                 "delete": ["crossorganization"],
                 "create": ["crossorganization"],
-                "set_status": ["crossorganization"]
+                "set_status": ["crossorganization"],
+                "list": ["crossorganization"]
             },
             "raesum_organization_metadata": {
                 "read": ["crossorganization"],
@@ -53,7 +55,8 @@
                 "update": ["self"]
             },
             "raesum_organization": {
-                "read": ["organization"]
+                "read": ["organization"],
+                "list": ["crossorganization"]
             },
             "raesum_audit": {
                 "read": ["self"]
@@ -76,11 +79,13 @@
                 "read": ["organization"],
                 "update": ["organization"],
                 "create": ["organization"],
-                "set_status": ["organization"]
+                "set_status": ["organization"],
+                "list": ["crossorganization"]
             },
             "raesum_organization": {
                 "read": ["organization"],
-                "update": ["organization"]
+                "update": ["organization"],
+                "list": ["crossorganization"]
             },
             "raesum_role": {
                 "read": ["organization"],
@@ -108,12 +113,14 @@
                 "log_in": ["self"],
                 "read": ["organization"],
                 "update": ["self"],
-                "set_status": ["organization"]
+                "set_status": ["organization"],
+                "list": ["crossorganization"]
             },
             "raesum_organization": {
                 "read": ["organization"],
                 "update": ["organization"],
-                "delete": ["organization"]
+                "delete": ["organization"],
+                "list": ["crossorganization"]
             },
             "raesum_role": {
                 "read": ["organization"]

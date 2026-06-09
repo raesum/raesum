@@ -10,6 +10,53 @@ const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
 
 class raesumOrganizationController {
+    async list(req, res, next) {
+        const start = Date.now();
+
+        // Use raesum authorization to check to see if this user may list organizations
+        let isAuthorized = await raesumAuthorization.checkUserPermission(
+            req.user.id,
+            'raesum_organization',
+            'list',
+            req.user.current_organization_id,
+            'crossorganization'
+        );
+
+        if (!isAuthorized) {
+            // If not, get not authorized message and return the rejected request
+            const message = await raesumResponses.get('notAuthorized', [
+                'list',
+                'raesum_organization',
+            ]);
+            return res.status(message.code).json(message);
+        }
+
+        try {
+            // Get the organization list
+            const organizations = await raesumOrganization.getList();
+
+            logger.info(`Organization list retrieved`, Date.now() - start);
+
+            // Add audit log entry
+            await raesumAudit.create(
+                'list',
+                'raesum_organization',
+                null,
+                req.user.id
+            );
+            const message = await raesumResponses.get('success');
+            message.data = organizations;
+            return res.status(message.code).json(message);
+        } catch (e) {
+            logger.error(
+                `Error getting organization list: ${e.message}`,
+                Date.now() - start
+            );
+            const message = await raesumResponses.get('internalServerError');
+            return res.status(message.code).json(message);
+        }
+    }
+
     async create(req, res, next) {
         const start = Date.now();
 

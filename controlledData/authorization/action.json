@@ -1,56 +1,62 @@
 [
-  {
-    "id": 1,
-    "name": "Log In",
-    "string_key": "log_in",
-    "description": "User has logged in"
-  },
-  {
-    "id": 2,
-    "name": "Create",
-    "string_key": "create",
-    "description": "User can create"
-  },
-  {
-    "id": 3,
-    "name": "Update",
-    "string_key": "update",
-    "description": "User can update"
-  },
-  {
-    "id": 4,
-    "name": "Delete",
-    "string_key": "delete",
-    "description": "User can delete"
-  },
-  {
-    "id": 5,
-    "name": "Read",
-    "string_key": "read",
-    "description": "User can view "
-  },
-  {
-    "id": 6,
-    "name": "Deny",
-    "string_key": "deny",
-    "description": "Denies all access to an . This will OVERRIDE any other permissions. Deny is the most powerful permission and is scopeless. A deny anywhere in a scope setting overrides all other permissions for that object in EVERY scope."
-  },
-  {
-    "id": 7,
-    "name": "Set Status",
-    "string_key": "set_status",
-    "description": "Use can activate or deactivate"
-  },
-  {
-    "id": 8,
-    "name": "Change Organization",
-    "string_key": "change_organization",
-    "description": "User can switch their organization to another allowed organization"
-  },
-  {
-    "id": 9,
-    "name": "Log Out",
-    "string_key": "log_out",
-    "description": "User has logged out (this ONLY should apply to audit logs. Never to permissions)"
-  }
+    {
+        "id": 1,
+        "name": "Log In",
+        "string_key": "log_in",
+        "description": "User has logged in"
+    },
+    {
+        "id": 2,
+        "name": "Create",
+        "string_key": "create",
+        "description": "User can create"
+    },
+    {
+        "id": 3,
+        "name": "Update",
+        "string_key": "update",
+        "description": "User can update"
+    },
+    {
+        "id": 4,
+        "name": "Delete",
+        "string_key": "delete",
+        "description": "User can delete"
+    },
+    {
+        "id": 5,
+        "name": "Read",
+        "string_key": "read",
+        "description": "User can view "
+    },
+    {
+        "id": 6,
+        "name": "Deny",
+        "string_key": "deny",
+        "description": "Denies all access to an . This will OVERRIDE any other permissions. Deny is the most powerful permission and is scopeless. A deny anywhere in a scope setting overrides all other permissions for that object in EVERY scope."
+    },
+    {
+        "id": 7,
+        "name": "Set Status",
+        "string_key": "set_status",
+        "description": "Use can activate or deactivate"
+    },
+    {
+        "id": 8,
+        "name": "Change Organization",
+        "string_key": "change_organization",
+        "description": "User can switch their organization to another allowed organization"
+    },
+    {
+        "id": 9,
+        "name": "Log Out",
+        "string_key": "log_out",
+        "description": "User has logged out (this ONLY should apply to audit logs. Never to permissions)"
+    },
+    {
+        "id": 10,
+        "name": "List",
+        "string_key": "list",
+        "description": "This is a limited listing permission used to allow users to get only the ID and name of objects (useful to allow adding users to orgs"
+    }
 ]

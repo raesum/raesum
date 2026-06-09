@@ -1,8 +1,62 @@
 import express from 'express';
-import raesumOrganization from "../controllers/raesumOrganization.js";
+import raesumOrganization from '../controllers/raesumOrganization.js';
 
 const raesumOrganizationRouter = express.Router();
 
+/**
+ * @swagger
+ * /api/v1/organization/list/:
+ *   get:
+ *     summary: List all organizations
+ *     description: Retrieve a list of all organizations with their ID and name. Authorization is required - users must have the 'list' permission with crossorganization scope on raesum_organization.
+ *     tags:
+ *       - Organization
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved organization list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 title:
+ *                   type: string
+ *                   example: "Success"
+ *                   description: Response title
+ *                 message:
+ *                   type: string
+ *                   example: "OK"
+ *                   description: Response message
+ *                 description:
+ *                   type: string
+ *                   example: "The request was successful."
+ *                   description: Response description
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                   description: HTTP status code
+ *                 keycode:
+ *                   type: integer
+ *                   example: 1
+ *                   description: Internal response code
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                         description: Internal organization ID
+ *                       name:
+ *                         type: string
+ *                         example: "Vahalla"
+ *                         description: Organization name
+ *                   description: Array of organizations with ID and name
+ */
+raesumOrganizationRouter.get('/list/', raesumOrganization.list);
 
 /**
  * @swagger
@@ -71,7 +125,10 @@ const raesumOrganizationRouter = express.Router();
  *                       example: "2026-05-03T17:31:40.531Z"
  *                       description: When the organization was created
  */
-raesumOrganizationRouter.get('/get/:organizationId', raesumOrganization.getById);
+raesumOrganizationRouter.get(
+    '/get/:organizationId',
+    raesumOrganization.getById
+);
 
 /**
  * @swagger
@@ -204,7 +261,10 @@ raesumOrganizationRouter.get('/get/', raesumOrganization.getById);
  *                         description: Description of the metadata key
  *                         example: "Ascisco quis cibo cohibeo viriliter facere. Substantia circumvenio magni defessus censura certe veritas itaque."
  */
-raesumOrganizationRouter.get('/metadata/get/keys/', raesumOrganization.getMetaDataKeys);
+raesumOrganizationRouter.get(
+    '/metadata/get/keys/',
+    raesumOrganization.getMetaDataKeys
+);
 /**
  * @swagger
  * /api/v1/organization/metadata/get/byKey/{key}/{organizationId}:
@@ -265,7 +325,10 @@ raesumOrganizationRouter.get('/metadata/get/keys/', raesumOrganization.getMetaDa
  *                     profileDescription: "Cometes necessitatibus possimus urbanus utrimque. Volup tum aspernatur. Vomer toties crudelis."
  *                   description: Object containing the requested metadata key-value pair
  */
-raesumOrganizationRouter.get('/metadata/get/byKey/:key/:organizationId', raesumOrganization.getOneOrganizationMetaData);
+raesumOrganizationRouter.get(
+    '/metadata/get/byKey/:key/:organizationId',
+    raesumOrganization.getOneOrganizationMetaData
+);
 
 /**
  * @swagger
@@ -320,7 +383,10 @@ raesumOrganizationRouter.get('/metadata/get/byKey/:key/:organizationId', raesumO
  *                     profileDescription: "Cometes necessitatibus possimus urbanus utrimque. Volup tum aspernatur. Vomer toties crudelis."
  *                   description: Object containing the requested metadata key-value pair
  */
-raesumOrganizationRouter.get('/metadata/get/byKey/:key', raesumOrganization.getOneOrganizationMetaData);
+raesumOrganizationRouter.get(
+    '/metadata/get/byKey/:key',
+    raesumOrganization.getOneOrganizationMetaData
+);
 /**
  * @swagger
  * /api/v1/organization/metadata/get/{organizationId}:
@@ -377,7 +443,10 @@ raesumOrganizationRouter.get('/metadata/get/byKey/:key', raesumOrganization.getO
  *                     subscriptionDate: "Mon May 18 2026 09:06:30 GMT+0000 (Coordinated Universal Time)"
  *                   description: Object containing metadata key-value pairs
  */
-raesumOrganizationRouter.get('/metadata/get/:organizationId', raesumOrganization.getAllOrganizationMetaData);
+raesumOrganizationRouter.get(
+    '/metadata/get/:organizationId',
+    raesumOrganization.getAllOrganizationMetaData
+);
 
 /**
  * @swagger
@@ -427,15 +496,36 @@ raesumOrganizationRouter.get('/metadata/get/:organizationId', raesumOrganization
  *                     subscriptionDate: "Mon May 18 2026 09:06:30 GMT+0000 (Coordinated Universal Time)"
  *                   description: Object containing metadata key-value pairs
  */
-raesumOrganizationRouter.get('/metadata/get', raesumOrganization.getMetaDataKeys);
+raesumOrganizationRouter.get(
+    '/metadata/get',
+    raesumOrganization.getMetaDataKeys
+);
 
-raesumOrganizationRouter.post('/metadata/set/byKey/:key/:organizationId', raesumOrganization.setOneOrganizationMetaData);
-raesumOrganizationRouter.post('/metadata/set/byKey/:key/', raesumOrganization.setOneOrganizationMetaData);
-raesumOrganizationRouter.post('/metadata/delete/byKey/:key/:organizationId', raesumOrganization.deleteOneOrganizationMetaData);
-raesumOrganizationRouter.post('/metadata/delete/byKey/:key/', raesumOrganization.deleteOneOrganizationMetaData);
+raesumOrganizationRouter.post(
+    '/metadata/set/byKey/:key/:organizationId',
+    raesumOrganization.setOneOrganizationMetaData
+);
+raesumOrganizationRouter.post(
+    '/metadata/set/byKey/:key/',
+    raesumOrganization.setOneOrganizationMetaData
+);
+raesumOrganizationRouter.post(
+    '/metadata/delete/byKey/:key/:organizationId',
+    raesumOrganization.deleteOneOrganizationMetaData
+);
+raesumOrganizationRouter.post(
+    '/metadata/delete/byKey/:key/',
+    raesumOrganization.deleteOneOrganizationMetaData
+);
 
-raesumOrganizationRouter.post('/activation/set/:organizationId', raesumOrganization.setOrganizationActivation);
-raesumOrganizationRouter.post('/activation/set/', raesumOrganization.setOrganizationActivation);
+raesumOrganizationRouter.post(
+    '/activation/set/:organizationId',
+    raesumOrganization.setOrganizationActivation
+);
+raesumOrganizationRouter.post(
+    '/activation/set/',
+    raesumOrganization.setOrganizationActivation
+);
 
 /**
  * @swagger
