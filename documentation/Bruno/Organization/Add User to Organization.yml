@@ -15,7 +15,7 @@ http:
     type: json
     data: |-
       {
-        "value": "test@example.com"
+        "value": 1
       }
   auth: inherit
 
