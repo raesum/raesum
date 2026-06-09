@@ -1,0 +1,26 @@
+info:
+  name: Set Metadata by Key - Organization
+  type: http
+  seq: 9
+
+http:
+  method: POST
+  url: "{{host}}/api/v1/organization/metadata/set/byKey/description/1"
+  headers:
+    - name: Origin
+      value: "{{host}}"
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "value":"This is the default organization"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

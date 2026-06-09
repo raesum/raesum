@@ -403,7 +403,7 @@ class raesumOrganizationController {
         let isAuthorized = await raesumAuthorization.checkUserPermission(
             req.user.id,
             'raesum_organization_metadata',
-            'write',
+            'update',
             req.user.current_organization_id,
             organizationId
         );
@@ -411,7 +411,7 @@ class raesumOrganizationController {
         if (!isAuthorized) {
             // If not, get the not authorized message and return the rejected request
             const message = await raesumResponses.get('notAuthorized', [
-                'write',
+                'update',
                 'raesum_organization_metadata',
             ]);
             return res.status(message.code).json(message);
@@ -456,7 +456,7 @@ class raesumOrganizationController {
 
             // Add audit log entry
             await raesumAudit.create(
-                'write',
+                'update',
                 'raesum_organization_metadata',
                 organizationId,
                 req.user.id
@@ -618,7 +618,7 @@ class raesumOrganizationController {
         if (!isAuthorized) {
             // If not, get the not authorized message and return the rejected request
             const message = await raesumResponses.get('notAuthorized', [
-                'write',
+                'update',
                 'raesum_organization',
             ]);
             return res.status(message.code).json(message);
@@ -638,7 +638,7 @@ class raesumOrganizationController {
 
             // Add audit log entry
             await raesumAudit.create(
-                'write',
+                'update',
                 'raesum_organization',
                 organizationId,
                 req.user.id

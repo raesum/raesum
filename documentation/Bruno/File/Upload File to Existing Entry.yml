@@ -1,0 +1,25 @@
+info:
+  name: Upload File to Existing Entry
+  type: http
+  seq: 10
+
+http:
+  method: POST
+  url: "{{host}}/api/v1/file/upload/{{fileId}}"
+  headers:
+    - name: Origin
+      value: "{{host}}"
+  body:
+    type: multipart-form
+    files:
+      - name: file
+        filePath: "./test-file.txt"
+    form:
+      - key: fileType
+        value: "testTextFile"
+        type: text
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0

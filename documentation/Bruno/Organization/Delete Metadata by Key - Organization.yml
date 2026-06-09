@@ -1,0 +1,18 @@
+info:
+  name: Delete Metadata by Key - Organization
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: "{{host}}/api/v1/organization/metadata/delete/byKey/description/1"
+  headers:
+    - name: Origin
+      value: "{{host}}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

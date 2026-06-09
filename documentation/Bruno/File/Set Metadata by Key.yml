@@ -1,0 +1,22 @@
+info:
+  name: Set Metadata by Key
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: "{{host}}/api/v1/file/metadata/set/byKey/{{key}}/{{fileId}}"
+  headers:
+    - name: Origin
+      value: "{{host}}"
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    json:
+      value: "metadata value"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0

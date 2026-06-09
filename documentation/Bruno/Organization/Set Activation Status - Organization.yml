@@ -1,0 +1,26 @@
+info:
+  name: Set Activation Status - Organization
+  type: http
+  seq: 13
+
+http:
+  method: POST
+  url: "{{host}}/api/v1/organization/activation/set/1"
+  headers:
+    - name: Origin
+      value: "{{host}}"
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "activeStatus":true
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

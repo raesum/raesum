@@ -36,7 +36,7 @@ class raesumAuditObject {
         }
 
         // If any of the inputs are missing log error and return false
-        if (!actionType || !objectType || !objectID || !userID) {
+        if (!actionType || !objectType || !userID) {
             logger.error('Missing input for logEvent', Date.now() - start);
             throw new Error('Missing input for logEvent');
         }

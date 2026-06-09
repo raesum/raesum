@@ -1,0 +1,26 @@
+info:
+  name: Create Organization
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{host}}/api/v1/organization/create/"
+  headers:
+    - name: Origin
+      value: "{{host}}"
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "name":"Senatus Populusque Romanus"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

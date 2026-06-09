@@ -1,0 +1,16 @@
+info:
+  name: Delete File
+  type: http
+  seq: 12
+
+http:
+  method: POST
+  url: "{{host}}/api/v1/file/delete/{{fileId}}"
+  headers:
+    - name: Origin
+      value: "{{host}}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
