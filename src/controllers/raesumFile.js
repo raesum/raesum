@@ -11,7 +11,81 @@ import { get } from 'http';
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
 
+/*
+This controller can be called from other middleware if a file and a record need to be created.  To do so:
+
+1) Make sure to create a req.parentObject.type value and req.parentObject.Id value that contains the object name for permission purposes, otherwise the file object type will be used
+2) If working on an existing file record, you MUST pass the file ID as req.parentObject.fileId
+3) Validate the file type limitations (the file type key must be in the allowed list for the object type)
+4) Optionally pass a req.parentObject.callback function that will be used to pass the fileID to the parent object record (only applies to upload / delete actions where the file ID is not known or must be acted upon). The callback must take the params req.parentObject.Id, fileId as inputs. The callback is the LAST thing run before returning success. It is NOT run on failures or errors.
+
+Does NOT apply to getList or getMetadataKeys
+
+*/
+
 class raesumFileController {
+    async detereminePermissionObjectType(
+        req,
+        defaultTypeForAuthorization = 'raesum_file'
+    ) {
+        const allowedDefaults = ['raesum_file', 'raesum_file_metadata'];
+        // Determine if there is a parent object type for permissions testing
+        let objectTypeForAuthorization = 'raesum_file';
+        if (
+            defaultTypeForAuthorization &&
+            allowedDefaults.includes(defaultTypeForAuthorization)
+        ) {
+            objectTypeForAuthorization = defaultTypeForAuthorization;
+        }
+
+        // If req.parentObjectType is defined verify that it's a valid object type
+        try {
+            const objectType = await raesumAuthorization.getObjectTypeByName(
+                req.parentObject.type
+            );
+            objectTypeForAuthorization = objectType.name;
+        } catch (e) {
+            // If the object type is not found, use the default
+        }
+
+        return objectTypeForAuthorization;
+    }
+
+    async determineFileId(req, objectTypeForAuthorization) {
+        let start = Date.now();
+
+        // Check if fileId parameter is specified
+        let fileId;
+        const allowedDefaults = ['raesum_file', 'raesum_file_metadata'];
+
+        // The file controllers are being used by a parent object
+        if (
+            !allowedDefaults.includes(objectTypeForAuthorization) &&
+            req.parentObject &&
+            req.parentObject.fileId &&
+            !isNaN(parseInt(req.parentObject.fileId)) &&
+            parseInt(req.parentObject.fileId) > 0
+        ) {
+            fileId = parseInt(req.parentObject.fileId);
+        } else if (
+            !req.params.fileId ||
+            isNaN(parseInt(req.params.fileId)) ||
+            parseInt(req.params.fileId) < 1
+        ) {
+            // Controllers are being used for file or file meta but no ID in params
+            fileId = false;
+        } else {
+            // Controllers are being used for file or file meta and ID is provided
+            fileId = parseInt(req.params.fileId);
+        }
+
+        logger.debug(
+            `Determined fileId as ${fileId} for objectType ${objectTypeForAuthorization}`,
+            Date.now() - start
+        );
+        return fileId;
+    }
+
     async upload(req, res, next) {
         const start = Date.now();
 
@@ -19,9 +93,18 @@ class raesumFileController {
         const fileTypeKey = req.body.fileType;
         const originalFileName = req.file ? req.file.originalname : null;
 
+        // Determine if there is a parent object type for permissions testing
+        const objectTypeForAuthorization =
+            await this.detereminePermissionObjectType(req);
+
         // Check if fileId parameter is specified
-        let fileId;
-        if (req.params.fileId) {
+        const fileId = await this.determineFileId(
+            req,
+            objectTypeForAuthorization
+        );
+
+        let file;
+        if (fileId) {
             // Validate the fileId
             if (
                 isNaN(req.params.fileId) ||
@@ -34,7 +117,6 @@ class raesumFileController {
                 );
                 return res.status(message.code).json(message);
             }
-            fileId = parseInt(req.params.fileId);
 
             // Get the existing file entry
             let fileInfo;
@@ -53,7 +135,7 @@ class raesumFileController {
             if (fileInfo.user_id !== req.user.id) {
                 const message = await raesumResponses.get('notAuthorized', [
                     'upload',
-                    'raesum_file',
+                    objectTypeForAuthorization,
                 ]);
                 return res.status(message.code).json(message);
             }
@@ -67,7 +149,7 @@ class raesumFileController {
             // Check for permissions - update action on raesum_file
             const isAuthorized = await raesumAuthorization.checkUserPermission(
                 req.user.id,
-                'raesum_file',
+                objectTypeForAuthorization,
                 'update',
                 req.user.current_organization_id,
                 fileInfo.user_id
@@ -76,7 +158,7 @@ class raesumFileController {
             if (!isAuthorized) {
                 const message = await raesumResponses.get('notAuthorized', [
                     'update',
-                    'raesum_file',
+                    objectTypeForAuthorization,
                 ]);
                 return res.status(message.code).json(message);
             }
@@ -93,10 +175,29 @@ class raesumFileController {
                 // Create audit log
                 await raesumAudit.create(
                     'update',
-                    'raesum_file',
+                    objectTypeForAuthorization,
                     fileInfo.id,
                     req.user.id
                 );
+
+                // Call parent object callback if provided
+                try {
+                    if (
+                        req.parentObject &&
+                        req.parentObject.callback &&
+                        typeof req.parentObject.callback == 'function'
+                    ) {
+                        await req.parentObject.callback(
+                            req.parentObject.id,
+                            fileInfo.id
+                        );
+                    }
+                } catch (e) {
+                    logger.error(
+                        `Error calling parent object callback: ${e.message}`,
+                        Date.now() - start
+                    );
+                }
 
                 const message = await raesumResponses.get('success');
                 message.data = { fileId: fileInfo.id };
@@ -116,7 +217,7 @@ class raesumFileController {
             // Check for permissions - create action on raesum_file
             const isAuthorized = await raesumAuthorization.checkUserPermission(
                 req.user.id,
-                'raesum_file',
+                objectTypeForAuthorization,
                 'create',
                 req.user.current_organization_id,
                 req.user.id
@@ -125,7 +226,7 @@ class raesumFileController {
             if (!isAuthorized) {
                 const message = await raesumResponses.get('notAuthorized', [
                     'create',
-                    'raesum_file',
+                    objectTypeForAuthorization,
                 ]);
                 return res.status(message.code).json(message);
             }
@@ -150,10 +251,33 @@ class raesumFileController {
                 // Create audit log
                 await raesumAudit.create(
                     'create',
-                    'raesum_file',
+                    objectTypeForAuthorization,
                     fileInfo.id,
                     req.user.id
                 );
+
+                // Call parent object callback if provided
+                try {
+                    if (
+                        req.parentObject &&
+                        req.parentObject.callback &&
+                        typeof req.parentObject.callback == 'function'
+                    ) {
+                        logger.verbose(
+                            `File Callback for fileId: ${fileInfo.id} and objectType: ${req.parentObject.type} and objectId: ${req.parentObject.id}`,
+                            Date.now() - start
+                        );
+                        await req.parentObject.callback(
+                            req.parentObject.id,
+                            fileInfo.id
+                        );
+                    }
+                } catch (e) {
+                    logger.error(
+                        `Error calling parent object callback: ${e.message}`,
+                        Date.now() - start
+                    );
+                }
 
                 const message = await raesumResponses.get('success');
                 message.data = { fileId: fileInfo.id };
@@ -242,19 +366,20 @@ class raesumFileController {
     async getById(req, res, next) {
         const start = Date.now();
 
+        // Determine if there is a parent object type for permissions testing
+        const objectTypeForAuthorization =
+            await this.detereminePermissionObjectType(req);
+
         // Validate the file ID
-        let fileId;
-        if (
-            !req.params.fileId ||
-            isNaN(parseInt(req.params.fileId)) ||
-            parseInt(req.params.fileId) < 1
-        ) {
+        const fileId = await this.determineFileId(
+            req,
+            objectTypeForAuthorization
+        );
+        if (!fileId) {
             const message = await raesumResponses.get('requestInvalidFields', [
                 'fileId',
             ]);
             return res.status(message.code).json(message);
-        } else {
-            fileId = parseInt(req.params.fileId);
         }
 
         let file;
@@ -264,7 +389,7 @@ class raesumFileController {
             // Check for permissions
             const isAuthorized = await raesumAuthorization.checkUserPermission(
                 req.user.id,
-                'raesum_file',
+                objectTypeForAuthorization,
                 'read',
                 req.user.current_organization_id,
                 file.user_id
@@ -273,7 +398,7 @@ class raesumFileController {
             if (!isAuthorized) {
                 const message = await raesumResponses.get('notAuthorized', [
                     'read',
-                    'raesum_file',
+                    objectTypeForAuthorization,
                 ]);
                 return res.status(message.code).json(message);
             }
@@ -302,10 +427,34 @@ class raesumFileController {
         try {
             await raesumAudit.create(
                 'read',
-                'raesum_file',
+                objectTypeForAuthorization,
                 fileId,
                 req.user.id
             );
+
+            // Call parent object callback if provided
+            try {
+                if (
+                    req.parentObject &&
+                    req.parentObject.callback &&
+                    typeof req.parentObject.callback == 'function'
+                ) {
+                    logger.verbose(
+                        `File Callback for fileId: ${fileId} and objectType: ${req.parentObject.type} and objectId: ${req.parentObject.id}`,
+                        Date.now() - start
+                    );
+                    await req.parentObject.callback(
+                        req.parentObject.id,
+                        fileId
+                    );
+                }
+            } catch (e) {
+                logger.error(
+                    `Error calling parent object callback: ${e.message}`,
+                    Date.now() - start
+                );
+            }
+
             const message = await raesumResponses.get('success');
             message.data = file;
             return res.status(message.code).json(message);
@@ -323,19 +472,20 @@ class raesumFileController {
     async getFileById(req, res, next) {
         const start = Date.now();
 
+        // Determine if there is a parent object type for permissions testing
+        const objectTypeForAuthorization =
+            await this.detereminePermissionObjectType(req);
+
         // Validate the file ID
-        let fileId;
-        if (
-            !req.params.fileId ||
-            isNaN(parseInt(req.params.fileId)) ||
-            parseInt(req.params.fileId) < 1
-        ) {
+        const fileId = await this.determineFileId(
+            req,
+            objectTypeForAuthorization
+        );
+        if (!fileId) {
             const message = await raesumResponses.get('requestInvalidFields', [
                 'fileId',
             ]);
             return res.status(message.code).json(message);
-        } else {
-            fileId = parseInt(req.params.fileId);
         }
 
         let file;
@@ -345,7 +495,7 @@ class raesumFileController {
             // Check for permissions
             const isAuthorized = await raesumAuthorization.checkUserPermission(
                 req.user.id,
-                'raesum_file',
+                objectTypeForAuthorization,
                 'read',
                 req.user.current_organization_id,
                 file.user_id
@@ -354,7 +504,7 @@ class raesumFileController {
             if (!isAuthorized) {
                 const message = await raesumResponses.get('notAuthorized', [
                     'read',
-                    'raesum_file',
+                    objectTypeForAuthorization,
                 ]);
                 return res.status(message.code).json(message);
             }
@@ -386,6 +536,29 @@ class raesumFileController {
             if (fileType && fileType.publicByDefault) {
                 const publicURL = await raesumFile.getPublicURL(fileId);
                 if (publicURL) {
+                    // Call parent object callback if provided
+                    try {
+                        if (
+                            req.parentObject &&
+                            req.parentObject.callback &&
+                            typeof req.parentObject.callback == 'function'
+                        ) {
+                            logger.verbose(
+                                `File Callback for fileId: ${fileId} and objectType: ${req.parentObject.type} and objectId: ${req.parentObject.id}`,
+                                Date.now() - start
+                            );
+                            await req.parentObject.callback(
+                                req.parentObject.id,
+                                fileId
+                            );
+                        }
+                    } catch (e) {
+                        logger.error(
+                            `Error calling parent object callback: ${e.message}`,
+                            Date.now() - start
+                        );
+                    }
+
                     return res.redirect(publicURL);
                 } else {
                     const message = await raesumResponses.get('notFound');
@@ -396,6 +569,25 @@ class raesumFileController {
                 // Use the S3 client to get the file and return it as the request
                 const signedURL = await raesumFile.getSignedURL(fileId);
                 if (signedURL) {
+                    // Call parent object callback if provided
+                    try {
+                        if (
+                            req.parentObject &&
+                            req.parentObject.callback &&
+                            typeof req.parentObject.callback == 'function'
+                        ) {
+                            await req.parentObject.callback(
+                                req.parentObject.id,
+                                fileId
+                            );
+                        }
+                    } catch (e) {
+                        logger.error(
+                            `Error calling parent object callback: ${e.message}`,
+                            Date.now() - start
+                        );
+                    }
+
                     return res.redirect(signedURL);
                 }
                 const message = await raesumResponses.get('notFound');
@@ -414,19 +606,21 @@ class raesumFileController {
     async delete(req, res, next) {
         const start = Date.now();
 
+        // Determine if there is a parent object type for permissions testing
+        const objectTypeForAuthorization =
+            await this.detereminePermissionObjectType(req);
+
         // Validate the file ID
-        let fileId;
-        if (
-            !req.params.fileId ||
-            isNaN(parseInt(req.params.fileId)) ||
-            parseInt(req.params.fileId) < 1
-        ) {
+        const fileId = await this.determineFileId(
+            req,
+            objectTypeForAuthorization
+        );
+        if (!fileId) {
             const message = await raesumResponses.get('requestInvalidFields', [
                 'fileId',
             ]);
             return res.status(message.code).json(message);
         }
-        fileId = parseInt(req.params.fileId);
 
         let file;
         try {
@@ -443,7 +637,7 @@ class raesumFileController {
         // Check for permissions
         const isAuthorized = await raesumAuthorization.checkUserPermission(
             req.user.id,
-            'raesum_file',
+            objectTypeForAuthorization,
             'delete',
             req.user.current_organization_id,
             file.user_id
@@ -465,6 +659,30 @@ class raesumFileController {
                 fileId,
                 req.user.id
             );
+
+            // Call parent object callback if provided
+            try {
+                if (
+                    req.parentObject &&
+                    req.parentObject.callback &&
+                    typeof req.parentObject.callback == 'function'
+                ) {
+                    logger.verbose(
+                        `File Callback for fileId: ${fileId} and objectType: ${req.parentObject.type} and objectId: ${req.parentObject.id}`,
+                        Date.now() - start
+                    );
+                    await req.parentObject.callback(
+                        req.parentObject.id,
+                        fileId
+                    );
+                }
+            } catch (e) {
+                logger.error(
+                    `Error calling parent object callback: ${e.message}`,
+                    Date.now() - start
+                );
+            }
+
             const message = await raesumResponses.get('success');
             return res.status(message.code).json(message);
         } catch (e) {
@@ -487,25 +705,27 @@ class raesumFileController {
         }
     }
 
-    async getFileMetadata(req, res, next) {
-        return this.getAllFileMetadata(req, res, next);
-    }
-
     async deleteOneFileMetadata(req, res, next) {
         const start = Date.now();
 
-        let fileId;
-        if (
-            !req.params.fileId ||
-            isNaN(parseInt(req.params.fileId)) ||
-            parseInt(req.params.fileId) < 1
-        ) {
+        // Determine if there is a parent object type for permissions testing
+        const objectTypeForAuthorization =
+            await this.detereminePermissionObjectType(
+                req,
+                'raesum_file_metadata'
+            );
+
+        // Validate the file ID
+        const fileId = await this.determineFileId(
+            req,
+            objectTypeForAuthorization
+        );
+        if (!fileId) {
             const message = await raesumResponses.get('requestInvalidFields', [
                 'fileId',
             ]);
             return res.status(message.code).json(message);
         }
-        fileId = parseInt(req.params.fileId);
 
         let file;
         try {
@@ -521,7 +741,7 @@ class raesumFileController {
 
         const isAuthorized = await raesumAuthorization.checkUserPermission(
             req.user.id,
-            'raesum_file_metadata',
+            objectTypeForAuthorization,
             'delete',
             req.user.current_organization_id,
             file.user_id
@@ -552,6 +772,31 @@ class raesumFileController {
                 fileId,
                 req.user.id
             );
+
+            // Call parent object callback if provided
+            try {
+                if (
+                    req.parentObject &&
+                    req.parentObject.callback &&
+                    typeof req.parentObject.callback == 'function'
+                ) {
+                    logger.verbose(
+                        `File Callback for fileId: ${fileId} and objectType: ${req.parentObject.type} and objectId: ${req.parentObject.id}`,
+                        Date.now() - start
+                    );
+
+                    await req.parentObject.callback(
+                        req.parentObject.id,
+                        fileId
+                    );
+                }
+            } catch (e) {
+                logger.error(
+                    `Error calling parent object callback: ${e.message}`,
+                    Date.now() - start
+                );
+            }
+
             const message = await raesumResponses.get('success');
             return res.status(message.code).json(message);
         } catch (e) {
@@ -567,18 +812,24 @@ class raesumFileController {
     async setOneFileMetadata(req, res, next) {
         const start = Date.now();
 
-        let fileId;
-        if (
-            !req.params.fileId ||
-            isNaN(parseInt(req.params.fileId)) ||
-            parseInt(req.params.fileId) < 1
-        ) {
+        // Determine if there is a parent object type for permissions testing
+        const objectTypeForAuthorization =
+            await this.detereminePermissionObjectType(
+                req,
+                'raesum_file_metadata'
+            );
+
+        // Validate the file ID
+        const fileId = await this.determineFileId(
+            req,
+            objectTypeForAuthorization
+        );
+        if (!fileId) {
             const message = await raesumResponses.get('requestInvalidFields', [
                 'fileId',
             ]);
             return res.status(message.code).json(message);
         }
-        fileId = parseInt(req.params.fileId);
 
         let file;
         try {
@@ -594,7 +845,7 @@ class raesumFileController {
 
         const isAuthorized = await raesumAuthorization.checkUserPermission(
             req.user.id,
-            'raesum_file_metadata',
+            objectTypeForAuthorization,
             'update',
             req.user.current_organization_id,
             file.user_id
@@ -603,7 +854,7 @@ class raesumFileController {
         if (!isAuthorized) {
             const message = await raesumResponses.get('notAuthorized', [
                 'update',
-                'raesum_file_metadata',
+                objectTypeForAuthorization,
             ]);
             return res.status(message.code).json(message);
         }
@@ -634,6 +885,31 @@ class raesumFileController {
                 fileId,
                 req.user.id
             );
+
+            // Call parent object callback if provided
+            try {
+                if (
+                    req.parentObject &&
+                    req.parentObject.callback &&
+                    typeof req.parentObject.callback == 'function'
+                ) {
+                    logger.verbose(
+                        `File Callback for fileId: ${fileId} and objectType: ${req.parentObject.type} and objectId: ${req.parentObject.id}`,
+                        Date.now() - start
+                    );
+
+                    await req.parentObject.callback(
+                        req.parentObject.id,
+                        fileId
+                    );
+                }
+            } catch (e) {
+                logger.error(
+                    `Error calling parent object callback: ${e.message}`,
+                    Date.now() - start
+                );
+            }
+
             const message = await raesumResponses.get('success');
             return res.status(message.code).json(message);
         } catch (e) {
@@ -649,18 +925,24 @@ class raesumFileController {
     async getAllFileMetadata(req, res, next) {
         const start = Date.now();
 
-        let fileId;
-        if (
-            !req.params.fileId ||
-            isNaN(parseInt(req.params.fileId)) ||
-            parseInt(req.params.fileId) < 1
-        ) {
+        // Determine if there is a parent object type for permissions testing
+        const objectTypeForAuthorization =
+            await this.detereminePermissionObjectType(
+                req,
+                'raesum_file_metadata'
+            );
+
+        // Validate the file ID
+        const fileId = await this.determineFileId(
+            req,
+            objectTypeForAuthorization
+        );
+        if (!fileId) {
             const message = await raesumResponses.get('requestInvalidFields', [
                 'fileId',
             ]);
             return res.status(message.code).json(message);
         }
-        fileId = parseInt(req.params.fileId);
 
         let file;
         try {
@@ -676,7 +958,7 @@ class raesumFileController {
 
         const isAuthorized = await raesumAuthorization.checkUserPermission(
             req.user.id,
-            'raesum_file_metadata',
+            objectTypeForAuthorization,
             'read',
             req.user.current_organization_id,
             file.user_id
@@ -685,7 +967,7 @@ class raesumFileController {
         if (!isAuthorized) {
             const message = await raesumResponses.get('notAuthorized', [
                 'read',
-                'raesum_file_metadata',
+                objectTypeForAuthorization,
             ]);
             return res.status(message.code).json(message);
         }
@@ -702,6 +984,31 @@ class raesumFileController {
                 fileId,
                 req.user.id
             );
+
+            // Call parent object callback if provided
+            try {
+                if (
+                    req.parentObject &&
+                    req.parentObject.callback &&
+                    typeof req.parentObject.callback == 'function'
+                ) {
+                    logger.verbose(
+                        `File Callback for fileId: ${fileId} and objectType: ${req.parentObject.type} and objectId: ${req.parentObject.id}`,
+                        Date.now() - start
+                    );
+
+                    await req.parentObject.callback(
+                        req.parentObject.id,
+                        fileId
+                    );
+                }
+            } catch (e) {
+                logger.error(
+                    `Error calling parent object callback: ${e.message}`,
+                    Date.now() - start
+                );
+            }
+
             const message = await raesumResponses.get('success');
             message.data = metadata;
             return res.status(message.code).json(message);
@@ -718,18 +1025,24 @@ class raesumFileController {
     async getOneFileMetadata(req, res, next) {
         const start = Date.now();
 
-        let fileId;
-        if (
-            !req.params.fileId ||
-            isNaN(parseInt(req.params.fileId)) ||
-            parseInt(req.params.fileId) < 1
-        ) {
+        // Determine if there is a parent object type for permissions testing
+        const objectTypeForAuthorization =
+            await this.detereminePermissionObjectType(
+                req,
+                'raesum_file_metadata'
+            );
+
+        // Validate the file ID
+        const fileId = await this.determineFileId(
+            req,
+            objectTypeForAuthorization
+        );
+        if (!fileId) {
             const message = await raesumResponses.get('requestInvalidFields', [
                 'fileId',
             ]);
             return res.status(message.code).json(message);
         }
-        fileId = parseInt(req.params.fileId);
 
         let file;
         try {
@@ -745,7 +1058,7 @@ class raesumFileController {
 
         const isAuthorized = await raesumAuthorization.checkUserPermission(
             req.user.id,
-            'raesum_file_metadata',
+            objectTypeForAuthorization,
             'read',
             req.user.current_organization_id,
             file.user_id
@@ -754,7 +1067,7 @@ class raesumFileController {
         if (!isAuthorized) {
             const message = await raesumResponses.get('notAuthorized', [
                 'read',
-                'raesum_file_metadata',
+                objectTypeForAuthorization,
             ]);
             return res.status(message.code).json(message);
         }
@@ -778,6 +1091,31 @@ class raesumFileController {
                 fileId,
                 req.user.id
             );
+
+            // Call parent object callback if provided
+            try {
+                if (
+                    req.parentObject &&
+                    req.parentObject.callback &&
+                    typeof req.parentObject.callback == 'function'
+                ) {
+                    logger.verbose(
+                        `File Callback for fileId: ${fileId} and objectType: ${req.parentObject.type} and objectId: ${req.parentObject.id}`,
+                        Date.now() - start
+                    );
+
+                    await req.parentObject.callback(
+                        req.parentObject.id,
+                        fileId
+                    );
+                }
+            } catch (e) {
+                logger.error(
+                    `Error calling parent object callback: ${e.message}`,
+                    Date.now() - start
+                );
+            }
+
             const message = await raesumResponses.get('success');
             message.data = metadata;
             return res.status(message.code).json(message);
