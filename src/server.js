@@ -179,6 +179,7 @@ export async function createApp() {
                 '/api/v1/auth/login',
                 '/api/v1/auth/callbackSession',
                 '/api/v1/auth/callbackJWT',
+                '/api/v1/auth/signup',
             ],
         })
     );
