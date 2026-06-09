@@ -587,7 +587,10 @@ class raesumAuthController {
         }
 
         // If the user is already logged in via session cookie, return error
-        if (req.session.loginType == 'sessionCookie') {
+        if (
+            loginMethods.useSessionCookie &&
+            req.session.loginType == 'sessionCookie'
+        ) {
             // If the user logged in via JWT display response that the already have started a JWT session
             const response = await raesumResponses.get(
                 'alreadyLoggedInDifferentType'
