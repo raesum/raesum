@@ -1,9 +1,7 @@
 import express from 'express';
-import raesumUser from "../controllers/raesumUser.js";
-
+import raesumUser from '../controllers/raesumUser.js';
 
 const raesumUserRouter = express.Router();
-
 
 /**
  * @swagger
@@ -153,6 +151,168 @@ raesumUserRouter.get('/get/', raesumUser.getUserById);
 
 /**
  * @swagger
+ * /api/v1/user/list/{organizationId}:
+ *   get:
+ *     summary: List users in a specific organization
+ *     description: Retrieve all users in a specific organization. Authorization is required - users must have list permission on raesum_user object.
+ *     tags:
+ *       - User
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: organizationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Organization ID to list users for
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved users in organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 title:
+ *                   type: string
+ *                   example: "Success"
+ *                   description: Response title
+ *                 message:
+ *                   type: string
+ *                   example: "OK"
+ *                   description: Response message
+ *                 description:
+ *                   type: string
+ *                   example: "The request was successful."
+ *                   description: Response description
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                   description: HTTP status code
+ *                 keycode:
+ *                   type: integer
+ *                   example: 1
+ *                   description: Internal response code
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                         description: Internal user ID
+ *                       current_organization_id:
+ *                         type: integer
+ *                         example: 1
+ *                         description: Current organization ID
+ *                       external_id:
+ *                         type: string
+ *                         example: "b49884a8-e021-70ee-50eb-817e0a3b634e"
+ *                         description: External user ID (Cognito sub)
+ *                       username:
+ *                         type: string
+ *                         example: "odin"
+ *                         description: Username
+ *                       active_status:
+ *                         type: boolean
+ *                         example: true
+ *                         description: Whether the user is active
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2026-05-03T17:31:40.531Z"
+ *                         description: When the user was created
+ *                   description: Array of users in the organization
+ *       400:
+ *         description: Bad request - invalid organization ID
+ *       401:
+ *         description: Not authorized to list users
+ *       500:
+ *         description: Internal server error
+ */
+raesumUserRouter.get('/list/:organizationId', raesumUser.list);
+
+/**
+ * @swagger
+ * /api/v1/user/list/:
+ *   get:
+ *     summary: List users in current organization
+ *     description: Retrieve all users in the current user's organization. Authorization is required - users must have list permission on raesum_user object.
+ *     tags:
+ *       - User
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved users in current organization
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 title:
+ *                   type: string
+ *                   example: "Success"
+ *                   description: Response title
+ *                 message:
+ *                   type: string
+ *                   example: "OK"
+ *                   description: Response message
+ *                 description:
+ *                   type: string
+ *                   example: "The request was successful."
+ *                   description: Response description
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                   description: HTTP status code
+ *                 keycode:
+ *                   type: integer
+ *                   example: 1
+ *                   description: Internal response code
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                         description: Internal user ID
+ *                       current_organization_id:
+ *                         type: integer
+ *                         example: 1
+ *                         description: Current organization ID
+ *                       external_id:
+ *                         type: string
+ *                         example: "b49884a8-e021-70ee-50eb-817e0a3b634e"
+ *                         description: External user ID (Cognito sub)
+ *                       username:
+ *                         type: string
+ *                         example: "odin"
+ *                         description: Username
+ *                       active_status:
+ *                         type: boolean
+ *                         example: true
+ *                         description: Whether the user is active
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2026-05-03T17:31:40.531Z"
+ *                         description: When the user was created
+ *                   description: Array of users in the current organization
+ *       401:
+ *         description: Not authorized to list users
+ *       500:
+ *         description: Internal server error
+ */
+raesumUserRouter.get('/list/', raesumUser.list);
+
+/**
+ * @swagger
  * /api/v1/user/metadata/get/keys:
  *   get:
  *     summary: Get all user metadata keys
@@ -282,7 +442,10 @@ raesumUserRouter.get('/metadata/get/keys/', raesumUser.getMetaDataKeys);
  *                     profileDescription: "Cometes necessitatibus possimus urbanus utrimque. Volup tum aspernatur. Vomer toties crudelis."
  *                   description: Object containing the requested metadata key-value pair
  */
-raesumUserRouter.get('/metadata/get/byKey/:key/:userId', raesumUser.getOneUserMetaData);
+raesumUserRouter.get(
+    '/metadata/get/byKey/:key/:userId',
+    raesumUser.getOneUserMetaData
+);
 /**
  * @swagger
  * /api/v1/user/metadata/get/byKey/{key}:
@@ -444,7 +607,6 @@ raesumUserRouter.get('/metadata/get/:userId', raesumUser.getAllUserMetaData);
  */
 raesumUserRouter.get('/metadata/get', raesumUser.getAllUserMetaData);
 
-
 /**
  * @swagger
  * /api/v1/user/metadata/resync:
@@ -493,8 +655,6 @@ raesumUserRouter.get('/metadata/get', raesumUser.getAllUserMetaData);
  *                   description: Object containing operation result
  */
 raesumUserRouter.get('/metadata/resync', raesumUser.resyncUserFromCognito); // TO-DO rate-limit this
-
-
 
 /**
  * @swagger
@@ -561,7 +721,10 @@ raesumUserRouter.get('/metadata/resync', raesumUser.resyncUserFromCognito); // T
  *                         description: User's role in this organization
  *                   description: Array of organizations user has access to
  */
-raesumUserRouter.get('/organization/getAllowed/:userId', raesumUser.getAllowedOrgs);
+raesumUserRouter.get(
+    '/organization/getAllowed/:userId',
+    raesumUser.getAllowedOrgs
+);
 
 /**
  * @swagger
@@ -621,8 +784,6 @@ raesumUserRouter.get('/organization/getAllowed/:userId', raesumUser.getAllowedOr
  *                   description: Array of organizations user has access to
  */
 raesumUserRouter.get('/organization/getAllowed', raesumUser.getAllowedOrgs);
-
-
 
 /**
  * @swagger
@@ -688,9 +849,12 @@ raesumUserRouter.get('/organization/getAllowed', raesumUser.getAllowedOrgs);
  *                   type: integer
  *                   example: 1
  *                   description: Internal response code
- *                
+ *
  */
-raesumUserRouter.post('/metadata/set/byKey/:key/:userId', raesumUser.setOneUserMetaData);
+raesumUserRouter.post(
+    '/metadata/set/byKey/:key/:userId',
+    raesumUser.setOneUserMetaData
+);
 
 /**
  * @swagger
@@ -749,9 +913,12 @@ raesumUserRouter.post('/metadata/set/byKey/:key/:userId', raesumUser.setOneUserM
  *                   type: integer
  *                   example: 1
  *                   description: Internal response code
- *                
+ *
  */
-raesumUserRouter.post('/metadata/set/byKey/:key/', raesumUser.setOneUserMetaData);
+raesumUserRouter.post(
+    '/metadata/set/byKey/:key/',
+    raesumUser.setOneUserMetaData
+);
 
 /**
  * @swagger
@@ -805,11 +972,16 @@ raesumUserRouter.post('/metadata/set/byKey/:key/', raesumUser.setOneUserMetaData
  *                   type: integer
  *                   example: 1
  *                   description: Internal response code
- *                 
+ *
  */
-raesumUserRouter.post('/metadata/delete/byKey/:key/:userId', raesumUser.deleteOneUserMetaData);
-raesumUserRouter.post('/metadata/delete/byKey/:key/', raesumUser.deleteOneUserMetaData);
-
+raesumUserRouter.post(
+    '/metadata/delete/byKey/:key/:userId',
+    raesumUser.deleteOneUserMetaData
+);
+raesumUserRouter.post(
+    '/metadata/delete/byKey/:key/',
+    raesumUser.deleteOneUserMetaData
+);
 
 /**
  * @swagger
@@ -1058,7 +1230,7 @@ raesumUserRouter.post('/organization/set/:userId', raesumUser.changeUserOrg);
  *                   type: integer
  *                   example: 1
  *                   description: Internal response code
- *                
+ *
  */
 raesumUserRouter.post('/organization/set/', raesumUser.changeUserOrg);
 

@@ -4,6 +4,7 @@ import raesumResponses from '../modules/raesumResponses.js';
 import raesumAudit from '../models/raesumAudit.js';
 import raesumUser from '../models/raesumUser.js';
 import raesumAuthorization from '../models/raesumAuth.js';
+import raesumOrganization from '../models/raesumOrganization.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const logger = raesumLogger(__filename);
@@ -88,6 +89,100 @@ class raesumUserController {
         } catch (e) {
             logger.error(
                 `Error getting user ${userId}: ${e.message}`,
+                Date.now() - start
+            );
+            const message = await raesumResponses.get('internalServerError');
+            return res.status(message.code).json(message);
+        }
+    }
+
+    // Lists users in an organization
+    async list(req, res, next) {
+        const start = Date.now();
+
+        // Get organization ID from params or use current org
+        let organizationId = null;
+        if (req.params.organizationId) {
+            // Validate the organization ID is a number
+            if (
+                isNaN(req.params.organizationId) ||
+                req.params.organizationId < 1 ||
+                !Number.isInteger(parseInt(req.params.organizationId))
+            ) {
+                const message = await raesumResponses.get(
+                    'requestInvalidFields',
+                    ['organizationId']
+                );
+                return res.status(message.code).json(message);
+            }
+            organizationId = parseInt(req.params.organizationId);
+        } else {
+            organizationId = req.user.current_organization_id;
+        }
+
+        // If the requested organization is different from current org, validate it exists
+        if (organizationId !== req.user.current_organization_id) {
+            try {
+                const org = await raesumOrganization.getById(organizationId);
+                if (!org) {
+                    const message = await raesumResponses.get(
+                        'requestInvalidFields',
+                        ['organizationId']
+                    );
+                    return res.status(message.code).json(message);
+                }
+            } catch (e) {
+                const message = await raesumResponses.get(
+                    'requestInvalidFields',
+                    ['organizationId']
+                );
+                return res.status(message.code).json(message);
+            }
+        }
+
+        // Check user has list permission on raesum_user
+        let isAuthorized = await raesumAuthorization.checkUserPermission(
+            req.user.id,
+            'raesum_user',
+            'list',
+            req.user.current_organization_id,
+            organizationId
+        );
+
+        if (!isAuthorized) {
+            const message = await raesumResponses.get('notAuthorized', [
+                'list',
+                'raesum_user',
+            ]);
+            return res.status(message.code).json(message);
+        }
+
+        try {
+            // Get users in the organization
+            const users = await raesumOrganization.getUsers(
+                organizationId,
+                true
+            );
+
+            logger.info(
+                `Users retrieved for organization ${organizationId}`,
+                Date.now() - start
+            );
+
+            // Add audit log entry
+            await raesumAudit.create(
+                'list',
+                'raesum_user',
+                organizationId,
+                req.user.id
+            );
+
+            const message = await raesumResponses.get('success');
+            message.data = users;
+            return res.status(message.code).json(message);
+        } catch (e) {
+            logger.error(
+                `Error getting users for organization ${organizationId}: ${e.message}`,
                 Date.now() - start
             );
             const message = await raesumResponses.get('internalServerError');
