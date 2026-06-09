@@ -391,6 +391,83 @@ class raesumCognito {
     }
 
     /**
+     * Gets new tokens using a refresh token from Cognito
+     * @param {string} refreshToken - The refresh token from Cognito
+     * @return {Object} Token response containing id_token, access_token, refresh_token, expires_in
+     * @throws {Error} if unable to get tokens from refresh token
+     */
+    async getTokensFromRefreshToken(refreshToken) {
+        const start = Date.now();
+
+        try {
+            // Get required configuration
+            const clientId = await raesumConfig.get(
+                'aws.cognito.cognitoClientId'
+            );
+            const region = await raesumConfig.get('aws.region');
+            const userPoolId = await raesumConfig.get('aws.cognito.userPoolId');
+
+            // Build the token endpoint URL
+            let tokenEndpoint;
+            const userPoolDescription =
+                await this.getCognitoUserPoolDescription();
+
+            if (userPoolDescription.UserPool.CustomDomain) {
+                tokenEndpoint = `https://${userPoolDescription.UserPool.CustomDomain.Domain}/oauth2/token`;
+            } else {
+                tokenEndpoint = `https://${userPoolDescription.UserPool.Domain}.auth.${region}.amazoncognito.com/oauth2/token`;
+            }
+
+            // Prepare the request body with refresh token grant type
+            const params = new URLSearchParams();
+            params.append('grant_type', 'refresh_token');
+            params.append('client_id', clientId);
+            params.append('refresh_token', refreshToken);
+
+            // Make the token request
+            const response = await fetch(tokenEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params.toString(),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                logger.error(
+                    `Token refresh failed: ${response.status} ${errorText}`,
+                    Date.now() - start
+                );
+                throw new Error(
+                    `Token refresh failed: ${response.status} ${errorText}`
+                );
+            }
+
+            const tokenData = await response.json();
+
+            logger.info(
+                'Successfully refreshed JWT tokens using refresh token',
+                Date.now() - start
+            );
+
+            return {
+                id_token: tokenData.id_token,
+                access_token: tokenData.access_token,
+                refresh_token: tokenData.refresh_token,
+                expires_in: tokenData.expires_in,
+                token_type: tokenData.token_type,
+            };
+        } catch (error) {
+            logger.error(
+                `Error refreshing tokens: ${error.message}`,
+                Date.now() - start
+            );
+            throw new Error(`Failed to refresh tokens: ${error.message}`);
+        }
+    }
+
+    /**
      * Exchanges an authorization code for JWT tokens using OAuth2 flow
      * @param {string} code - The authorization code from Cognito
      * @param {string} redirectUri - The redirect URI used in the original request

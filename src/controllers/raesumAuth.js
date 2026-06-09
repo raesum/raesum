@@ -625,15 +625,12 @@ class raesumAuthController {
             req.session.loggedIn = true;
 
             // Build the response object
-            const response = {
-                success: true,
-                data: {
-                    access_token: tokenResponse.access_token,
-                    id_token: tokenResponse.id_token,
-                    refresh_token: tokenResponse.refresh_token,
-                    expires_in: tokenResponse.expires_in,
-                    token_type: tokenResponse.token_type,
-                },
+            const responseData = {
+                access_token: tokenResponse.access_token,
+                id_token: tokenResponse.id_token,
+                refresh_token: tokenResponse.refresh_token,
+                expires_in: tokenResponse.expires_in,
+                token_type: tokenResponse.token_type,
             };
 
             // Update user metadata from Cognito
@@ -663,13 +660,14 @@ class raesumAuthController {
             // Add audit log entry
             await raesumAudit.create('log_in', 'raesum_user', user.id, user.id);
             const message = await raesumResponses.get('loggedIn', [user.id]);
+            message.data = responseData;
             logger.info(
                 `User ${user.id} successfully logged in via JWT`,
                 Date.now() - start
             );
 
             // Return the response object
-            return res.status(message.code).json(response);
+            return res.status(message.code).json(message);
         } catch (e) {
             logger.error(
                 `Token exchange failed: ${e.message}`,
@@ -1172,6 +1170,111 @@ class raesumAuthController {
         } catch (e) {
             logger.error(
                 `Error removing roles from user ${userId}: ${e.message}`,
+                Date.now() - start
+            );
+            const message = await raesumResponses.get('internalServerError');
+            return res.status(message.code).json(message);
+        }
+    }
+
+    async refreshJWT(req, res, next) {
+        const start = Date.now();
+
+        // Step 1: Check if JWT logins are enabled in the configuration
+        const loginMethods = await raesumConfig.get('login');
+        if (loginMethods.jwt == false) {
+            // Get the error message for login type not allowed
+            const message = await raesumResponses.get('loginTypeNotAllowed');
+            return res.status(message.code).json(message);
+        }
+
+        // Step 2: Get the refresh token from the request body
+        const { refreshToken } = req.body;
+        if (!refreshToken) {
+            // Return error if refresh token is not provided
+            const message = await raesumResponses.get('requestMissingFields', [
+                'refreshToken',
+            ]);
+            return res.status(message.code).json(message);
+        }
+
+        // Step 3: Validate that refresh token is a string
+        if (typeof refreshToken !== 'string' || refreshToken.length < 1) {
+            const message = await raesumResponses.get('requestInvalidFields', [
+                'refreshToken',
+            ]);
+            return res.status(message.code).json(message);
+        }
+
+        try {
+            // Step 4: Call Cognito to get new tokens using the refresh token
+            logger.verbose(
+                'Attempting to refresh JWT tokens using refresh token',
+                Date.now() - start
+            );
+            const tokenResponse =
+                await raesumCognito.getTokensFromRefreshToken(refreshToken);
+
+            // Step 5: Validate the new ID token to get user information
+            logger.verbose(
+                'Validating new ID token to get user information',
+                Date.now() - start
+            );
+            const tokenPayload = await raesumCognito.validateJWTToken(
+                tokenResponse.id_token
+            );
+
+            // Step 6: Extract Cognito user ID from token
+            const cognitoUserId = tokenPayload.sub;
+
+            // Step 7: Get the user from Raesum DB to verify they exist and are active
+            let user = null;
+            try {
+                logger.verbose(
+                    'Getting user from Raesum DB',
+                    Date.now() - start
+                );
+                user = await raesumUser.getUserByExternalID(cognitoUserId);
+            } catch (e) {
+                logger.error(
+                    `User ${cognitoUserId} not found in Raesum DB`,
+                    Date.now() - start
+                );
+                const message = await raesumResponses.get('invalidUserPool');
+                return res.status(message.code).json(message);
+            }
+
+            // Step 8: Check if user is active
+            if (user.active_status === false) {
+                logger.warning(
+                    `User ${cognitoUserId} is inactive in Raesum DB`,
+                    Date.now() - start
+                );
+                const message = await raesumResponses.get('invalidUserPool');
+                return res.status(message.code).json(message);
+            }
+
+            // Step 9: Add audit log entry for token refresh
+            await raesumAudit.create('log_in', 'raesum_user', user.id, user.id);
+
+            // Step 10: Return success response with new tokens
+            logger.info(
+                `Successfully refreshed JWT tokens for user ${user.id}`,
+                Date.now() - start
+            );
+            const message = await raesumResponses.get('success');
+            message.data = {
+                id_token: tokenResponse.id_token,
+                access_token: tokenResponse.access_token,
+                refresh_token: tokenResponse.refresh_token,
+                expires_in: tokenResponse.expires_in,
+                token_type: tokenResponse.token_type,
+            };
+            return res.status(message.code).json(message);
+        } catch (error) {
+            // Step 11: Handle any errors during the refresh process
+            logger.error(
+                `Error refreshing JWT tokens: ${error.message}`,
                 Date.now() - start
             );
             const message = await raesumResponses.get('internalServerError');

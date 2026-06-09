@@ -350,9 +350,26 @@ raesumAuthRouter.get('/callbackSession', raesumAuth.callbackSession);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 title:
+ *                   type: string
+ *                   example: "Success"
+ *                   description: Response title
+ *                 message:
+ *                   type: string
+ *                   example: "OK"
+ *                   description: Response message
+ *                 description:
+ *                   type: string
+ *                   example: "The request was successful."
+ *                   description: Response description
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                   description: HTTP status code
+ *                 keycode:
+ *                   type: integer
+ *                   example: 1
+ *                   description: Internal response code
  *                 data:
  *                   type: object
  *                   properties:
@@ -381,6 +398,88 @@ raesumAuthRouter.get('/callbackSession', raesumAuth.callbackSession);
  *         description: Internal server error
  */
 raesumAuthRouter.get('/callbackJWT', raesumAuth.callbackJWT);
+
+/**
+ * @swagger
+ * /api/v1/auth/refreshJWT:
+ *   post:
+ *     summary: Refresh JWT tokens using refresh token
+ *     description: Uses a refresh token to obtain new ID, access, and refresh tokens from AWS Cognito. JWT logins must be enabled.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: The refresh token obtained from previous authentication
+ *                 example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *     responses:
+ *       200:
+ *         description: Successfully refreshed JWT tokens
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 title:
+ *                   type: string
+ *                   example: "Success"
+ *                   description: Response title
+ *                 message:
+ *                   type: string
+ *                   example: "OK"
+ *                   description: Response message
+ *                 description:
+ *                   type: string
+ *                   example: "The request was successful."
+ *                   description: Response description
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                   description: HTTP status code
+ *                 keycode:
+ *                   type: integer
+ *                   example: 1
+ *                   description: Internal response code
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id_token:
+ *                       type: string
+ *                       description: JWT ID token containing user identity
+ *                       example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                     access_token:
+ *                       type: string
+ *                       description: JWT access token for API calls
+ *                       example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                     refresh_token:
+ *                       type: string
+ *                       description: JWT refresh token for obtaining new access tokens
+ *                       example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                     expires_in:
+ *                       type: integer
+ *                       description: Token expiration time in seconds
+ *                       example: 3600
+ *                     token_type:
+ *                       type: string
+ *                       example: "Bearer"
+ *                       description: Token type
+ *                   description: Object containing new JWT tokens
+ *       400:
+ *         description: Bad request - missing or invalid refresh token
+ *       403:
+ *         description: JWT authentication not allowed
+ *       500:
+ *         description: Internal server error or token refresh failed
+ */
+raesumAuthRouter.post('/refreshJWT', raesumAuth.refreshJWT);
 
 /**
  * @swagger
