@@ -713,7 +713,7 @@ class raesumAuthController {
         // Use raesum authorization to check to see if this user may access the requested object
         let isAuthorized = await raesumAuthorization.checkUserPermission(
             req.user.id,
-            'raesum_auth_role',
+            'raesum_role',
             'read',
             req.user.current_organization_id,
             orgId
@@ -723,7 +723,7 @@ class raesumAuthController {
             // If not, get the not authorized message and return the rejected request
             const message = await raesumResponses.get('notAuthorized', [
                 'read',
-                'raesum_auth_role',
+                'raesum_role',
             ]);
             return res.status(message.code).json(message);
         }
@@ -739,12 +739,7 @@ class raesumAuthController {
             );
 
             // Add audit log entry
-            await raesumAudit.create(
-                'read',
-                'raesum_auth_role',
-                orgId,
-                req.user.id
-            );
+            await raesumAudit.create('read', 'raesum_role', orgId, req.user.id);
             const message = await raesumResponses.get('success');
             message.data = roles;
             return res.status(message.code).json(message);
