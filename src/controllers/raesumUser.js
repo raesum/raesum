@@ -36,19 +36,7 @@ class raesumUserController {
         if (!req.params.userId) {
             userId = req.user.id;
         } else {
-            // Validate the user ID is a number
-            if (
-                isNaN(req.params.userId) ||
-                req.params.userId < 1 ||
-                !Number.isInteger(parseInt(req.params.userId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['userId']
-                );
-                return res.status(message.code).json(message);
-            }
-            userId = parseInt(req.params.userId);
+            userId = req.params.userId;
         }
 
         // Use raesum authorization to check to see if this user may access the requested object
@@ -103,19 +91,7 @@ class raesumUserController {
         // Get organization ID from params or use current org
         let organizationId = null;
         if (req.params.organizationId) {
-            // Validate the organization ID is a number
-            if (
-                isNaN(req.params.organizationId) ||
-                req.params.organizationId < 1 ||
-                !Number.isInteger(parseInt(req.params.organizationId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['organizationId']
-                );
-                return res.status(message.code).json(message);
-            }
-            organizationId = parseInt(req.params.organizationId);
+            organizationId = req.params.organizationId;
         } else {
             organizationId = req.user.current_organization_id;
         }
@@ -270,19 +246,7 @@ class raesumUserController {
         if (!req.params.userId) {
             userId = req.user.id;
         } else {
-            // Validate the user ID is a number
-            if (
-                isNaN(req.params.userId) ||
-                req.params.userId < 1 ||
-                !Number.isInteger(parseInt(req.params.userId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['userId']
-                );
-                return res.status(message.code).json(message);
-            }
-            userId = parseInt(req.params.userId);
+            userId = req.params.userId;
         }
 
         // Use raesum authorization to check to see if this user may access the requested object
@@ -350,19 +314,7 @@ class raesumUserController {
         if (!req.params.userId) {
             userId = req.user.id;
         } else {
-            // Validate the user ID is a number
-            if (
-                isNaN(req.params.userId) ||
-                req.params.userId < 1 ||
-                !Number.isInteger(parseInt(req.params.userId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['userId']
-                );
-                return res.status(message.code).json(message);
-            }
-            userId = parseInt(req.params.userId);
+            userId = req.params.userId;
         }
 
         // Use raesum authorization to check to see if this user may access the requested object
@@ -447,19 +399,7 @@ class raesumUserController {
         if (!req.params.userId) {
             userId = req.user.id;
         } else {
-            // Validate the user ID is a number
-            if (
-                isNaN(req.params.userId) ||
-                req.params.userId < 1 ||
-                !Number.isInteger(parseInt(req.params.userId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['userId']
-                );
-                return res.status(message.code).json(message);
-            }
-            userId = parseInt(req.params.userId);
+            userId = req.params.userId;
         }
 
         // Use raesum authorization to check to see if this user may access the requested object
@@ -480,14 +420,6 @@ class raesumUserController {
             return res.status(message.code).json(message);
         }
 
-        // If no key is provided, return an error
-        if (!req.params.key) {
-            const message = await raesumResponses.get('requestMissingFields', [
-                'key',
-            ]);
-            return res.status(message.code).json(message);
-        }
-
         // Get a list of valid keys
         const validKeys = await raesumUser.getMetadataKeyList();
         const getKey = req.params.key.toLowerCase();
@@ -504,12 +436,6 @@ class raesumUserController {
 
         // Get the value from the request body
         const value = req.body.value;
-        if (!value) {
-            const message = await raesumResponses.get('requestMissingFields', [
-                'value',
-            ]);
-            return res.status(message.code).json(message);
-        }
 
         // Try and catch to update the key
         try {
@@ -548,19 +474,7 @@ class raesumUserController {
         if (!req.params.userId) {
             userId = req.user.id;
         } else {
-            // Validate the user ID is a number
-            if (
-                isNaN(req.params.userId) ||
-                req.params.userId < 1 ||
-                !Number.isInteger(parseInt(req.params.userId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['userId']
-                );
-                return res.status(message.code).json(message);
-            }
-            userId = parseInt(req.params.userId);
+            userId = req.params.userId;
         }
 
         // Use raesum authorization to check to see if this user may access the requested object
@@ -577,14 +491,6 @@ class raesumUserController {
             const message = await raesumResponses.get('notAuthorized', [
                 'read',
                 'raesum_user',
-            ]);
-            return res.status(message.code).json(message);
-        }
-
-        // If no key is provided, return an error
-        if (!req.params.key) {
-            const message = await raesumResponses.get('requestMissingFields', [
-                'key',
             ]);
             return res.status(message.code).json(message);
         }
@@ -700,19 +606,7 @@ class raesumUserController {
         if (!req.params.userId) {
             userId = req.user.id;
         } else {
-            // Validate the user ID is a number
-            if (
-                isNaN(req.params.userId) ||
-                req.params.userId < 1 ||
-                !Number.isInteger(parseInt(req.params.userId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['userId']
-                );
-                return res.status(message.code).json(message);
-            }
-            userId = parseInt(req.params.userId);
+            userId = req.params.userId;
         }
 
         // Use raesum authorization to check to see if this user may access the requested object
@@ -733,14 +627,8 @@ class raesumUserController {
             return res.status(message.code).json(message);
         }
 
-        // Get value from post body. If not specifically true or false, return an invalid value error
-        const activationStatus = req.body.value;
-        if (activationStatus !== true && activationStatus !== false) {
-            const message = await raesumResponses.get('requestInvalidFields', [
-                'value',
-            ]);
-            return res.status(message.code).json(message);
-        }
+        // Get value from post body
+        const activationStatus = req.body.active_status;
 
         // Try and catch deactivating the user
         try {
@@ -774,19 +662,7 @@ class raesumUserController {
         if (!req.params.userId) {
             userId = req.user.id;
         } else {
-            // Validate the user ID is a number
-            if (
-                isNaN(req.params.userId) ||
-                req.params.userId < 1 ||
-                !Number.isInteger(parseInt(req.params.userId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['userId']
-                );
-                return res.status(message.code).json(message);
-            }
-            userId = parseInt(req.params.userId);
+            userId = req.params.userId;
         }
 
         // Use raesum authorization to check to see if this user may access the requested object
@@ -807,20 +683,8 @@ class raesumUserController {
             return res.status(message.code).json(message);
         }
 
-        // Get value from post body. If not specifically true or false, return an invalid value error
-        if (!req.body.organizationId) {
-            const message = await raesumResponses.get('requestMissingFields', [
-                'organizationId',
-            ]);
-            return res.status(message.code).json(message);
-        }
-        const orgId = parseInt(req.body.organizationId);
-        if (isNaN(orgId) || orgId < 1 || !Number.isInteger(orgId)) {
-            const message = await raesumResponses.get('requestInvalidFields', [
-                'orgId',
-            ]);
-            return res.status(message.code).json(message);
-        }
+        // Get value from post body
+        const orgId = req.body.organizationId;
 
         // Get a list of orgs the user may switch to
 
@@ -865,19 +729,7 @@ class raesumUserController {
         if (!req.params.userId) {
             userId = req.user.id;
         } else {
-            // Validate the user ID is a number
-            if (
-                isNaN(req.params.userId) ||
-                req.params.userId < 1 ||
-                !Number.isInteger(parseInt(req.params.userId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['userId']
-                );
-                return res.status(message.code).json(message);
-            }
-            userId = parseInt(req.params.userId);
+            userId = req.params.userId;
         }
 
         // Use raesum authorization to check to see if this user may access the requested object

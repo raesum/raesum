@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import raesumAuditController from '../controllers/raesumAudit.js';
+import validate from '../middleware/joiValidator.js';
+import { auditSchemas } from '../validators/raesumAuditValidator.js';
 
 const router = Router();
 
@@ -155,6 +157,10 @@ const router = Router();
  *                         description: Additional metadata about the audit event (can be null)
  *                         example: null
  */
-router.get('/get', raesumAuditController.getAuditLogs);
+router.get(
+    '/get',
+    validate(auditSchemas.getAuditLogs, 'query'),
+    raesumAuditController.getAuditLogs
+);
 
 export default router;

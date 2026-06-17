@@ -2,6 +2,8 @@ import express from 'express';
 import raesumFile from '../controllers/raesumFile.js';
 import raesumFileValidationMiddleware from '../middleware/raesumFileValidator.js';
 import multer from 'multer';
+import validate from '../middleware/joiValidator.js';
+import { fileSchemas } from '../validators/raesumFileValidator.js';
 
 const upload = multer({});
 
@@ -106,7 +108,11 @@ const raesumFileRouter = express.Router();
  *                       example: "2026-05-19T10:00:00.000Z"
  *                       description: When the file was created
  */
-raesumFileRouter.get('/get/:fileId', raesumFile.getById);
+raesumFileRouter.get(
+    '/get/:fileId',
+    validate(fileSchemas.getById, 'params'),
+    raesumFile.getById
+);
 
 /**
  * @swagger
@@ -173,7 +179,11 @@ raesumFileRouter.get('/get/:fileId', raesumFile.getById);
  *                         description: File type key
  *                   description: Array of files belonging to the user
  */
-raesumFileRouter.get('/get/byUser/:userId', raesumFile.getList);
+raesumFileRouter.get(
+    '/get/byUser/:userId',
+    validate(fileSchemas.getList, 'params'),
+    raesumFile.getList
+);
 
 /**
  * @swagger
@@ -288,7 +298,11 @@ raesumFileRouter.get('/get/byUser/', raesumFile.getList);
  *                       example: "https://example.s3.amazonaws.com/file.txt?signature=..."
  *                       description: Signed URL to access the file
  */
-raesumFileRouter.get('/data/:fileId', raesumFile.getFileById);
+raesumFileRouter.get(
+    '/data/:fileId',
+    validate(fileSchemas.getFileById, 'params'),
+    raesumFile.getFileById
+);
 
 /**
  * @swagger
@@ -474,7 +488,11 @@ raesumFileRouter.get(
  *                     documentDate: "2026-05-19"
  *                   description: Object containing metadata key-value pairs
  */
-raesumFileRouter.get('/metadata/get/:fileId', raesumFile.getAllFileMetadata);
+raesumFileRouter.get(
+    '/metadata/get/:fileId',
+    validate(fileSchemas.getAllMetadata, 'params'),
+    raesumFile.getAllFileMetadata
+);
 
 /**
  * @swagger
@@ -543,6 +561,8 @@ raesumFileRouter.get('/metadata/get/:fileId', raesumFile.getAllFileMetadata);
  */
 raesumFileRouter.post(
     '/metadata/set/byKey/:key/:fileId',
+    validate(fileSchemas.setOneMetadata, 'params'),
+    validate(fileSchemas.setOneMetadata, 'body'),
     raesumFile.setOneFileMetadata
 );
 
@@ -601,6 +621,7 @@ raesumFileRouter.post(
  */
 raesumFileRouter.post(
     '/metadata/delete/byKey/:key/:fileId',
+    validate(fileSchemas.deleteOneMetadata, 'params'),
     raesumFile.deleteOneFileMetadata
 );
 
@@ -677,6 +698,8 @@ raesumFileRouter.post(
  */
 raesumFileRouter.post(
     '/upload/:fileId',
+    validate(fileSchemas.uploadWithId, 'params'),
+    validate(fileSchemas.uploadWithId, 'body'),
     upload.single('file'),
     raesumFileValidationMiddleware,
     raesumFile.upload
@@ -747,6 +770,7 @@ raesumFileRouter.post(
  */
 raesumFileRouter.post(
     '/upload/',
+    validate(fileSchemas.uploadNew, 'body'),
     upload.single('file'),
     raesumFileValidationMiddleware,
     raesumFile.upload
@@ -826,6 +850,10 @@ raesumFileRouter.post(
  *                   example: 25
  *                   description: Internal response code
  */
-raesumFileRouter.post('/delete/:fileId', raesumFile.delete);
+raesumFileRouter.post(
+    '/delete/:fileId',
+    validate(fileSchemas.delete, 'params'),
+    raesumFile.delete
+);
 
 export default raesumFileRouter;

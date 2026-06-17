@@ -1,5 +1,7 @@
 import express from 'express';
 import raesumUser from '../controllers/raesumUser.js';
+import validate from '../middleware/joiValidator.js';
+import { userSchemas } from '../validators/raesumUserValidator.js';
 
 const raesumUserRouter = express.Router();
 
@@ -78,7 +80,11 @@ const raesumUserRouter = express.Router();
  *                       example: "2026-05-03T17:31:40.531Z"
  *                       description: When the user was created
  */
-raesumUserRouter.get('/get/:userId', raesumUser.getUserById);
+raesumUserRouter.get(
+    '/get/:userId',
+    validate(userSchemas.getUserById, 'params'),
+    raesumUser.getUserById
+);
 
 /**
  * @swagger
@@ -426,6 +432,7 @@ raesumUserRouter.get('/metadata/get/keys/', raesumUser.getMetaDataKeys);
  */
 raesumUserRouter.get(
     '/metadata/get/byKey/:key/:userId',
+    validate(userSchemas.getOneMetadata, 'params'),
     raesumUser.getOneUserMetaData
 );
 /**
@@ -538,7 +545,11 @@ raesumUserRouter.get('/metadata/get/byKey/:key', raesumUser.getOneUserMetaData);
  *                     subscriptionDate: "Mon May 18 2026 09:06:30 GMT+0000 (Coordinated Universal Time)"
  *                   description: Object containing metadata key-value pairs
  */
-raesumUserRouter.get('/metadata/get/:userId', raesumUser.getAllUserMetaData);
+raesumUserRouter.get(
+    '/metadata/get/:userId',
+    validate(userSchemas.getAllMetadata, 'params'),
+    raesumUser.getAllUserMetaData
+);
 /**
  * @swagger
  * /api/v1/user/metadata/get/:
@@ -705,6 +716,7 @@ raesumUserRouter.get('/metadata/resync', raesumUser.resyncUserFromCognito); // T
  */
 raesumUserRouter.get(
     '/organization/getAllowed/:userId',
+    validate(userSchemas.getAllowedOrgs, 'params'),
     raesumUser.getAllowedOrgs
 );
 
@@ -835,6 +847,8 @@ raesumUserRouter.get('/organization/getAllowed', raesumUser.getAllowedOrgs);
  */
 raesumUserRouter.post(
     '/metadata/set/byKey/:key/:userId',
+    validate(userSchemas.setOneMetadata, 'params'),
+    validate(userSchemas.setOneMetadata, 'body'),
     raesumUser.setOneUserMetaData
 );
 
@@ -958,6 +972,7 @@ raesumUserRouter.post(
  */
 raesumUserRouter.post(
     '/metadata/delete/byKey/:key/:userId',
+    validate(userSchemas.deleteOneMetadata, 'params'),
     raesumUser.deleteOneUserMetaData
 );
 raesumUserRouter.post(
@@ -1026,7 +1041,12 @@ raesumUserRouter.post(
  *                       description: Whether activation status was set successfully
  *                   description: Object containing operation result
  */
-raesumUserRouter.post('/activation/set/:userId', raesumUser.setUserActivation);
+raesumUserRouter.post(
+    '/activation/set/:userId',
+    validate(userSchemas.setActivation, 'params'),
+    validate(userSchemas.setActivation, 'body'),
+    raesumUser.setUserActivation
+);
 /**
  * @swagger
  * /api/v1/user/activation/set/:
@@ -1087,7 +1107,11 @@ raesumUserRouter.post('/activation/set/:userId', raesumUser.setUserActivation);
  *                       description: Whether activation status was set successfully
  *                   description: Object containing operation result
  */
-raesumUserRouter.post('/activation/set/', raesumUser.setUserActivation);
+raesumUserRouter.post(
+    '/activation/set/',
+    validate(userSchemas.setActivation, 'body'),
+    raesumUser.setUserActivation
+);
 
 /**
  * @swagger
@@ -1158,7 +1182,12 @@ raesumUserRouter.post('/activation/set/', raesumUser.setUserActivation);
  *                       description: Whether the organization change was successful
  *                   description: Object containing operation result
  */
-raesumUserRouter.post('/organization/set/:userId', raesumUser.changeUserOrg);
+raesumUserRouter.post(
+    '/organization/set/:userId',
+    validate(userSchemas.changeOrg, 'params'),
+    validate(userSchemas.changeOrg, 'body'),
+    raesumUser.changeUserOrg
+);
 
 /**
  * @swagger
@@ -1214,6 +1243,10 @@ raesumUserRouter.post('/organization/set/:userId', raesumUser.changeUserOrg);
  *                   description: Internal response code
  *
  */
-raesumUserRouter.post('/organization/set/', raesumUser.changeUserOrg);
+raesumUserRouter.post(
+    '/organization/set/',
+    validate(userSchemas.changeOrg, 'body'),
+    raesumUser.changeUserOrg
+);
 
 export default raesumUserRouter;

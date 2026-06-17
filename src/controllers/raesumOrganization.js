@@ -17,19 +17,7 @@ class raesumOrganizationController {
         // Get organization ID from params or use current org
         let organizationId = null;
         if (req.params.organizationId) {
-            // Validate the organization ID is a number
-            if (
-                isNaN(req.params.organizationId) ||
-                req.params.organizationId < 1 ||
-                !Number.isInteger(parseInt(req.params.organizationId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['organizationId']
-                );
-                return res.status(message.code).json(message);
-            }
-            organizationId = parseInt(req.params.organizationId);
+            organizationId = req.params.organizationId;
         } else {
             organizationId = req.user.current_organization_id;
         }
@@ -219,14 +207,6 @@ class raesumOrganizationController {
         // Get organization name from request body
         const { name } = req.body;
 
-        // Validate organization name
-        if (!name || typeof name !== 'string') {
-            const message = await raesumResponses.get('requestMissingFields', [
-                'name',
-            ]);
-            return res.status(message.code).json(message);
-        }
-
         logger.debug(`Creating organization: ${name}`, Date.now() - start);
 
         // Use raesum authorization to check to see if this user may create organizations
@@ -286,19 +266,7 @@ class raesumOrganizationController {
         if (!req.params.organizationId) {
             organizationId = req.user.current_organization_id;
         } else {
-            // Validate the organization ID is a number
-            if (
-                isNaN(req.params.organizationId) ||
-                req.params.organizationId < 1 ||
-                !Number.isInteger(parseInt(req.params.organizationId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['organizationId']
-                );
-                return res.status(message.code).json(message);
-            }
-            organizationId = parseInt(req.params.organizationId);
+            organizationId = req.params.organizationId;
         }
 
         // Use raesum authorization to check to see if this user may access the requested object
@@ -411,19 +379,7 @@ class raesumOrganizationController {
         if (!req.params.organizationId) {
             organizationId = req.user.current_organization_id;
         } else {
-            // Validate the organization ID is a number
-            if (
-                isNaN(req.params.organizationId) ||
-                req.params.organizationId < 1 ||
-                !Number.isInteger(parseInt(req.params.organizationId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['organizationId']
-                );
-                return res.status(message.code).json(message);
-            }
-            organizationId = parseInt(req.params.organizationId);
+            organizationId = req.params.organizationId;
         }
 
         // Get the key from the request params
@@ -504,19 +460,7 @@ class raesumOrganizationController {
         if (!req.params.organizationId) {
             organizationId = req.user.current_organization_id;
         } else {
-            // Validate the organization ID is a number
-            if (
-                isNaN(req.params.organizationId) ||
-                req.params.organizationId < 1 ||
-                !Number.isInteger(parseInt(req.params.organizationId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['organizationId']
-                );
-                return res.status(message.code).json(message);
-            }
-            organizationId = parseInt(req.params.organizationId);
+            organizationId = req.params.organizationId;
         }
 
         // Use raesum authorization to check to see if this user may access the requested object
@@ -580,19 +524,7 @@ class raesumOrganizationController {
         if (!req.params.organizationId) {
             organizationId = req.user.current_organization_id;
         } else {
-            // Validate the organization ID is a number
-            if (
-                isNaN(req.params.organizationId) ||
-                req.params.organizationId < 1 ||
-                !Number.isInteger(parseInt(req.params.organizationId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['organizationId']
-                );
-                return res.status(message.code).json(message);
-            }
-            organizationId = parseInt(req.params.organizationId);
+            organizationId = req.params.organizationId;
         }
 
         // Get the key from the request params
@@ -685,19 +617,7 @@ class raesumOrganizationController {
         if (!req.params.organizationId) {
             organizationId = req.user.current_organization_id;
         } else {
-            // Validate the organization ID is a number
-            if (
-                isNaN(req.params.organizationId) ||
-                req.params.organizationId < 1 ||
-                !Number.isInteger(parseInt(req.params.organizationId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['organizationId']
-                );
-                return res.status(message.code).json(message);
-            }
-            organizationId = parseInt(req.params.organizationId);
+            organizationId = req.params.organizationId;
         }
 
         // Get the key from the request params
@@ -776,33 +696,11 @@ class raesumOrganizationController {
         if (!req.params.organizationId) {
             organizationId = req.user.current_organization_id;
         } else {
-            // Validate the organization ID is a number
-            if (
-                isNaN(req.params.organizationId) ||
-                req.params.organizationId < 1 ||
-                !Number.isInteger(parseInt(req.params.organizationId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['organizationId']
-                );
-                return res.status(message.code).json(message);
-            }
-            organizationId = parseInt(req.params.organizationId);
+            organizationId = req.params.organizationId;
         }
 
         // Get the activation status from the request body
-        let activationStatus = req.body.activeStatus;
-        if (typeof activationStatus !== 'boolean') {
-            if (
-                activationStatus !== undefined &&
-                activationStatus.toLowerCase() == 'true'
-            ) {
-                activationStatus = true;
-            } else {
-                activationStatus = false;
-            }
-        }
+        const activationStatus = req.body.active_status;
 
         logger.debug(
             `Setting activation status for organization with ID: ${organizationId} to: ${activationStatus}`,

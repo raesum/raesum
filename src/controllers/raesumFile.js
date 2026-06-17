@@ -62,21 +62,15 @@ class raesumFileController {
         if (
             !allowedDefaults.includes(objectTypeForAuthorization) &&
             req.parentObject &&
-            req.parentObject.fileId &&
-            !isNaN(parseInt(req.parentObject.fileId)) &&
-            parseInt(req.parentObject.fileId) > 0
+            req.parentObject.fileId
         ) {
-            fileId = parseInt(req.parentObject.fileId);
-        } else if (
-            !req.params.fileId ||
-            isNaN(parseInt(req.params.fileId)) ||
-            parseInt(req.params.fileId) < 1
-        ) {
+            fileId = req.parentObject.fileId;
+        } else if (!req.params.fileId) {
             // Controllers are being used for file or file meta but no ID in params
             fileId = false;
         } else {
             // Controllers are being used for file or file meta and ID is provided
-            fileId = parseInt(req.params.fileId);
+            fileId = req.params.fileId;
         }
 
         logger.debug(
@@ -105,19 +99,6 @@ class raesumFileController {
 
         let file;
         if (fileId) {
-            // Validate the fileId
-            if (
-                isNaN(req.params.fileId) ||
-                parseInt(req.params.fileId) < 1 ||
-                !Number.isInteger(parseInt(req.params.fileId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['fileId']
-                );
-                return res.status(message.code).json(message);
-            }
-
             // Get the existing file entry
             let fileInfo;
             try {
@@ -306,18 +287,7 @@ class raesumFileController {
         if (!req.params.userId) {
             userId = req.user.id;
         } else {
-            if (
-                isNaN(req.params.userId) ||
-                req.params.userId < 1 ||
-                !Number.isInteger(parseInt(req.params.userId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['userId']
-                );
-                return res.status(message.code).json(message);
-            }
-            userId = parseInt(req.params.userId);
+            userId = req.params.userId;
         }
 
         let isAuthorized = await raesumAuthorization.checkUserPermission(
@@ -864,13 +834,6 @@ class raesumFileController {
         if (typeof key !== 'string' || !validKeys[key]) {
             const message = await raesumResponses.get('requestInvalidFields', [
                 'key',
-            ]);
-            return res.status(message.code).json(message);
-        }
-
-        if (!Object.hasOwn(req.body, 'value')) {
-            const message = await raesumResponses.get('requestMissingFields', [
-                'value',
             ]);
             return res.status(message.code).json(message);
         }

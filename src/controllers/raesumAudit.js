@@ -15,24 +15,10 @@ class raesumAuditController {
         const requesterUserID = req.user ? req.user.id : null;
         let orgID = req.user ? req.user.current_organization_id : null;
         if ('organizationId' in req.query) {
-            // Validate the organization ID is a number
-            if (
-                isNaN(req.query.organizationId) ||
-                req.query.organizationId < 1 ||
-                !Number.isInteger(parseInt(req.query.organizationId))
-            ) {
-                const message = await raesumResponses.get(
-                    'requestInvalidFields',
-                    ['organizationId']
-                );
-                return res.status(message.code).json(message);
-            }
-            orgID = req.query.organizationId
-                ? parseInt(req.query.organizationId)
-                : null;
+            orgID = req.query.organizationId || null;
         }
 
-        let userID = req.query.userId ? parseInt(req.query.userId) : null;
+        let userID = req.query.userId || null;
 
         // Check to see if user is allowed to get read the object type audit log for the user's current organization
         logger.verbose(
@@ -103,92 +89,19 @@ class raesumAuditController {
         const {
             objectTypeID,
             actionTypeID,
-            sortBy = 'date',
-            sortOrder = 'DESC',
+            sortBy = 'timestamp',
+            sortOrder = 'desc',
             limit,
             offset,
         } = req.query;
-
-        // Convert string parameters to numbers if provided
-        const parsedObjectTypeID = objectTypeID ? parseInt(objectTypeID) : null;
-        const parsedActionTypeID = actionTypeID ? parseInt(actionTypeID) : null;
-
-        if (!orgID) {
-            logger.error('Organization ID is required', Date.now() - start);
-            const errorResponse = await raesumResponses.get(
-                'requestMissingFields',
-                ['organizationId']
-            );
-            return res.status(errorResponse.code).json(errorResponse);
-        }
-
-        // Validate query parameters
-        const validationErrors = [];
-
-        // Validate userID if provided
-        if (userID !== null || isNaN(requesterUserID)) {
-            validationErrors.push('userID must be a positive integer');
-        }
-
-        // Validate objectTypeID if provided
-        if (
-            objectTypeID &&
-            (isNaN(parsedObjectTypeID) || parsedObjectTypeID <= 0)
-        ) {
-            validationErrors.push('objectTypeID must be a positive integer');
-        }
-
-        // Validate actionTypeID if provided
-        if (
-            actionTypeID &&
-            (isNaN(parsedActionTypeID) || parsedActionTypeID <= 0)
-        ) {
-            validationErrors.push('actionTypeID must be a positive integer');
-        }
-
-        // Validate sortBy parameter
-        const allowedSortFields = [
-            'date',
-            'user_id',
-            'object_type_id',
-            'action_type_id',
-        ];
-        if (!allowedSortFields.includes(sortBy)) {
-            validationErrors.push(
-                `sortBy must be one of: ${allowedSortFields.join(', ')}`
-            );
-        }
-
-        // Validate sortOrder parameter
-        const allowedSortOrders = ['ASC', 'DESC'];
-        if (!allowedSortOrders.includes(sortOrder.toUpperCase())) {
-            validationErrors.push(
-                `sortOrder must be one of: ${allowedSortOrders.join(', ')}`
-            );
-        }
-
-        // Return validation errors if any
-        if (validationErrors.length > 0) {
-            logger.warning(
-                `Invalid query parameters: ${validationErrors.join(', ')}`,
-                Date.now() - start
-            );
-            const validationErrorResponse = await raesumResponses.get(
-                'requestInvalidFields'
-            );
-            validationErrorResponse.errors = validationErrors;
-            return res
-                .status(validationErrorResponse.code)
-                .json(validationErrorResponse);
-        }
 
         // Try to get the audit logs
         try {
             const auditLogs = await raesumAudit.getAuditLogs(
                 orgID,
                 userID,
-                parsedObjectTypeID,
-                parsedActionTypeID,
+                objectTypeID,
+                actionTypeID,
                 sortBy,
                 sortOrder,
                 limit ? parseInt(limit) : null,

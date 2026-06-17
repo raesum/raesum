@@ -1,5 +1,7 @@
 import express from 'express';
 import raesumOrganization from '../controllers/raesumOrganization.js';
+import validate from '../middleware/joiValidator.js';
+import { organizationSchemas } from '../validators/raesumOrganizationValidator.js';
 
 const raesumOrganizationRouter = express.Router();
 
@@ -127,6 +129,7 @@ raesumOrganizationRouter.get('/list/', raesumOrganization.list);
  */
 raesumOrganizationRouter.get(
     '/get/:organizationId',
+    validate(organizationSchemas.getById, 'params'),
     raesumOrganization.getById
 );
 
@@ -327,6 +330,7 @@ raesumOrganizationRouter.get(
  */
 raesumOrganizationRouter.get(
     '/metadata/get/byKey/:key/:organizationId',
+    validate(organizationSchemas.getOneMetadata, 'params'),
     raesumOrganization.getOneOrganizationMetaData
 );
 
@@ -445,6 +449,7 @@ raesumOrganizationRouter.get(
  */
 raesumOrganizationRouter.get(
     '/metadata/get/:organizationId',
+    validate(organizationSchemas.getAllMetadata, 'params'),
     raesumOrganization.getAllOrganizationMetaData
 );
 
@@ -503,6 +508,8 @@ raesumOrganizationRouter.get(
 
 raesumOrganizationRouter.post(
     '/metadata/set/byKey/:key/:organizationId',
+    validate(organizationSchemas.setOneMetadata, 'params'),
+    validate(organizationSchemas.setOneMetadata, 'body'),
     raesumOrganization.setOneOrganizationMetaData
 );
 raesumOrganizationRouter.post(
@@ -511,6 +518,7 @@ raesumOrganizationRouter.post(
 );
 raesumOrganizationRouter.post(
     '/metadata/delete/byKey/:key/:organizationId',
+    validate(organizationSchemas.deleteOneMetadata, 'params'),
     raesumOrganization.deleteOneOrganizationMetaData
 );
 raesumOrganizationRouter.post(
@@ -520,6 +528,8 @@ raesumOrganizationRouter.post(
 
 raesumOrganizationRouter.post(
     '/activation/set/:organizationId',
+    validate(organizationSchemas.setActivation, 'params'),
+    validate(organizationSchemas.setActivation, 'body'),
     raesumOrganization.setOrganizationActivation
 );
 raesumOrganizationRouter.post(
@@ -587,7 +597,11 @@ raesumOrganizationRouter.post(
  *                       description: Internal organization ID
  *                   description: Object containing the new organization ID
  */
-raesumOrganizationRouter.post('/create/', raesumOrganization.create);
+raesumOrganizationRouter.post(
+    '/create/',
+    validate(organizationSchemas.create, 'body'),
+    raesumOrganization.create
+);
 
 /**
  * @swagger
