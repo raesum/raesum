@@ -1,50 +1,50 @@
 [
-  {
-    "id": 1,
-    "name": "Users",
-    "string_key": "raesum_user",
-    "description": ""
-  },
-  {
-    "id": 2,
-    "name": "Organizations",
-    "string_key": "raesum_organization",
-    "description": ""
-  },
-  {
-    "id": 3,
-    "name": "Roles",
-    "string_key": "raesum_role",
-    "description": "This object governs the User to Role to Organization assignment and necessary reads on roles. It is NOT possible to add/remove/edit roles themselves from the API."
-  },
-  {
-    "id": 4,
-    "name": "Audit Logs",
-    "string_key": "raesum_audit",
-    "description": ""
-  },
-  {
-    "id": 5,
-    "name": "User Metadata",
-    "string_key": "raesum_user_metadata",
-    "description": ""
-  },
-  {
-    "id": 6,
-    "name": "Organization Metadata",
-    "string_key": "raesum_organization_metadata",
-    "description": ""
-  },
-  {
-    "id": 7,
-    "name": "File",
-    "string_key": "raesum_file",
-    "description": "This is for direct file access. It is recommended to implement type-specific endpoints with their own permissions instead of granting direct file access to most users."
-  },
     {
-    "id": 7,
-    "name": "File Metadata",
-    "string_key": "raesum_file_metadata",
-    "description": ""
-  }
+        "id": 1,
+        "name": "Users",
+        "string_key": "raesum_user",
+        "description": ""
+    },
+    {
+        "id": 2,
+        "name": "Organizations",
+        "string_key": "raesum_organization",
+        "description": ""
+    },
+    {
+        "id": 3,
+        "name": "Roles",
+        "string_key": "raesum_role",
+        "description": "This object governs the User to Role to Organization assignment and necessary reads on roles. It is NOT possible to add/remove/edit roles themselves from the API."
+    },
+    {
+        "id": 4,
+        "name": "Audit Logs",
+        "string_key": "raesum_audit",
+        "description": ""
+    },
+    {
+        "id": 5,
+        "name": "User Metadata",
+        "string_key": "raesum_user_metadata",
+        "description": ""
+    },
+    {
+        "id": 6,
+        "name": "Organization Metadata",
+        "string_key": "raesum_organization_metadata",
+        "description": ""
+    },
+    {
+        "id": 7,
+        "name": "File",
+        "string_key": "raesum_file",
+        "description": "This is for direct file access. It is recommended to implement type-specific endpoints with their own permissions instead of granting direct file access to most users."
+    },
+    {
+        "id": 8,
+        "name": "File Metadata",
+        "string_key": "raesum_file_metadata",
+        "description": ""
+    }
 ]
