@@ -44,8 +44,8 @@ class raesumOrganizationController {
             req.user.id,
             'raesum_organization',
             'update',
-            req.user.current_organization_id,
-            organizationId
+            organizationId,
+            req.user.id
         );
 
         if (!isAuthorized) {
@@ -539,8 +539,8 @@ class raesumOrganizationController {
             req.user.id,
             'raesum_organization_metadata',
             'update',
-            req.user.current_organization_id,
-            organizationId
+            organizationId,
+            req.user.id
         );
 
         if (!isAuthorized) {

@@ -127,13 +127,27 @@ class raesumFileController {
                 return res.status(message.code).json(message);
             }
 
+            // Get the existing record to find the owning org ID
+            let existingRecordOrgId;
+            let existingRecordOwnerId;
+            try {
+                const existingFileRecord =
+                    await raesumFile.getEntryById(fileId);
+                existingRecordOrgId = existingFileRecord.organization_id;
+                existingRecordOwnerId = existingFileRecord.user_id;
+            } catch (e) {
+                // Failed to find the current record return a 404
+                const message = await raesumResponses.get('notFound');
+                return res.status(message.code).json(message);
+            }
+
             // Check for permissions - update action on raesum_file
             const isAuthorized = await raesumAuthorization.checkUserPermission(
                 req.user.id,
                 objectTypeForAuthorization,
                 'update',
-                req.user.current_organization_id,
-                fileInfo.user_id
+                existingRecordOrgId,
+                existingRecordOwnerId
             );
 
             if (!isAuthorized) {
@@ -817,7 +831,7 @@ class raesumFileController {
             req.user.id,
             objectTypeForAuthorization,
             'update',
-            req.user.current_organization_id,
+            file.organization_id,
             file.user_id
         );
 
