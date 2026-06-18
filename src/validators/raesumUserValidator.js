@@ -1,10 +1,14 @@
 import Joi from 'joi';
+import {
+    sanitizedStringField,
+    sanitizedOptionalStringField,
+} from './joiSanitizeHtml.js';
 
 // Common validation patterns
 const positiveInteger = Joi.number().integer().positive().required();
 const optionalPositiveInteger = Joi.number().integer().positive().optional();
-const stringField = Joi.string().required();
-const optionalStringField = Joi.string().optional().allow('');
+const stringField = sanitizedStringField;
+const optionalStringField = sanitizedOptionalStringField;
 const booleanField = Joi.boolean().required();
 
 // User validation schemas
