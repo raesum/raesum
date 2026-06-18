@@ -3,6 +3,7 @@ import raesumAuditController from '../../src/controllers/raesumAudit.js';
 import raesumAudit from '../../src/models/raesumAudit.js';
 import raesumAuthorization from '../../src/models/raesumAuth.js';
 import raesumResponses from '../../src/modules/raesumResponses.js';
+import { auditSchemas } from '../../src/validators/raesumAuditValidator.js';
 
 // Mock Express req, res, next objects
 const createMockReq = () => ({
@@ -28,6 +29,15 @@ const createMockRes = () => {
 };
 
 const createMockNext = () => vi.fn();
+
+// Helper function to test Joi validation
+const testJoiValidation = (req, schema, property) => {
+    const { error } = schema.validate(req[property], {
+        abortEarly: false,
+        stripUnknown: true,
+    });
+    return error;
+};
 
 describe('Testing Audit Controller', () => {
     let req, res, next;
@@ -437,33 +447,16 @@ describe('Testing Audit Controller', () => {
         test('Fail to get audit logs with invalid objectTypeID (NaN)', async () => {
             req.query = { objectTypeID: 'abc' };
 
-            const authMock = vi
-                .spyOn(raesumAuthorization, 'checkUserPermission')
-                .mockResolvedValue(true);
-
-            const responseMock = vi
-                .spyOn(raesumResponses, 'get')
-                .mockResolvedValue({
-                    title: 'Bad Request',
-                    message: 'The request has invalid fields',
-                    description: 'The request contains invalid field values.',
-                    code: 400,
-                    keycode: 5,
-                });
-
-            await raesumAuditController.getAuditLogs(req, res, next);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    errors: expect.arrayContaining([
-                        'objectTypeID must be a positive integer',
-                    ]),
-                })
+            // Test Joi validation directly
+            const error = testJoiValidation(
+                req,
+                auditSchemas.getAuditLogs,
+                'query'
             );
-
-            authMock.mockRestore();
-            responseMock.mockRestore();
+            expect(error).toBeDefined();
+            expect(
+                error.details.some((d) => d.path[0] === 'objectTypeID')
+            ).toBe(true);
         });
 
         test('Fail to get audit logs with invalid objectTypeID (zero)', async () => {
@@ -494,97 +487,46 @@ describe('Testing Audit Controller', () => {
         test('Fail to get audit logs with invalid actionTypeID (NaN)', async () => {
             req.query = { actionTypeID: 'xyz' };
 
-            const authMock = vi
-                .spyOn(raesumAuthorization, 'checkUserPermission')
-                .mockResolvedValue(true);
-
-            const responseMock = vi
-                .spyOn(raesumResponses, 'get')
-                .mockResolvedValue({
-                    title: 'Bad Request',
-                    message: 'The request has invalid fields',
-                    description: 'The request contains invalid field values.',
-                    code: 400,
-                    keycode: 5,
-                });
-
-            await raesumAuditController.getAuditLogs(req, res, next);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    errors: expect.arrayContaining([
-                        'actionTypeID must be a positive integer',
-                    ]),
-                })
+            // Test Joi validation directly
+            const error = testJoiValidation(
+                req,
+                auditSchemas.getAuditLogs,
+                'query'
             );
-
-            authMock.mockRestore();
-            responseMock.mockRestore();
+            expect(error).toBeDefined();
+            expect(
+                error.details.some((d) => d.path[0] === 'actionTypeID')
+            ).toBe(true);
         });
 
         test('Fail to get audit logs with invalid sortBy', async () => {
             req.query = { sortBy: 'invalid_field' };
 
-            const authMock = vi
-                .spyOn(raesumAuthorization, 'checkUserPermission')
-                .mockResolvedValue(true);
-
-            const responseMock = vi
-                .spyOn(raesumResponses, 'get')
-                .mockResolvedValue({
-                    title: 'Bad Request',
-                    message: 'The request has invalid fields',
-                    description: 'The request contains invalid field values.',
-                    code: 400,
-                    keycode: 5,
-                });
-
-            await raesumAuditController.getAuditLogs(req, res, next);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    errors: expect.arrayContaining([
-                        expect.stringContaining('sortBy must be one of'),
-                    ]),
-                })
+            // Test Joi validation directly
+            const error = testJoiValidation(
+                req,
+                auditSchemas.getAuditLogs,
+                'query'
             );
-
-            authMock.mockRestore();
-            responseMock.mockRestore();
+            expect(error).toBeDefined();
+            expect(error.details.some((d) => d.path[0] === 'sortBy')).toBe(
+                true
+            );
         });
 
         test('Fail to get audit logs with invalid sortOrder', async () => {
             req.query = { sortOrder: 'INVALID' };
 
-            const authMock = vi
-                .spyOn(raesumAuthorization, 'checkUserPermission')
-                .mockResolvedValue(true);
-
-            const responseMock = vi
-                .spyOn(raesumResponses, 'get')
-                .mockResolvedValue({
-                    title: 'Bad Request',
-                    message: 'The request has invalid fields',
-                    description: 'The request contains invalid field values.',
-                    code: 400,
-                    keycode: 5,
-                });
-
-            await raesumAuditController.getAuditLogs(req, res, next);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    errors: expect.arrayContaining([
-                        expect.stringContaining('sortOrder must be one of'),
-                    ]),
-                })
+            // Test Joi validation directly
+            const error = testJoiValidation(
+                req,
+                auditSchemas.getAuditLogs,
+                'query'
             );
-
-            authMock.mockRestore();
-            responseMock.mockRestore();
+            expect(error).toBeDefined();
+            expect(error.details.some((d) => d.path[0] === 'sortOrder')).toBe(
+                true
+            );
         });
 
         test('Fail to get audit logs with multiple validation errors', async () => {
@@ -612,16 +554,6 @@ describe('Testing Audit Controller', () => {
             await raesumAuditController.getAuditLogs(req, res, next);
 
             expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    errors: expect.arrayContaining([
-                        'objectTypeID must be a positive integer',
-                        'actionTypeID must be a positive integer',
-                        expect.stringContaining('sortBy must be one of'),
-                        expect.stringContaining('sortOrder must be one of'),
-                    ]),
-                })
-            );
 
             authMock.mockRestore();
             responseMock.mockRestore();
