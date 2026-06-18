@@ -4,6 +4,7 @@ import raesumUser from '../../src/models/raesumUser.js';
 import raesumAuthorization from '../../src/models/raesumAuth.js';
 import raesumAudit from '../../src/models/raesumAudit.js';
 import raesumResponses from '../../src/modules/raesumResponses.js';
+import { userSchemas } from '../../src/validators/raesumUserValidator.js';
 
 // Mock Express req, res, next objects
 const createMockReq = () => ({
@@ -33,6 +34,15 @@ const createMockRes = () => {
 };
 
 const createMockNext = () => vi.fn();
+
+// Helper function to test Joi validation
+const testJoiValidation = (req, schema, property) => {
+    const { error } = schema.validate(req[property], {
+        abortEarly: false,
+        stripUnknown: true,
+    });
+    return error;
+};
 
 describe('Testing User Controller', () => {
     let req, res, next;
@@ -803,21 +813,18 @@ describe('Testing User Controller', () => {
             req.params = {};
             req.body = { value: 'true' };
 
-            const responseMock = vi
-                .spyOn(raesumResponses, 'get')
-                .mockResolvedValue({
-                    title: 'Bad Request',
-                    message: 'The request is missing fields: key',
-                    description: 'The request is missing required fields.',
-                    code: 400,
-                    keycode: 2,
-                });
-
-            await raesumUserController.setOneUserMetaData(req, res, next);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-
-            responseMock.mockRestore();
+            // Test Joi validation directly
+            const error = testJoiValidation(
+                req,
+                userSchemas.setOneMetadata,
+                'params'
+            );
+            expect(error).toBeDefined();
+            expect(
+                error.details.some(
+                    (d) => d.type === 'any.required' && d.path[0] === 'key'
+                )
+            ).toBe(true);
         });
 
         test('Fail to set metadata value with invalid key', async () => {
@@ -855,31 +862,18 @@ describe('Testing User Controller', () => {
             req.params = { key: 'premiumuser' };
             req.body = {};
 
-            const authMock = vi
-                .spyOn(raesumAuthorization, 'checkUserPermission')
-                .mockResolvedValue(true);
-
-            const getMetadataKeyListMock = vi
-                .spyOn(raesumUser, 'getMetadataKeyList')
-                .mockResolvedValue(['premiumuser']);
-
-            const responseMock = vi
-                .spyOn(raesumResponses, 'get')
-                .mockResolvedValue({
-                    title: 'Bad Request',
-                    message: 'The request is missing fields: value',
-                    description: 'The request is missing required fields.',
-                    code: 400,
-                    keycode: 2,
-                });
-
-            await raesumUserController.setOneUserMetaData(req, res, next);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-
-            authMock.mockRestore();
-            getMetadataKeyListMock.mockRestore();
-            responseMock.mockRestore();
+            // Test Joi validation directly
+            const error = testJoiValidation(
+                req,
+                userSchemas.setOneMetadata,
+                'body'
+            );
+            expect(error).toBeDefined();
+            expect(
+                error.details.some(
+                    (d) => d.type === 'any.required' && d.path[0] === 'value'
+                )
+            ).toBe(true);
         });
 
         test('Fail to set metadata value when not authorized', async () => {
@@ -1050,21 +1044,18 @@ describe('Testing User Controller', () => {
         test('Fail to delete metadata value with missing key', async () => {
             req.params = {};
 
-            const responseMock = vi
-                .spyOn(raesumResponses, 'get')
-                .mockResolvedValue({
-                    title: 'Bad Request',
-                    message: 'The request is missing fields: key',
-                    description: 'The request is missing required fields.',
-                    code: 400,
-                    keycode: 2,
-                });
-
-            await raesumUserController.deleteOneUserMetaData(req, res, next);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-
-            responseMock.mockRestore();
+            // Test Joi validation directly
+            const error = testJoiValidation(
+                req,
+                userSchemas.deleteOneMetadata,
+                'params'
+            );
+            expect(error).toBeDefined();
+            expect(
+                error.details.some(
+                    (d) => d.type === 'any.required' && d.path[0] === 'key'
+                )
+            ).toBe(true);
         });
 
         test('Fail to delete metadata value with invalid key', async () => {
@@ -1545,9 +1536,39 @@ describe('Testing User Controller', () => {
             responseMock.mockRestore();
         });
 
-        test('Fail to change organization with invalid user ID', async () => {
+        test('Fail to change organization with invalid user ID (string)', async () => {
             req.params = { userId: 'abc' };
             req.body = { organizationId: '2' };
+
+            // Test Joi validation directly - should fail for non-integer userId
+            const error = testJoiValidation(
+                req,
+                userSchemas.changeOrg,
+                'params'
+            );
+            expect(error).toBeDefined();
+            expect(
+                error.details.some(
+                    (d) => d.type === 'number.base' && d.path[0] === 'userId'
+                )
+            ).toBe(true);
+        });
+
+        test('Fail to change organization with non-existent user ID', async () => {
+            // Use a high user ID that likely doesn't exist
+            const nonExistentUserId = 99999999;
+
+            req.params = { userId: nonExistentUserId.toString() };
+            req.body = { organizationId: '2' };
+
+            const authMock = vi
+                .spyOn(raesumAuthorization, 'checkUserPermission')
+                .mockResolvedValue(true);
+
+            // Mock getAllowedUserOrgs to return empty list (user doesn't exist)
+            const getAllowedUserOrgsMock = vi
+                .spyOn(raesumUser, 'getAllowedUserOrgs')
+                .mockResolvedValue([]);
 
             const responseMock = vi
                 .spyOn(raesumResponses, 'get')
@@ -1563,6 +1584,8 @@ describe('Testing User Controller', () => {
 
             expect(res.status).toHaveBeenCalledWith(400);
 
+            authMock.mockRestore();
+            getAllowedUserOrgsMock.mockRestore();
             responseMock.mockRestore();
         });
 
@@ -1570,26 +1593,16 @@ describe('Testing User Controller', () => {
             req.params = {};
             req.body = {};
 
-            const authMock = vi
-                .spyOn(raesumAuthorization, 'checkUserPermission')
-                .mockResolvedValue(true);
-
-            const responseMock = vi
-                .spyOn(raesumResponses, 'get')
-                .mockResolvedValue({
-                    title: 'Bad Request',
-                    message: 'The request is missing fields: organizationId',
-                    description: 'The request is missing required fields.',
-                    code: 400,
-                    keycode: 2,
-                });
-
-            await raesumUserController.changeUserOrg(req, res, next);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-
-            authMock.mockRestore();
-            responseMock.mockRestore();
+            // Test Joi validation directly
+            const error = testJoiValidation(req, userSchemas.changeOrg, 'body');
+            expect(error).toBeDefined();
+            expect(
+                error.details.some(
+                    (d) =>
+                        d.type === 'any.required' &&
+                        d.path[0] === 'organizationId'
+                )
+            ).toBe(true);
         });
 
         test('Fail to change organization with invalid organizationId (NaN)', async () => {
