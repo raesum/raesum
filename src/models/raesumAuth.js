@@ -283,7 +283,7 @@ class raesumAuthorizationObject {
      * @param  {Number} id The ID of the user
      * @param  {String} objectTypeString The string key of the object type
      * @param  {String} actionString The string key of the action
-     * @param  {Number} orgID The ID of the organization
+     * @param  {Number} orgID The ID of the organization that OWNS the records
      * @param  {Number} objectOwnerUserID The ID of the user who owns the object
      * @param  {Array} [scopesRequired=[]] An array of scopes required to perform the action
      * @return {Boolean} Whether the user has permission or not
@@ -391,7 +391,7 @@ class raesumAuthorizationObject {
      * @param  {Number} id The ID of the user
      * @param  {Number} objectTypeId The id of the object type
      * @param  {Number} actionId The id of the action
-     * @param  {Number} orgID The ID of the organization
+     * @param  {Number} orgID The ID of the organization that OWNS the records
      * @param  {Number} objectOwnerUserID The ID of the user who owns the object
      * @param  {Array} [scopeIDsRequired=[]] An array of scopes required to perform the action
      * @return {Boolean} Whether the user has permission or not. Will return false if valid data types but non-existant values are supplied
