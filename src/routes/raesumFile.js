@@ -11,6 +11,77 @@ const raesumFileRouter = express.Router();
 
 /**
  * @swagger
+ * /api/v1/file/get/byUser/{userId}:
+ *   get:
+ *     summary: Get files by user ID
+ *     description: Retrieve all files for a specific user ID. Authorization is required - users can only access their own files unless they have organization-level permissions.
+ *     tags:
+ *       - File
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: User ID to retrieve files for
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved files for user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 title:
+ *                   type: string
+ *                   example: "Success"
+ *                   description: Response title
+ *                 message:
+ *                   type: string
+ *                   example: "OK"
+ *                   description: Response message
+ *                 description:
+ *                   type: string
+ *                   example: "The request was successful."
+ *                   description: Response description
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                   description: HTTP status code
+ *                 keycode:
+ *                   type: integer
+ *                   example: 1
+ *                   description: Internal response code
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                         description: Internal file ID
+ *                       user_id:
+ *                         type: integer
+ *                         example: 1
+ *                         description: User ID who owns the file
+ *                       file_type_key:
+ *                         type: string
+ *                         example: "testTextFile"
+ *                         description: File type key
+ *                   description: Array of files belonging to the user
+ */
+raesumFileRouter.get(
+    '/get/byUser/:userId',
+    validate(fileSchemas.getList, 'params'),
+    raesumFile.getList
+);
+
+/**
+ * @swagger
  * /api/v1/file/get/{fileId}:
  *   get:
  *     summary: Get file by ID
@@ -112,77 +183,6 @@ raesumFileRouter.get(
     '/get/:fileId',
     validate(fileSchemas.getById, 'params'),
     raesumFile.getById
-);
-
-/**
- * @swagger
- * /api/v1/file/get/byUser/{userId}:
- *   get:
- *     summary: Get files by user ID
- *     description: Retrieve all files for a specific user ID. Authorization is required - users can only access their own files unless they have organization-level permissions.
- *     tags:
- *       - File
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: integer
- *           minimum: 1
- *         description: User ID to retrieve files for
- *     responses:
- *       200:
- *         description: Successfully retrieved files for user
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 title:
- *                   type: string
- *                   example: "Success"
- *                   description: Response title
- *                 message:
- *                   type: string
- *                   example: "OK"
- *                   description: Response message
- *                 description:
- *                   type: string
- *                   example: "The request was successful."
- *                   description: Response description
- *                 code:
- *                   type: integer
- *                   example: 200
- *                   description: HTTP status code
- *                 keycode:
- *                   type: integer
- *                   example: 1
- *                   description: Internal response code
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                         example: 1
- *                         description: Internal file ID
- *                       user_id:
- *                         type: integer
- *                         example: 1
- *                         description: User ID who owns the file
- *                       file_type_key:
- *                         type: string
- *                         example: "testTextFile"
- *                         description: File type key
- *                   description: Array of files belonging to the user
- */
-raesumFileRouter.get(
-    '/get/byUser/:userId',
-    validate(fileSchemas.getList, 'params'),
-    raesumFile.getList
 );
 
 /**
