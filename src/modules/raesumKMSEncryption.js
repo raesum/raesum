@@ -12,6 +12,7 @@ import { createDecipheriv, createCipheriv, randomBytes } from 'crypto';
 import raesumConfig from './raesumConfig.js';
 import { fileURLToPath } from 'url';
 import { buildAWSClientConfig } from '../utils/awsUtils.js';
+import { isJson, conditionallyParseJSON } from '../utils/stringUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 import { raesumLogger } from './raesumLogger.js';
@@ -19,6 +20,24 @@ const logger = raesumLogger(__filename);
 
 const CACHE_MAX_AGE_MS = 60 * 60 * 1000; // 60 minutes
 const CACHE_CAPACITY = 100;
+
+/*
+
+Raesum Encryption
+
+This module provides a wrapper around the AWS KMS encryption and decryption methods.
+It uses the AWS SDK for JavaScript v3 to interact with AWS KMS.
+
+The encrypt function will return a json object that can be safely stored in the database. Separately, it assumes that all encrypted envelopes follow this format:
+
+ {
+	encryptedData: string,
+  	encryptedKey: string,  // The encrypted data key
+  	iv: string,                        // Initialization vector
+  	authTag: string              // Authentication tag
+}
+
+*/
 
 class raesumKMSEncryption {
     #cachingCMM;
@@ -232,7 +251,18 @@ class raesumKMSEncryption {
                 Date.now() - start
             );
 
-            return decryptedData.toString('utf8');
+            const decryptedString = decryptedData.toString('utf8');
+
+            // Check if decrypted string is JSON and parse it if so
+            const decryptedResult = conditionallyParseJSON(decryptedString);
+            if (decryptedResult !== decryptedString) {
+                logger.debug(
+                    'Decrypted data parsed as JSON object',
+                    Date.now() - start
+                );
+            }
+
+            return decryptedResult;
         } catch (error) {
             logger.error(
                 `Failed to decrypt data: ${error.message}`,
@@ -256,12 +286,30 @@ class raesumKMSEncryption {
         const start = Date.now();
         logger.info('Starting KMS encryption operation', Date.now() - start);
 
-        if (!plaintextData || typeof plaintextData !== 'string') {
+        if (!plaintextData) {
             logger.error(
-                'Invalid input for encrypt operation: must be a non-empty string',
+                'Invalid input for encrypt operation: must be a non-empty string or object',
                 Date.now() - start
             );
-            throw new Error('Invalid input: must be a non-empty string');
+            throw new Error(
+                'Invalid input: must be a non-empty string or object'
+            );
+        }
+
+        // Convert JSON objects to strings
+        let dataToEncrypt = plaintextData;
+        if (isJson(plaintextData)) {
+            dataToEncrypt = JSON.stringify(plaintextData);
+            logger.debug(
+                'Converted JSON object to string for encryption',
+                Date.now() - start
+            );
+        } else if (typeof plaintextData !== 'string') {
+            logger.error(
+                'Invalid input type for encrypt operation: must be a string or JSON object',
+                Date.now() - start
+            );
+            throw new Error('Invalid input: must be a string or JSON object');
         }
 
         try {
@@ -279,7 +327,7 @@ class raesumKMSEncryption {
             const cipher = createCipheriv('aes-256-gcm', plaintextKey, iv);
 
             // Encrypt the data
-            let encryptedData = cipher.update(plaintextData, 'utf8');
+            let encryptedData = cipher.update(dataToEncrypt, 'utf8');
             encryptedData = Buffer.concat([encryptedData, cipher.final()]);
 
             // Get the authentication tag

@@ -136,8 +136,7 @@
             }
         },
         "kms": {
-            "primaryMasterKeyARN": "",
-            "legacyMasterKeys": []
+            "primaryMasterKeyARN": ""
         }
     },
     "cloudBasedSecrets": ["connections.primaryDatabase.credentials"],
