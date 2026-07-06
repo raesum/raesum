@@ -134,6 +134,10 @@
                 "baseUrl": null,
                 "keyPrefix": null
             }
+        },
+        "kms": {
+            "primaryMasterKeyARN": "",
+            "legacyMasterKeys": []
         }
     },
     "cloudBasedSecrets": ["connections.primaryDatabase.credentials"],
