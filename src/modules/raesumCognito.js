@@ -271,17 +271,67 @@ class raesumCognito {
             throw new Error('Unable to connect to Cognito: ' + e);
         }
 
+        // Default standard Cognito read attributes (all standard attributes)
+        const defaultReadAttributes = [
+            'sub',
+            'name',
+            'family_name',
+            'given_name',
+            'middle_name',
+            'nickname',
+            'preferred_username',
+            'profile',
+            'picture',
+            'website',
+            'gender',
+            'birthdate',
+            'zoneinfo',
+            'locale',
+            'updated_at',
+            'address',
+            'email',
+            'phone_number',
+            'email_verified',
+            'phone_number_verified',
+        ];
+
+        // Default standard Cognito write attributes (only writable attributes)
+        const defaultWriteAttributes = [
+            'name',
+            'family_name',
+            'given_name',
+            'middle_name',
+            'nickname',
+            'preferred_username',
+            'profile',
+            'picture',
+            'website',
+            'gender',
+            'birthdate',
+            'zoneinfo',
+            'locale',
+            'address',
+            'email',
+            'phone_number',
+        ];
+
+        // Use ReadAttributes from cognito client or default to standard read attributes
+        const readAttributes =
+            cognitoClient.UserPoolClient.ReadAttributes ||
+            defaultReadAttributes;
+
+        // Use WriteAttributes from cognito client or default to standard write attributes
+        const writeAttributes =
+            cognitoClient.UserPoolClient.WriteAttributes ||
+            defaultWriteAttributes;
+
         // Create list of attributes that can be read from Cognito
         let attrList = {};
         let attrKeys = [];
 
         // Loop through the readonly attributes
-        for (
-            let i = 0;
-            i < cognitoClient.UserPoolClient.ReadAttributes.length;
-            i++
-        ) {
-            let attrKeyName = cognitoClient.UserPoolClient.ReadAttributes[i];
+        for (let i = 0; i < readAttributes.length; i++) {
+            let attrKeyName = readAttributes[i];
             // Remove all non-alphanumeric characters (allow -_.)
             attrKeyName = attrKeyName.replace(/[^a-zA-Z0-9_\-\.]/g, '');
             attrList[attrKeyName] = false;
@@ -290,7 +340,7 @@ class raesumCognito {
 
         // Loop through the attributes and set them to true if they exist in the writeattributes list
         for (let key in attrList) {
-            if (cognitoClient.UserPoolClient.WriteAttributes.includes(key)) {
+            if (writeAttributes.includes(key)) {
                 attrList[key] = true;
             }
         }
